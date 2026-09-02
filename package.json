@@ -6,6 +6,9 @@
   "engines": {
     "node": ">=20.9.0"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,6 +19,8 @@
     "test:watch": "vitest",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:seed:mocks": "tsx prisma/seed.ts --mocks",
     "db:smoke": "node scripts/db-smoke-test.mjs"
   },
   "dependencies": {
@@ -34,6 +39,7 @@
     "eslint-config-next": "16.3.4",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
+    "tsx": "^4.19.3",
     "typescript": "^5",
     "vitest": "^4.1.11"
   }

@@ -1,8 +1,9 @@
-// Swanford Academy - Database Schema (Prisma)
-// Master Specification Reference: Sections 7, 10, 11
-// STAGE 1: Foundational Database Infrastructure Only
-// Full business domain entities (Users, Roles, Guardians, Students, Programmes, Fees, Invoices, Payments, Receipts, AuditLogs)
-// are intentionally deferred to Stage 2.
+// =============================================================================
+// Swanford Academy - Master Database Schema (Prisma ORM)
+// Master Specification Reference: Sections 7, 8, 10, 11, 12, 13, 15, 16, 21, 24
+// Architecture Reference: docs/DATABASE_ARCHITECTURE_DESIGN.md
+// Engine: PostgreSQL 16+
+// =============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -14,16 +15,878 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/// Baseline technical configuration table to verify PostgreSQL connectivity,
-/// migrations, and deterministic seeding without premature business model coupling.
-model SystemConfig {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  value       String
-  category    String   @default("general")
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  PENDING_VERIFICATION
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum RoleCode {
+  SUPER_ADMIN
+  ADMIN
+  ACCOUNTANT
+  TEACHER
+  PARENT
+}
+
+enum TeacherStatus {
+  ACTIVE
+  ON_LEAVE
+  TERMINATED
+}
+
+enum StudentStatus {
+  ACTIVE
+  GRADUATED
+  TRANSFERRED_OUT
+  WITHDRAWN
+  SUSPENDED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum FeeApplicableGender {
+  ALL
+  MALE
+  FEMALE
+}
+
+enum RelationshipType {
+  FATHER
+  MOTHER
+  LEGAL_GUARDIAN
+  SPONSOR
+}
+
+enum RelationshipStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum TermCode {
+  FIRST
+  SECOND
+  THIRD
+}
+
+enum ProgrammeCode {
+  CRECHE
+  PRE_SCHOLARS
+  PRE_NURSERY
+  NURSERY
+  PRIMARY
+  TAHFEEZ
+}
+
+enum EnrollmentType {
+  MAIN_ACADEMIC
+  ADDITIONAL_PROGRAMME
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  WITHDRAWN
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  CONFLICT_REVIEW
+  APPROVED
+  REJECTED
+  ENROLLED
+}
+
+enum FeeStatus {
+  UNPAID
+  PAID
+  WAIVED
+}
+
+enum ReviewDecision {
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  PAYSTACK
+  BANK_TRANSFER
+  CASH
+  POS
+  CHEQUE
+}
+
+enum PaymentStatus {
+  CONFIRMED
+  PENDING_VERIFICATION
+  REVERSED
+}
+
+enum GatewayProvider {
+  PAYSTACK
+}
+
+enum GatewayTransactionStatus {
+  INITIALIZED
+  PENDING
+  SUCCESS
+  FAILED
+  ABANDONED
+}
+
+enum ExpenseStatus {
+  RECORDED
+  VOIDED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum ConfigCategory {
+  GENERAL
+  FINANCE
+  ADMISSIONS
+  ACADEMICS
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 1: IDENTITY, RBAC & SECURITY PERSISTENCE
+// -----------------------------------------------------------------------------
+
+model User {
+  id                   String        @id @default(uuid()) @db.Uuid
+  email                String        @unique
+  phoneNumber          String?       @unique @map("phone_number")
+  passwordHash         String        @map("password_hash")
+  status               UserStatus    @default(ACTIVE)
+  emailVerifiedAt      DateTime?     @map("email_verified_at")
+  failedLoginAttempts  Int           @default(0) @map("failed_login_attempts")
+  lockedUntil          DateTime?     @map("locked_until")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  // Relationships
+  userRoles            UserRole[]
+  sessions             Session[]
+  passwordResets       PasswordReset[]
+  guardianProfile      Guardian?
+  teacherProfile       Teacher?
+  recordedPayments     Payment[]            @relation("PaymentRecordedBy")
+  recordedExpenses     Expense[]            @relation("ExpenseRecordedBy")
+  applicationReviews   ApplicationReview[]  @relation("ApplicationReviewedBy")
+  auditLogs            AuditLog[]
+
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  code            RoleCode         @unique
+  name            String
+  description     String?
+  isSystem        Boolean          @default(true) @map("is_system")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relationships
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  code            String           @unique
+  name            String
+  description     String?
+  module          String
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  // Relationships
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  assignedAt   DateTime   @default(now()) @map("assigned_at")
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Session {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  sessionTokenHash  String   @unique @map("session_token_hash")
+  ipAddress         String?  @map("ip_address")
+  userAgent         String?  @map("user_agent")
+  expiresAt         DateTime @map("expires_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model PasswordReset {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_resets")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 2: PEOPLE & RELATIONSHIPS
+// -----------------------------------------------------------------------------
+
+model Guardian {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String?  @unique @map("user_id") @db.Uuid
+  title              String?
+  firstName          String   @map("first_name")
+  lastName           String   @map("last_name")
+  otherNames         String?  @map("other_names")
+  email              String   @unique
+  phonePrimary       String   @map("phone_primary")
+  phoneSecondary     String?  @map("phone_secondary")
+  residentialAddress String   @map("residential_address")
+  occupation         String?
+  isVerified         Boolean  @default(false) @map("is_verified")
+  verifiedAt         DateTime? @map("verified_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  relationships      GuardianStudentRelationship[]
+  invoices           Invoice[]
+  paymentsPayer      Payment[] @relation("GuardianPayer")
+  matchedApplications Application[] @relation("ExistingGuardianApplication")
+
+  @@index([email])
+  @@index([phonePrimary])
+  @@map("guardians")
+}
+
+model Teacher {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @unique @map("user_id") @db.Uuid
+  staffIdNumber  String        @unique @map("staff_id_number")
+  firstName      String        @map("first_name")
+  lastName       String        @map("last_name")
+  qualification  String?
+  status         TeacherStatus @default(ACTIVE)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  scopes         TeacherScope[]
+
+  @@map("teachers")
+}
+
+model Student {
+  id              String         @id @default(uuid()) @db.Uuid
+  admissionNumber String         @unique @map("admission_number") // SA-YYYY-NNNN
+  firstName       String         @map("first_name")
+  lastName        String         @map("last_name")
+  otherNames      String?        @map("other_names")
+  gender          Gender
+  dateOfBirth     DateTime       @map("date_of_birth") @db.Date
+  bloodGroup      String?        @map("blood_group")
+  genotype        String?
+  medicalNotes    String?        @map("medical_notes")
+  admissionDate   DateTime       @default(now()) @map("admission_date") @db.Date
+  currentStatus   StudentStatus  @default(ACTIVE) @map("current_status")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  // Relationships
+  guardianLinks   GuardianStudentRelationship[]
+  programmeEnrollments StudentProgrammeEnrollment[]
+  invoices        Invoice[]
+  payments        Payment[]
+  applicationOrigin Application?
+
+  @@index([currentStatus])
+  @@index([lastName, firstName])
+  @@map("students")
+}
+
+model GuardianStudentRelationship {
+  id               String             @id @default(uuid()) @db.Uuid
+  guardianId       String             @map("guardian_id") @db.Uuid
+  studentId        String             @map("student_id") @db.Uuid
+  relationshipType RelationshipType   @map("relationship_type")
+  isPrimaryContact Boolean            @default(false) @map("is_primary_contact")
+  canPickup        Boolean            @default(true) @map("can_pickup")
+  receivesInvoices Boolean            @default(true) @map("receives_invoices")
+  status           RelationshipStatus @default(ACTIVE)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  guardian         Guardian           @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  student          Student            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([guardianId, studentId])
+  @@index([studentId])
+  @@index([guardianId])
+  @@map("guardian_student_relationships")
+}
+
+model TeacherScope {
+  id                String          @id @default(uuid()) @db.Uuid
+  teacherId         String          @map("teacher_id") @db.Uuid
+  academicSessionId String          @map("academic_session_id") @db.Uuid
+  schoolClassId     String          @map("school_class_id") @db.Uuid
+  subjectId         String?         @map("subject_id") @db.Uuid
+  isFormTeacher     Boolean         @default(false) @map("is_form_teacher")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  teacher           Teacher         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  academicSession   AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  schoolClass       SchoolClass     @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
+  subject           Subject?        @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@unique([teacherId, academicSessionId, schoolClassId, subjectId])
+  @@index([teacherId, academicSessionId])
+  @@map("teacher_scopes")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 3: ACADEMIC STRUCTURE & MULTI-PROGRAMME ENROLLMENT
+// -----------------------------------------------------------------------------
+
+model AcademicSession {
+  id          String         @id @default(uuid()) @db.Uuid
+  name        String         @unique // e.g. "2026/2027"
+  startDate   DateTime       @map("start_date") @db.Date
+  endDate     DateTime       @map("end_date") @db.Date
+  isCurrent   Boolean        @default(false) @map("is_current")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  terms       AcademicTerm[]
+  enrollments StudentProgrammeEnrollment[]
+  teacherScopes TeacherScope[]
+  applications Application[]
+  feeStructures FeeStructure[]
+  invoices    Invoice[]
+  expenses    Expense[]
+
+  @@map("academic_sessions")
+}
+
+model AcademicTerm {
+  id                String          @id @default(uuid()) @db.Uuid
+  academicSessionId String          @map("academic_session_id") @db.Uuid
+  termCode          TermCode        @map("term_code")
+  name              String          // e.g. "First Term"
+  startDate         DateTime        @map("start_date") @db.Date
+  endDate           DateTime        @map("end_date") @db.Date
+  isCurrent         Boolean         @default(false) @map("is_current")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  academicSession   AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  enrollments       StudentProgrammeEnrollment[]
+  feeStructures     FeeStructure[]
+  invoices          Invoice[]
+  expenses          Expense[]
+
+  @@unique([academicSessionId, termCode])
+  @@map("academic_terms")
+}
+
+model Programme {
+  id             String          @id @default(uuid()) @db.Uuid
+  code           ProgrammeCode   @unique
+  name           String
+  isMainAcademic Boolean         @default(true) @map("is_main_academic") // false for Tahfeez
+  description    String?
+  displayOrder   Int             @default(0) @map("display_order")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  classes        SchoolClass[]
+  subjects       Subject[]
+  enrollments    StudentProgrammeEnrollment[]
+  feeStructures  FeeStructure[]
+  invoices       Invoice[]
+  targetApplications Application[] @relation("TargetMainProgramme")
+
+  @@map("programmes")
+}
+
+model SchoolClass {
+  id            String          @id @default(uuid()) @db.Uuid
+  programmeId   String          @map("programme_id") @db.Uuid
+  code          String          @unique // e.g. "PRI_1", "PRI_4", "TAH_A"
+  name          String          // e.g. "Primary 1"
+  arm           String?         // e.g. "A", "Gold"
+  capacity      Int             @default(30)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  programme     Programme       @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  enrollments   StudentProgrammeEnrollment[]
+  teacherScopes TeacherScope[]
+  feeStructures FeeStructure[]
+  targetApplications Application[] @relation("TargetSchoolClass")
+
+  @@index([programmeId])
+  @@map("school_classes")
+}
+
+model Subject {
+  id            String         @id @default(uuid()) @db.Uuid
+  programmeId   String         @map("programme_id") @db.Uuid
+  code          String         @unique // e.g. "MATH", "ENG", "QURAN"
+  name          String
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  programme     Programme      @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  teacherScopes TeacherScope[]
+
+  @@index([programmeId])
+  @@map("subjects")
+}
+
+/// Crucial Multi-Programme Enrollment Junction Entity
+/// Supports simultaneous enrollments (e.g. Primary 4 + Tahfeez)
+model StudentProgrammeEnrollment {
+  id                String           @id @default(uuid()) @db.Uuid
+  studentId         String           @map("student_id") @db.Uuid
+  programmeId       String           @map("programme_id") @db.Uuid
+  schoolClassId     String           @map("school_class_id") @db.Uuid
+  academicSessionId String           @map("academic_session_id") @db.Uuid
+  academicTermId    String           @map("academic_term_id") @db.Uuid
+  enrollmentType    EnrollmentType   @map("enrollment_type") // MAIN_ACADEMIC or ADDITIONAL_PROGRAMME
+  enrollmentStatus  EnrollmentStatus @default(ACTIVE) @map("enrollment_status")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  student           Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  programme         Programme        @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  schoolClass       SchoolClass      @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
+  academicSession   AcademicSession  @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm      AcademicTerm     @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+
+  // A student cannot be enrolled in the same programme twice in the same term
+  @@unique([studentId, programmeId, academicSessionId, academicTermId], name: "unique_student_programme_term_enrollment")
+  @@index([studentId, academicSessionId])
+  @@index([schoolClassId, academicSessionId, academicTermId])
+  @@index([programmeId, academicSessionId])
+  @@map("student_programme_enrollments")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 4: ADMISSIONS LIFECYCLE
+// -----------------------------------------------------------------------------
+
+model Application {
+  id                     String            @id @default(uuid()) @db.Uuid
+  applicationNumber      String            @unique @map("application_number") // APP-YYYY-NNNN
+  academicSessionId      String            @map("academic_session_id") @db.Uuid
+  targetMainProgrammeId  String            @map("target_main_programme_id") @db.Uuid
+  targetClassId          String            @map("target_class_id") @db.Uuid
+  enrollInTahfeez        Boolean           @default(false) @map("enroll_in_tahfeez")
+  
+  applicantFirstName     String            @map("applicant_first_name")
+  applicantLastName      String            @map("applicant_last_name")
+  applicantOtherNames    String?           @map("applicant_other_names")
+  applicantGender        Gender            @map("applicant_gender")
+  applicantDob           DateTime          @map("applicant_dob") @db.Date
+
+  guardianFirstName      String            @map("guardian_first_name")
+  guardianLastName       String            @map("guardian_last_name")
+  guardianEmail          String            @map("guardian_email")
+  guardianPhone          String            @map("guardian_phone")
+  guardianRelationship   RelationshipType  @map("guardian_relationship")
+  existingGuardianId     String?           @map("existing_guardian_id") @db.Uuid
+
+  applicationFeeKobo     BigInt            @default(500000) @map("application_fee_kobo") @db.BigInt // ₦5,000
+  applicationFeeStatus   FeeStatus         @default(UNPAID) @map("application_fee_status")
+  emailVerified          Boolean           @default(false) @map("email_verified")
+  status                 ApplicationStatus @default(SUBMITTED)
+  admittedStudentId      String?           @unique @map("admitted_student_id") @db.Uuid
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  academicSession        AcademicSession   @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  targetMainProgramme    Programme         @relation("TargetMainProgramme", fields: [targetMainProgrammeId], references: [id], onDelete: Restrict)
+  targetClass            SchoolClass       @relation("TargetSchoolClass", fields: [targetClassId], references: [id], onDelete: Restrict)
+  existingGuardian       Guardian?         @relation("ExistingGuardianApplication", fields: [existingGuardianId], references: [id], onDelete: SetNull)
+  admittedStudent        Student?          @relation(fields: [admittedStudentId], references: [id], onDelete: SetNull)
+  reviews                ApplicationReview[]
+  paymentTransactions    PaymentTransaction[]
+
+  @@index([status, academicSessionId])
+  @@index([guardianEmail])
+  @@map("applications")
+}
+
+model ApplicationReview {
+  id            String         @id @default(uuid()) @db.Uuid
+  applicationId String         @map("application_id") @db.Uuid
+  reviewerId    String         @map("reviewer_id") @db.Uuid
+  decision      ReviewDecision
+  notes         String?
+  reviewedAt    DateTime       @default(now()) @map("reviewed_at")
+
+  application   Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewer      User           @relation("ApplicationReviewedBy", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@map("application_reviews")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 5: INVOICING & SCHOOL LEDGER
+// -----------------------------------------------------------------------------
+
+model FeeStructure {
+  id                String              @id @default(uuid()) @db.Uuid
+  academicSessionId String              @map("academic_session_id") @db.Uuid
+  academicTermId    String              @map("academic_term_id") @db.Uuid
+  programmeId       String              @map("programme_id") @db.Uuid
+  schoolClassId     String?             @map("school_class_id") @db.Uuid // null = all classes in programme
+  applicableGender  FeeApplicableGender @default(ALL) @map("applicable_gender")
+  isAdmissionFee    Boolean             @default(false) @map("is_admission_fee")
+  name              String              // e.g. "Primary 1st Term Boys Admission Fee"
+  isActive          Boolean             @default(true) @map("is_active")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  academicSession   AcademicSession     @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm      AcademicTerm        @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  programme         Programme           @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  schoolClass       SchoolClass?        @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
+  feeItems          FeeItem[]
+  invoices          Invoice[]
+
+  @@index([academicSessionId, academicTermId, programmeId])
+  @@map("fee_structures")
+}
+
+model FeeItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  feeStructureId String       @map("fee_structure_id") @db.Uuid
+  name           String       // "Tuition", "Cardigan", "2 Polo Shirts", "Books"
+  amountKobo     BigInt       @map("amount_kobo") @db.BigInt
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+
+  @@index([feeStructureId])
+  @@map("fee_items")
+}
+
+model Invoice {
+  id                     String           @id @default(uuid()) @db.Uuid
+  invoiceNumber          String           @unique @map("invoice_number") // INV-YYYY-NNNNN
+  studentId              String           @map("student_id") @db.Uuid
+  guardianId             String           @map("guardian_id") @db.Uuid
+  academicSessionId      String           @map("academic_session_id") @db.Uuid
+  academicTermId         String           @map("academic_term_id") @db.Uuid
+  programmeId            String           @map("programme_id") @db.Uuid // Primary or Tahfeez
+  feeStructureId         String?          @map("fee_structure_id") @db.Uuid
+  
+  totalAmountKobo        BigInt           @map("total_amount_kobo") @db.BigInt
+  amountPaidKobo         BigInt           @default(0) @map("amount_paid_kobo") @db.BigInt
+  outstandingBalanceKobo BigInt           @map("outstanding_balance_kobo") @db.BigInt
+  status                 InvoiceStatus    @default(ISSUED)
+  dueDate                DateTime         @map("due_date") @db.Date
+  issuedAt               DateTime         @default(now()) @map("issued_at")
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+
+  student                Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  guardian               Guardian         @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  academicSession        AcademicSession  @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm           AcademicTerm     @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  programme              Programme        @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  feeStructure           FeeStructure?    @relation(fields: [feeStructureId], references: [id], onDelete: SetNull)
+
+  items                  InvoiceItem[]
+  payments               Payment[]
+  receipts               Receipt[]
+  paymentTransactions    PaymentTransaction[]
+
+  // Duplicate Invoice Prevention: same student cannot be billed twice for same programme in same term
+  @@unique([studentId, programmeId, academicSessionId, academicTermId], name: "unique_student_programme_term_invoice")
+  @@index([studentId, status])
+  @@index([guardianId])
+  @@index([academicSessionId, academicTermId])
+  @@map("invoices")
+}
+
+/// Frozen line item snapshot created at invoice issuance
+model InvoiceItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  invoiceId       String   @map("invoice_id") @db.Uuid
+  description     String
+  unitAmountKobo  BigInt   @map("unit_amount_kobo") @db.BigInt
+  quantity        Int      @default(1)
+  totalAmountKobo BigInt   @map("total_amount_kobo") @db.BigInt
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+/// Official school financial credit ledger entry
+model Payment {
+  id                 String        @id @default(uuid()) @db.Uuid
+  paymentReference   String        @unique @map("payment_reference") // PAY-YYYY-NNNNN
+  invoiceId          String        @map("invoice_id") @db.Uuid
+  studentId          String        @map("student_id") @db.Uuid
+  payerGuardianId    String?       @map("payer_guardian_id") @db.Uuid
+  amountKobo         BigInt        @map("amount_kobo") @db.BigInt
+  paymentMethod      PaymentMethod @map("payment_method")
+  status             PaymentStatus @default(CONFIRMED)
+  notes              String?
+  recordedByUserId   String?       @map("recorded_by_user_id") @db.Uuid
+  paidAt             DateTime      @default(now()) @map("paid_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  invoice            Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  student            Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  payerGuardian      Guardian?     @relation("GuardianPayer", fields: [payerGuardianId], references: [id], onDelete: SetNull)
+  recordedByUser     User?         @relation("PaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  
+  receipt            Receipt?
+  gatewayTransaction PaymentTransaction?
+
+  @@index([invoiceId])
+  @@index([studentId])
+  @@index([paidAt])
+  @@map("payments")
+}
+
+model Receipt {
+  id            String   @id @default(uuid()) @db.Uuid
+  receiptNumber String   @unique @map("receipt_number") // REC-YYYY-NNNNN
+  paymentId     String   @unique @map("payment_id") @db.Uuid
+  invoiceId     String   @map("invoice_id") @db.Uuid
+  issuedToName  String   @map("issued_to_name")
+  amountKobo    BigInt   @map("amount_kobo") @db.BigInt
+  issuedAt      DateTime @default(now()) @map("issued_at")
+
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@map("receipts")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 6: PAYMENT GATEWAY INTEGRATION (PAYSTACK)
+// -----------------------------------------------------------------------------
+
+model PaymentTransaction {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  gatewayProvider      GatewayProvider          @default(PAYSTACK) @map("gateway_provider")
+  gatewayReference     String                   @unique @map("gateway_reference")
+  gatewayTransactionId String?                  @map("gateway_transaction_id")
+  invoiceId            String?                  @map("invoice_id") @db.Uuid
+  applicationId        String?                  @map("application_id") @db.Uuid
+  amountKobo           BigInt                   @map("amount_kobo") @db.BigInt
+  gatewayFeeKobo       BigInt?                  @map("gateway_fee_kobo") @db.BigInt
+  status               GatewayTransactionStatus @default(INITIALIZED)
+  channel              String?
+  paidAt               DateTime?                @map("paid_at")
+  gatewayResponseJson  Json?                    @map("gateway_response_json")
+  schoolPaymentId      String?                  @unique @map("school_payment_id") @db.Uuid
+  createdAt            DateTime                 @default(now()) @map("created_at")
+  updatedAt            DateTime                 @updatedAt @map("updated_at")
+
+  invoice              Invoice?                 @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  application          Application?             @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  schoolPayment        Payment?                 @relation(fields: [schoolPaymentId], references: [id], onDelete: SetNull)
+
+  @@index([gatewayReference])
+  @@index([status])
+  @@map("payment_transactions")
+}
+
+/// Inbound webhook audit log and deduplication barrier
+model PaymentWebhookEvent {
+  id                String          @id @default(uuid()) @db.Uuid
+  gatewayProvider   GatewayProvider @default(PAYSTACK) @map("gateway_provider")
+  eventId           String          @map("event_id") // Paystack event id
+  eventType         String          @map("event_type")
+  payloadJson       Json            @map("payload_json")
+  signatureVerified Boolean         @default(false) @map("signature_verified")
+  processed         Boolean         @default(false)
+  processedAt       DateTime?       @map("processed_at")
+  errorMessage      String?         @map("error_message")
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  // Webhook Idempotency: Reject duplicate gateway event delivery
+  @@unique([gatewayProvider, eventId], name: "unique_gateway_webhook_event")
+  @@index([createdAt])
+  @@map("payment_webhook_events")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 7: EXPENSES & OPERATIONS
+// -----------------------------------------------------------------------------
+
+model ExpenseCategory {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique
+  name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  expenses    Expense[]
+
+  @@map("expense_categories")
+}
+
+model Expense {
+  id                String          @id @default(uuid()) @db.Uuid
+  expenseNumber     String          @unique @map("expense_number") // EXP-YYYY-NNNNN
+  categoryId        String          @map("category_id") @db.Uuid
+  academicSessionId String          @map("academic_session_id") @db.Uuid
+  academicTermId    String?         @map("academic_term_id") @db.Uuid
+  title             String
+  description       String
+  amountKobo        BigInt          @map("amount_kobo") @db.BigInt
+  paymentMethod     PaymentMethod   @map("payment_method")
+  payeeName         String          @map("payee_name")
+  receiptVoucherUrl String?         @map("receipt_voucher_url")
+  recordedByUserId  String?         @map("recorded_by_user_id") @db.Uuid
+  expenseDate       DateTime        @map("expense_date") @db.Date
+  status            ExpenseStatus   @default(RECORDED)
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  category          ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  academicSession   AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm      AcademicTerm?   @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  recordedByUser    User?           @relation("ExpenseRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([academicSessionId, categoryId])
+  @@index([expenseDate])
+  @@map("expenses")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 8: AUDIT, NOTIFICATIONS & SYSTEM CONFIG
+// -----------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   // e.g. "USER_ROLE_ASSIGNED", "INVOICE_CANCELLED"
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id                String              @id @default(uuid()) @db.Uuid
+  recipientUserId   String?             @map("recipient_user_id") @db.Uuid
+  recipientEmail    String?             @map("recipient_email")
+  recipientPhone    String?             @map("recipient_phone")
+  channel           NotificationChannel
+  templateName      String              @map("template_name")
+  subject           String
+  bodyText          String              @map("body_text")
+  status            NotificationStatus  @default(PENDING)
+  providerMessageId String?             @map("provider_message_id")
+  errorMessage      String?             @map("error_message")
+  sentAt            DateTime?           @map("sent_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+
+  @@index([status, channel])
+  @@index([recipientEmail])
+  @@map("notifications")
+}
+
+model SystemConfig {
+  id          String         @id @default(uuid()) @db.Uuid
+  key         String         @unique
+  value       String
+  category    ConfigCategory @default(GENERAL)
+  description String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
 
   @@map("system_configs")
 }
