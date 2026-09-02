@@ -25,11 +25,6 @@ export const SCHOOL_PROFILE = {
     "Wisdom",
     "Leadership",
   ],
-  bankDetails: {
-    bankName: "Jaiz Bank",
-    accountName: "Swanford Academy",
-    accountNumber: "0012031162",
-  },
 } as const;
 
 /**
