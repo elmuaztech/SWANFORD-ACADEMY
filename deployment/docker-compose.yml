@@ -1,0 +1,60 @@
+# =============================================================================
+# Swanford Academy - Production Docker Compose Configuration
+# Target: Hostinger VPS
+# Master Specification Reference: Sections 8, 21, 22
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # Application Service (Next.js App Router)
+  app:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    container_name: swanford_app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - APP_URL=${APP_URL}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swanford}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-swanford_prod}?schema=public
+      - SESSION_SECRET=${SESSION_SECRET}
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+      - PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY}
+      - PAYSTACK_WEBHOOK_SECRET=${PAYSTACK_WEBHOOK_SECRET}
+      - NOTIFICATION_PROVIDER=${NOTIFICATION_PROVIDER:-mock}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - swanford_network
+
+  # Database Service (PostgreSQL 16)
+  postgres:
+    image: postgres:16-alpine
+    container_name: swanford_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-swanford_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-swanford}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swanford} -d ${POSTGRES_DB:-swanford_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - swanford_network
+
+networks:
+  swanford_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

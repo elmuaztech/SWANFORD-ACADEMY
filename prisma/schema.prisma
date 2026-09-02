@@ -1,0 +1,29 @@
+// Swanford Academy - Database Schema (Prisma)
+// Master Specification Reference: Sections 7, 10, 11
+// STAGE 1: Foundational Database Infrastructure Only
+// Full business domain entities (Users, Roles, Guardians, Students, Programmes, Fees, Invoices, Payments, Receipts, AuditLogs)
+// are intentionally deferred to Stage 2.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Baseline technical configuration table to verify PostgreSQL connectivity,
+/// migrations, and deterministic seeding without premature business model coupling.
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  category    String   @default("general")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_configs")
+}
