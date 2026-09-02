@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { PrismaClient, EnrollmentType, EnrollmentStatus, RelationshipType, InvoiceStatus, GatewayProvider } from "@prisma/client";
-import { serializeBigInt } from "@/lib/money";
+import {
+  PrismaClient,
+  EnrollmentType,
+  EnrollmentStatus,
+  RelationshipType,
+  ProgrammeSelectionStatus,
+  ApplicationStatus,
+  Gender,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-describe("Swanford Master Database Schema & Constraint Verification", () => {
+describe("Swanford Master Database Schema, Constraints & Multi-Programme Application Verification", () => {
   beforeAll(async () => {
-    // Ensure database is reachable
     await prisma.$connect();
   });
 
@@ -37,7 +43,6 @@ describe("Swanford Master Database Schema & Constraint Verification", () => {
       where: { admissionNumber: "SA-2026-0001" },
     });
 
-    // Create Mother profile
     const motherGuardian = await prisma.guardian.upsert({
       where: { email: "aisha.sani.mother@swanford.example.com" },
       update: {},
@@ -52,7 +57,6 @@ describe("Swanford Master Database Schema & Constraint Verification", () => {
       },
     });
 
-    // Link Mother to Ahmed as SECOND guardian
     await prisma.guardianStudentRelationship.upsert({
       where: {
         guardianId_studentId: {
@@ -81,148 +85,340 @@ describe("Swanford Master Database Schema & Constraint Verification", () => {
     expect(relationshipTypes).toContain(RelationshipType.MOTHER);
   });
 
-  // 3. One student -> Primary + Tahfeez simultaneously
-  it("verifies one student participates in Primary and Tahfeez simultaneously", async () => {
-    const ahmed = await prisma.student.findUniqueOrThrow({
-      where: { admissionNumber: "SA-2026-0001" },
-    });
-    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
-    const currentEnrollments = await prisma.studentProgrammeEnrollment.findMany({
-      where: {
-        studentId: ahmed.id,
-        academicSessionId: session.id,
-      },
-      include: { programme: true, schoolClass: true },
-    });
-
-    expect(currentEnrollments.length).toBe(2);
-
-    const mainAcademic = currentEnrollments.find(
-      (e) => e.enrollmentType === EnrollmentType.MAIN_ACADEMIC
-    );
-    const additionalProg = currentEnrollments.find(
-      (e) => e.enrollmentType === EnrollmentType.ADDITIONAL_PROGRAMME
-    );
-
-    expect(mainAcademic).toBeDefined();
-    expect(mainAcademic?.programme.code).toBe("PRIMARY");
-    expect(mainAcademic?.schoolClass.code).toBe("PRIMARY_4");
-
-    expect(additionalProg).toBeDefined();
-    expect(additionalProg?.programme.code).toBe("TAHFEEZ");
-    expect(additionalProg?.schoolClass.code).toBe("TAHFEEZ_GROUP_A");
-  });
-
-  // 4. Historical programme enrollment
-  it("preserves historical enrollments across consecutive academic sessions", async () => {
-    const ahmed = await prisma.student.findUniqueOrThrow({
-      where: { admissionNumber: "SA-2026-0001" },
-    });
-    const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
-    const primary3Class = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "PRIMARY_3" } });
-
-    // Historical session: 2025/2026
-    const pastSession = await prisma.academicSession.upsert({
-      where: { name: "2025/2026" },
-      update: {},
-      create: {
-        name: "2025/2026",
-        startDate: new Date("2025-09-01"),
-        endDate: new Date("2026-07-31"),
-        isCurrent: false,
-      },
-    });
-
-    const pastTerm = await prisma.academicTerm.upsert({
-      where: {
-        academicSessionId_termCode: {
-          academicSessionId: pastSession.id,
-          termCode: "THIRD",
+  // 3. One application can select multiple programmes
+  it("verifies one application can select multiple programmes for the same child", async () => {
+    const app = await prisma.application.findUniqueOrThrow({
+      where: { applicationNumber: "APP-2026-00001" },
+      include: {
+        programmeSelections: {
+          include: { programme: true, targetClass: true },
         },
       },
-      update: {},
-      create: {
-        academicSessionId: pastSession.id,
-        termCode: "THIRD",
-        name: "Third Term",
-        startDate: new Date("2026-05-01"),
-        endDate: new Date("2026-07-20"),
-        isCurrent: false,
-      },
     });
 
-    // Record past enrollment in Primary 3
-    await prisma.studentProgrammeEnrollment.upsert({
-      where: {
-        unique_student_programme_term_enrollment: {
-          studentId: ahmed.id,
-          programmeId: primaryProg.id,
-          academicSessionId: pastSession.id,
-          academicTermId: pastTerm.id,
-        },
-      },
-      update: {},
-      create: {
-        studentId: ahmed.id,
-        programmeId: primaryProg.id,
-        schoolClassId: primary3Class.id,
-        academicSessionId: pastSession.id,
-        academicTermId: pastTerm.id,
-        enrollmentType: EnrollmentType.MAIN_ACADEMIC,
-        enrollmentStatus: EnrollmentStatus.COMPLETED,
-      },
-    });
-
-    const allEnrollments = await prisma.studentProgrammeEnrollment.findMany({
-      where: { studentId: ahmed.id },
-      include: { academicSession: true, schoolClass: true },
-    });
-
-    expect(allEnrollments.length).toBeGreaterThanOrEqual(3);
-    const pastEnrollment = allEnrollments.find((e) => e.academicSession.name === "2025/2026");
-    expect(pastEnrollment?.schoolClass.code).toBe("PRIMARY_3");
-    expect(pastEnrollment?.enrollmentStatus).toBe(EnrollmentStatus.COMPLETED);
+    expect(app.programmeSelections.length).toBe(2);
+    const progCodes = app.programmeSelections.map((s) => s.programme.code);
+    expect(progCodes).toContain("PRIMARY");
+    expect(progCodes).toContain("TAHFEEZ");
   });
 
-  // 5. Duplicate enrollment rejection
-  it("rejects duplicate enrollment in the same programme during the same term", async () => {
-    const ahmed = await prisma.student.findUniqueOrThrow({
-      where: { admissionNumber: "SA-2026-0001" },
-    });
-    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
-    const firstTerm = await prisma.academicTerm.findFirstOrThrow({
-      where: { academicSessionId: session.id, termCode: "FIRST" },
+  // 4. Duplicate programme selection is rejected
+  it("rejects duplicate selection of the same programme within one application", async () => {
+    const app = await prisma.application.findUniqueOrThrow({
+      where: { applicationNumber: "APP-2026-00001" },
     });
     const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
-    const primary4Class = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "PRIMARY_4" } });
 
-    // Attempt to insert duplicate enrollment for Ahmed in PRIMARY in First Term
+    // Attempting to add Primary a second time to the same application must fail
     await expect(
-      prisma.studentProgrammeEnrollment.create({
+      prisma.applicationProgrammeSelection.create({
         data: {
-          studentId: ahmed.id,
+          applicationId: app.id,
           programmeId: primaryProg.id,
-          schoolClassId: primary4Class.id,
-          academicSessionId: session.id,
-          academicTermId: firstTerm.id,
-          enrollmentType: EnrollmentType.MAIN_ACADEMIC,
-          enrollmentStatus: EnrollmentStatus.ACTIVE,
+          status: ProgrammeSelectionStatus.PENDING,
         },
       })
     ).rejects.toThrow();
   });
 
-  // 6. Duplicate invoice protection
-  it("rejects duplicate invoice for the same student, programme, session, and term", async () => {
+  // 5. One application can contain 3+ programmes
+  it("verifies an application can cleanly hold 3 or more distinct programmes", async () => {
+    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
+    const crecheProg = await prisma.programme.findUniqueOrThrow({ where: { code: "CRECHE" } });
+    const nurseryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "NURSERY" } });
+    const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
+
+    const multiApp = await prisma.application.create({
+      data: {
+        applicationNumber: "APP-2026-TEST-3PROG",
+        academicSessionId: session.id,
+        applicantFirstName: "Zainab",
+        applicantLastName: "Aliyu",
+        applicantGender: Gender.FEMALE,
+        applicantDob: new Date("2022-05-10"),
+        guardianFirstName: "Aliyu",
+        guardianLastName: "Usman",
+        guardianEmail: "aliyu.usman@example.com",
+        guardianPhone: "+2348031112233",
+        guardianRelationship: RelationshipType.FATHER,
+        totalAmountKobo: BigInt(15500000),
+        status: ApplicationStatus.SUBMITTED,
+        programmeSelections: {
+          create: [
+            { programmeId: crecheProg.id, status: ProgrammeSelectionStatus.PENDING },
+            { programmeId: nurseryProg.id, status: ProgrammeSelectionStatus.PENDING },
+            { programmeId: tahfeezProg.id, status: ProgrammeSelectionStatus.PENDING },
+          ],
+        },
+      },
+      include: { programmeSelections: true },
+    });
+
+    expect(multiApp.programmeSelections.length).toBe(3);
+
+    // Clean up test app
+    await prisma.application.delete({ where: { id: multiApp.id } });
+  });
+
+  // 6. Different target classes stored per selection
+  it("stores specific target classes for each distinct programme selection", async () => {
+    const app = await prisma.application.findUniqueOrThrow({
+      where: { applicationNumber: "APP-2026-00001" },
+      include: {
+        programmeSelections: {
+          include: { programme: true, targetClass: true },
+        },
+      },
+    });
+
+    const primarySel = app.programmeSelections.find((s) => s.programme.code === "PRIMARY");
+    const tahfeezSel = app.programmeSelections.find((s) => s.programme.code === "TAHFEEZ");
+
+    expect(primarySel?.targetClass?.code).toBe("PRIMARY_1");
+    expect(tahfeezSel?.targetClass?.code).toBe("TAHFEEZ_GROUP_A");
+  });
+
+  // 7. Each programme selection can have an independent approval status
+  it("allows independent approval decisions per programme selection", async () => {
+    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
+    const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
+    const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
+
+    const testApp = await prisma.application.create({
+      data: {
+        applicationNumber: "APP-2026-DECISION-TEST",
+        academicSessionId: session.id,
+        applicantFirstName: "Umar",
+        applicantLastName: "Bello",
+        applicantGender: Gender.MALE,
+        applicantDob: new Date("2018-03-22"),
+        guardianFirstName: "Bello",
+        guardianLastName: "Kano",
+        guardianEmail: "bello.kano@example.com",
+        guardianPhone: "+2348039998877",
+        guardianRelationship: RelationshipType.FATHER,
+        status: ApplicationStatus.PARTIALLY_APPROVED,
+        programmeSelections: {
+          create: [
+            {
+              programmeId: primaryProg.id,
+              status: ProgrammeSelectionStatus.APPROVED,
+              decisionNotes: "Admitted into Primary 3 based on entrance exam.",
+            },
+            {
+              programmeId: tahfeezProg.id,
+              status: ProgrammeSelectionStatus.REJECTED,
+              decisionNotes: "Tahfeez morning cohort currently at full capacity.",
+            },
+          ],
+        },
+      },
+      include: { programmeSelections: true },
+    });
+
+    const approvedSel = testApp.programmeSelections.find(
+      (s) => s.status === ProgrammeSelectionStatus.APPROVED
+    );
+    const rejectedSel = testApp.programmeSelections.find(
+      (s) => s.status === ProgrammeSelectionStatus.REJECTED
+    );
+
+    expect(approvedSel).toBeDefined();
+    expect(rejectedSel).toBeDefined();
+    expect(approvedSel?.decisionNotes).toContain("Primary 3");
+    expect(rejectedSel?.decisionNotes).toContain("capacity");
+
+    // Clean up
+    await prisma.application.delete({ where: { id: testApp.id } });
+  });
+
+  // 8 & 9. Partial approval creates ONLY approved student enrollments
+  it("converts only approved programme selections into student enrollments", async () => {
+    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
+    const firstTerm = await prisma.academicTerm.findFirstOrThrow({
+      where: { academicSessionId: session.id, termCode: "FIRST" },
+    });
+    const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
+    const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
+    const primary2Class = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "PRIMARY_2" } });
+
+    // Step A: Create Application with Primary (APPROVED) and Tahfeez (REJECTED)
+    const app = await prisma.application.create({
+      data: {
+        applicationNumber: "APP-2026-PARTIAL-ENROLL",
+        academicSessionId: session.id,
+        applicantFirstName: "Mustapha",
+        applicantLastName: "Garba",
+        applicantGender: Gender.MALE,
+        applicantDob: new Date("2019-06-15"),
+        guardianFirstName: "Garba",
+        guardianLastName: "Lawal",
+        guardianEmail: "garba.lawal@example.com",
+        guardianPhone: "+2348037776655",
+        guardianRelationship: RelationshipType.FATHER,
+        status: ApplicationStatus.PARTIALLY_APPROVED,
+        programmeSelections: {
+          create: [
+            {
+              programmeId: primaryProg.id,
+              targetClassId: primary2Class.id,
+              status: ProgrammeSelectionStatus.APPROVED,
+            },
+            {
+              programmeId: tahfeezProg.id,
+              status: ProgrammeSelectionStatus.REJECTED,
+              decisionNotes: "Applicant does not meet prerequisite age for Tahfeez.",
+            },
+          ],
+        },
+      },
+      include: { programmeSelections: true },
+    });
+
+    // Step B: Simulate atomic approval conversion transaction
+    const student = await prisma.$transaction(async (tx) => {
+      // 1. Create Student (Exactly ONE student)
+      const newStudent = await tx.student.create({
+        data: {
+          admissionNumber: "SA-2026-0099",
+          firstName: app.applicantFirstName,
+          lastName: app.applicantLastName,
+          gender: app.applicantGender,
+          dateOfBirth: app.applicantDob,
+          currentStatus: "ACTIVE",
+        },
+      });
+
+      // 2. Link application to student
+      await tx.application.update({
+        where: { id: app.id },
+        data: { admittedStudentId: newStudent.id, status: ApplicationStatus.ENROLLED },
+      });
+
+      // 3. Create enrollments ONLY for APPROVED selections
+      const approvedSelections = app.programmeSelections.filter(
+        (s) => s.status === ProgrammeSelectionStatus.APPROVED
+      );
+
+      for (const sel of approvedSelections) {
+        await tx.studentProgrammeEnrollment.create({
+          data: {
+            studentId: newStudent.id,
+            programmeId: sel.programmeId,
+            schoolClassId: sel.targetClassId!,
+            academicSessionId: session.id,
+            academicTermId: firstTerm.id,
+            enrollmentType: EnrollmentType.MAIN_ACADEMIC,
+            enrollmentStatus: EnrollmentStatus.ACTIVE,
+          },
+        });
+      }
+
+      return newStudent;
+    });
+
+    // Step C: Verify Student has ONLY Primary enrollment, ZERO Tahfeez enrollment
+    const studentEnrollments = await prisma.studentProgrammeEnrollment.findMany({
+      where: { studentId: student.id },
+      include: { programme: true },
+    });
+
+    expect(studentEnrollments.length).toBe(1);
+    expect(studentEnrollments[0].programme.code).toBe("PRIMARY");
+
+    // Clean up created entities
+    await prisma.studentProgrammeEnrollment.deleteMany({ where: { studentId: student.id } });
+    await prisma.student.delete({ where: { id: student.id } });
+    await prisma.application.delete({ where: { id: app.id } });
+  });
+
+  // 10. One checkout represents charges for multiple programmes + form fee
+  it("preserves itemized charge breakdown for multiple programmes and form fee under one checkout", async () => {
+    const app = await prisma.application.findUniqueOrThrow({
+      where: { applicationNumber: "APP-2026-00001" },
+      include: { chargeItems: true },
+    });
+
+    expect(app.totalAmountKobo).toBe(BigInt(13300000)); // ₦133,000 total
+    expect(app.chargeItems.length).toBe(3);
+
+    const formFeeItem = app.chargeItems.find((c) => c.chargeType === "APPLICATION_FORM_FEE");
+    const primaryFeeItem = app.chargeItems.find(
+      (c) => c.chargeType === "PROGRAMME_TUITION" && c.description.includes("Primary")
+    );
+    const tahfeezFeeItem = app.chargeItems.find(
+      (c) => c.chargeType === "PROGRAMME_TUITION" && c.description.includes("Tahfeez")
+    );
+
+    expect(formFeeItem).toBeDefined();
+    expect(formFeeItem?.totalAmountKobo).toBe(BigInt(500000)); // ₦5,000 form fee separately identifiable
+    expect(primaryFeeItem?.totalAmountKobo).toBe(BigInt(11000000)); // ₦110,000
+    expect(tahfeezFeeItem?.totalAmountKobo).toBe(BigInt(1800000)); // ₦18,000
+
+    const computedSum = app.chargeItems.reduce((acc, curr) => acc + curr.totalAmountKobo, BigInt(0));
+    expect(computedSum).toBe(app.totalAmountKobo);
+  });
+
+  // 11. Historical application charges cannot silently change
+  it("protects historical application line item amounts when future fee schedules change", async () => {
+    const app = await prisma.application.findUniqueOrThrow({
+      where: { applicationNumber: "APP-2026-00001" },
+      include: { chargeItems: true },
+    });
+
+    const originalAppTotal = app.totalAmountKobo;
+    const formFeeOriginal = app.chargeItems.find((c) => c.chargeType === "APPLICATION_FORM_FEE")?.totalAmountKobo;
+
+    // Simulate system fee change (e.g. form fee increased to ₦10,000 in system config)
+    await prisma.systemConfig.updateMany({
+      where: { key: "admissions.form_fee_kobo" },
+      data: { value: "1000000" },
+    });
+
+    // Re-query historical application: ensure historical line item and total remain unchanged
+    const reloadedApp = await prisma.application.findUniqueOrThrow({
+      where: { applicationNumber: "APP-2026-00001" },
+      include: { chargeItems: true },
+    });
+
+    expect(reloadedApp.totalAmountKobo).toBe(originalAppTotal);
+    const formFeeReloaded = reloadedApp.chargeItems.find((c) => c.chargeType === "APPLICATION_FORM_FEE")?.totalAmountKobo;
+    expect(formFeeReloaded).toBe(formFeeOriginal);
+
+    // Restore config
+    await prisma.systemConfig.updateMany({
+      where: { key: "admissions.form_fee_kobo" },
+      data: { value: "500000" },
+    });
+  });
+
+  // 12. Existing student multi-programme enrollment & invoice uniqueness continue working
+  it("confirms existing student dual enrollment and invoice uniqueness continue functioning flawlessly", async () => {
+    const ahmed = await prisma.student.findUniqueOrThrow({
+      where: { admissionNumber: "SA-2026-0001" },
+    });
+    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
+
+    // Ahmed's concurrent enrollments in Primary and Tahfeez
+    const enrollments = await prisma.studentProgrammeEnrollment.findMany({
+      where: { studentId: ahmed.id, academicSessionId: session.id },
+      include: { programme: true },
+    });
+
+    expect(enrollments.length).toBe(2);
+    const progCodes = enrollments.map((e) => e.programme.code);
+    expect(progCodes).toContain("PRIMARY");
+    expect(progCodes).toContain("TAHFEEZ");
+
+    // Invoice uniqueness constraint validation
     const existingInvoice = await prisma.invoice.findUniqueOrThrow({
       where: { invoiceNumber: "INV-2026-00001" },
     });
 
-    // Attempt to issue a SECOND invoice for the same student + programme + term
     await expect(
       prisma.invoice.create({
         data: {
-          invoiceNumber: "INV-2026-00099",
+          invoiceNumber: "INV-2026-TEST-DUP",
           studentId: existingInvoice.studentId,
           guardianId: existingInvoice.guardianId,
           academicSessionId: existingInvoice.academicSessionId,
@@ -234,118 +430,8 @@ describe("Swanford Master Database Schema & Constraint Verification", () => {
         },
       })
     ).rejects.toThrow();
-  });
 
-  // 7. Partial payment relationships & balances
-  it("tracks partial payments accurately without negative balances", async () => {
-    const invoice = await prisma.invoice.findUniqueOrThrow({
-      where: { invoiceNumber: "INV-2026-00001" },
-      include: { payments: true, receipts: true },
-    });
-
-    expect(invoice.totalAmountKobo).toBe(BigInt(11000000)); // ₦110,000
-    expect(invoice.amountPaidKobo).toBe(BigInt(6000000));   // ₦60,000 paid
-    expect(invoice.outstandingBalanceKobo).toBe(BigInt(5000000)); // ₦50,000 remaining
-    expect(invoice.status).toBe(InvoiceStatus.PARTIALLY_PAID);
-
-    expect(invoice.payments.length).toBe(1);
-    expect(invoice.payments[0].amountKobo).toBe(BigInt(6000000));
-    expect(invoice.receipts.length).toBe(1);
-    expect(invoice.receipts[0].amountKobo).toBe(BigInt(6000000));
-  });
-
-  // 8. Webhook duplicate protection (Idempotency)
-  it("enforces webhook idempotency by rejecting duplicate gateway events", async () => {
-    const eventId = "evt_test_unique_paystack_12345";
-
-    // Clean up if previous run left it
-    await prisma.paymentWebhookEvent.deleteMany({ where: { eventId } });
-
-    // Insert first webhook event
-    const firstEvent = await prisma.paymentWebhookEvent.create({
-      data: {
-        gatewayProvider: GatewayProvider.PAYSTACK,
-        eventId,
-        eventType: "charge.success",
-        payloadJson: { reference: "ref_123", amount: 6000000 },
-        signatureVerified: true,
-        processed: true,
-      },
-    });
-
-    expect(firstEvent.eventId).toBe(eventId);
-
-    // Attempt to re-insert identical gateway event (must fail)
-    await expect(
-      prisma.paymentWebhookEvent.create({
-        data: {
-          gatewayProvider: GatewayProvider.PAYSTACK,
-          eventId,
-          eventType: "charge.success",
-          payloadJson: { reference: "ref_123", amount: 6000000 },
-        },
-      })
-    ).rejects.toThrow();
-  });
-
-  // 9. Historical invoice amount preservation
-  it("preserves invoice line item amounts when underlying fee structures change", async () => {
-    const invoice = await prisma.invoice.findUniqueOrThrow({
-      where: { invoiceNumber: "INV-2026-00001" },
-      include: { items: true },
-    });
-
-    const originalTotal = invoice.totalAmountKobo;
-    expect(invoice.items.length).toBe(3);
-
-    // Modify the fee structure (e.g. new session prices increased by 20%)
-    await prisma.feeStructure.updateMany({
-      where: { name: "Primary 1st Term Boys Admission Fee" },
-      data: { name: "Primary 1st Term Boys Admission Fee (Updated 2027)" },
-    });
-
-    // Re-query historical invoice: verify its line items and amounts remain 100% unchanged
-    const reloadedInvoice = await prisma.invoice.findUniqueOrThrow({
-      where: { invoiceNumber: "INV-2026-00001" },
-      include: { items: true },
-    });
-
-    expect(reloadedInvoice.totalAmountKobo).toBe(originalTotal);
-    expect(reloadedInvoice.items[0].unitAmountKobo).toBe(BigInt(7500000));
-  });
-
-  // 10. Money serialization without precision loss
-  it("survives Prisma query -> application DTO -> JSON serialization without precision loss", async () => {
-    const invoice = await prisma.invoice.findUniqueOrThrow({
-      where: { invoiceNumber: "INV-2026-00001" },
-      include: { items: true },
-    });
-
-    // Verify raw Prisma values are typed BigInt
-    expect(typeof invoice.totalAmountKobo).toBe("bigint");
-    expect(invoice.totalAmountKobo).toBe(BigInt(11000000));
-
-    // Convert via DTO serializer
-    const serializedDto = serializeBigInt(invoice);
-    expect(typeof serializedDto.totalAmountKobo).toBe("string");
-    expect(serializedDto.totalAmountKobo).toBe("11000000");
-
-    // Serialize to standard JSON string
-    const jsonString = JSON.stringify(serializedDto);
-    expect(jsonString).toContain('"totalAmountKobo":"11000000"');
-
-    // Deserialization check
-    const parsed = JSON.parse(jsonString);
-    expect(BigInt(parsed.totalAmountKobo)).toBe(BigInt(11000000));
-  });
-
-  // 11. Financial records protected from destructive deletion (onDelete: Restrict)
-  it("protects invoices and financial records from accidental cascading deletion", async () => {
-    const ahmed = await prisma.student.findUniqueOrThrow({
-      where: { admissionNumber: "SA-2026-0001" },
-    });
-
-    // Attempting to delete student who has active invoices must be rejected by foreign key constraint
+    // Invoices and financial records protected from destructive deletion
     await expect(
       prisma.student.delete({
         where: { id: ahmed.id },

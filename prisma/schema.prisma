@@ -102,9 +102,25 @@ enum ApplicationStatus {
   SUBMITTED
   UNDER_REVIEW
   CONFLICT_REVIEW
+  PARTIALLY_APPROVED
   APPROVED
   REJECTED
   ENROLLED
+}
+
+enum ProgrammeSelectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApplicationChargeType {
+  APPLICATION_FORM_FEE
+  PROGRAMME_TUITION
+  UNIFORM_CLOTHING
+  BOOKS_STATIONERY
+  EXAM_MEDICAL
+  OTHER
 }
 
 enum FeeStatus {
@@ -200,9 +216,10 @@ model User {
   passwordResets       PasswordReset[]
   guardianProfile      Guardian?
   teacherProfile       Teacher?
-  recordedPayments     Payment[]            @relation("PaymentRecordedBy")
-  recordedExpenses     Expense[]            @relation("ExpenseRecordedBy")
-  applicationReviews   ApplicationReview[]  @relation("ApplicationReviewedBy")
+  recordedPayments     Payment[]                        @relation("PaymentRecordedBy")
+  recordedExpenses     Expense[]                        @relation("ExpenseRecordedBy")
+  applicationReviews   ApplicationReview[]              @relation("ApplicationReviewedBy")
+  selectionReviews     ApplicationProgrammeSelection[]  @relation("SelectionReviewedBy")
   auditLogs            AuditLog[]
 
   @@index([status])
@@ -456,40 +473,40 @@ model AcademicTerm {
 }
 
 model Programme {
-  id             String          @id @default(uuid()) @db.Uuid
-  code           ProgrammeCode   @unique
-  name           String
-  isMainAcademic Boolean         @default(true) @map("is_main_academic") // false for Tahfeez
-  description    String?
-  displayOrder   Int             @default(0) @map("display_order")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  id                   String                          @id @default(uuid()) @db.Uuid
+  code                 ProgrammeCode                   @unique
+  name                 String
+  isMainAcademic       Boolean                         @default(true) @map("is_main_academic") // false for Tahfeez
+  description          String?
+  displayOrder         Int                             @default(0) @map("display_order")
+  createdAt            DateTime                        @default(now()) @map("created_at")
+  updatedAt            DateTime                        @updatedAt @map("updated_at")
 
-  classes        SchoolClass[]
-  subjects       Subject[]
-  enrollments    StudentProgrammeEnrollment[]
-  feeStructures  FeeStructure[]
-  invoices       Invoice[]
-  targetApplications Application[] @relation("TargetMainProgramme")
+  classes              SchoolClass[]
+  subjects             Subject[]
+  enrollments          StudentProgrammeEnrollment[]
+  feeStructures        FeeStructure[]
+  invoices             Invoice[]
+  applicationSelections ApplicationProgrammeSelection[]
 
   @@map("programmes")
 }
 
 model SchoolClass {
-  id            String          @id @default(uuid()) @db.Uuid
-  programmeId   String          @map("programme_id") @db.Uuid
-  code          String          @unique // e.g. "PRI_1", "PRI_4", "TAH_A"
-  name          String          // e.g. "Primary 1"
-  arm           String?         // e.g. "A", "Gold"
-  capacity      Int             @default(30)
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  id                   String                          @id @default(uuid()) @db.Uuid
+  programmeId          String                          @map("programme_id") @db.Uuid
+  code                 String                          @unique // e.g. "PRI_1", "PRI_4", "TAH_A"
+  name                 String                          // e.g. "Primary 1"
+  arm                  String?                         // e.g. "A", "Gold"
+  capacity             Int                             @default(30)
+  createdAt            DateTime                        @default(now()) @map("created_at")
+  updatedAt            DateTime                        @updatedAt @map("updated_at")
 
-  programme     Programme       @relation(fields: [programmeId], references: [id], onDelete: Restrict)
-  enrollments   StudentProgrammeEnrollment[]
-  teacherScopes TeacherScope[]
-  feeStructures FeeStructure[]
-  targetApplications Application[] @relation("TargetSchoolClass")
+  programme            Programme                       @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  enrollments          StudentProgrammeEnrollment[]
+  teacherScopes        TeacherScope[]
+  feeStructures        FeeStructure[]
+  applicationSelections ApplicationProgrammeSelection[]
 
   @@index([programmeId])
   @@map("school_classes")
@@ -539,16 +556,13 @@ model StudentProgrammeEnrollment {
 }
 
 // -----------------------------------------------------------------------------
-// DOMAIN 4: ADMISSIONS LIFECYCLE
+// DOMAIN 4: ADMISSIONS LIFECYCLE (NORMALIZED MULTI-PROGRAMME SELECTION)
 // -----------------------------------------------------------------------------
 
 model Application {
   id                     String            @id @default(uuid()) @db.Uuid
   applicationNumber      String            @unique @map("application_number") // APP-YYYY-NNNN
   academicSessionId      String            @map("academic_session_id") @db.Uuid
-  targetMainProgrammeId  String            @map("target_main_programme_id") @db.Uuid
-  targetClassId          String            @map("target_class_id") @db.Uuid
-  enrollInTahfeez        Boolean           @default(false) @map("enroll_in_tahfeez")
   
   applicantFirstName     String            @map("applicant_first_name")
   applicantLastName      String            @map("applicant_last_name")
@@ -563,8 +577,10 @@ model Application {
   guardianRelationship   RelationshipType  @map("guardian_relationship")
   existingGuardianId     String?           @map("existing_guardian_id") @db.Uuid
 
-  applicationFeeKobo     BigInt            @default(500000) @map("application_fee_kobo") @db.BigInt // ₦5,000
-  applicationFeeStatus   FeeStatus         @default(UNPAID) @map("application_fee_status")
+  // Unified financial breakdown and single checkout representation
+  totalAmountKobo        BigInt            @default(500000) @map("total_amount_kobo") @db.BigInt
+  amountPaidKobo         BigInt            @default(0) @map("amount_paid_kobo") @db.BigInt
+  paymentStatus          FeeStatus         @default(UNPAID) @map("payment_status")
   emailVerified          Boolean           @default(false) @map("email_verified")
   status                 ApplicationStatus @default(SUBMITTED)
   admittedStudentId      String?           @unique @map("admitted_student_id") @db.Uuid
@@ -572,16 +588,65 @@ model Application {
   updatedAt              DateTime          @updatedAt @map("updated_at")
 
   academicSession        AcademicSession   @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
-  targetMainProgramme    Programme         @relation("TargetMainProgramme", fields: [targetMainProgrammeId], references: [id], onDelete: Restrict)
-  targetClass            SchoolClass       @relation("TargetSchoolClass", fields: [targetClassId], references: [id], onDelete: Restrict)
   existingGuardian       Guardian?         @relation("ExistingGuardianApplication", fields: [existingGuardianId], references: [id], onDelete: SetNull)
   admittedStudent        Student?          @relation(fields: [admittedStudentId], references: [id], onDelete: SetNull)
+  
+  // Normalized multi-programme selections and itemized charge breakdown
+  programmeSelections    ApplicationProgrammeSelection[]
+  chargeItems            ApplicationChargeItem[]
   reviews                ApplicationReview[]
   paymentTransactions    PaymentTransaction[]
 
   @@index([status, academicSessionId])
   @@index([guardianEmail])
   @@map("applications")
+}
+
+/// Normalized programme choice per application.
+/// Supports selecting multiple programmes (e.g. Primary + Islamic + Music + Tahfeez) in one application.
+model ApplicationProgrammeSelection {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  applicationId         String                   @map("application_id") @db.Uuid
+  programmeId           String                   @map("programme_id") @db.Uuid
+  targetClassId         String?                  @map("target_class_id") @db.Uuid
+  status                ProgrammeSelectionStatus @default(PENDING)
+  decisionNotes         String?                  @map("decision_notes")
+  reviewedAt            DateTime?                @map("reviewed_at")
+  reviewedByUserId      String?                  @map("reviewed_by_user_id") @db.Uuid
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+
+  application           Application              @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  programme             Programme                @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  targetClass           SchoolClass?             @relation(fields: [targetClassId], references: [id], onDelete: Restrict)
+  reviewedByUser        User?                    @relation("SelectionReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  chargeItems           ApplicationChargeItem[]
+
+  // Reject duplicate selection of same programme within one application
+  @@unique([applicationId, programmeId], name: "unique_application_programme")
+  @@index([applicationId])
+  @@index([programmeId, status])
+  @@map("application_programme_selections")
+}
+
+/// Itemized financial snapshot preserving exact fee breakdown at checkout
+model ApplicationChargeItem {
+  id                    String                          @id @default(uuid()) @db.Uuid
+  applicationId         String                          @map("application_id") @db.Uuid
+  programmeSelectionId  String?                         @map("programme_selection_id") @db.Uuid
+  chargeType            ApplicationChargeType           @default(OTHER) @map("charge_type")
+  description           String                          // e.g. "Application Form Fee", "Primary 4 Tuition", "Tahfeez Study Materials"
+  unitAmountKobo        BigInt                          @map("unit_amount_kobo") @db.BigInt
+  quantity              Int                             @default(1)
+  totalAmountKobo       BigInt                          @map("total_amount_kobo") @db.BigInt
+  createdAt             DateTime                        @default(now()) @map("created_at")
+
+  application           Application                     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  programmeSelection    ApplicationProgrammeSelection?  @relation(fields: [programmeSelectionId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId])
+  @@index([programmeSelectionId])
+  @@map("application_charge_items")
 }
 
 model ApplicationReview {

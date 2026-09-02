@@ -270,5 +270,100 @@ export async function seedDevelopmentMocks(prisma: PrismaClient) {
     },
   });
 
+  // 6. Multi-Programme Public Application Demonstration
+  // Ibrahim Sani applying for Primary 1 AND Tahfeez in ONE unified application
+  const primary1Class = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "PRIMARY_1" } });
+
+  const app = await prisma.application.upsert({
+    where: { applicationNumber: "APP-2026-00001" },
+    update: {},
+    create: {
+      applicationNumber: "APP-2026-00001",
+      academicSessionId: session.id,
+      applicantFirstName: "Ibrahim",
+      applicantLastName: "Sani",
+      applicantGender: Gender.MALE,
+      applicantDob: new Date("2020-02-15"),
+      guardianFirstName: "Muhammad",
+      guardianLastName: "Sani",
+      guardianEmail: "muhammad.sani.parent@swanford.example.com",
+      guardianPhone: "+2348030001122",
+      guardianRelationship: RelationshipType.FATHER,
+      existingGuardianId: guardian.id,
+      totalAmountKobo: BigInt(13300000), // ₦133,000 total (₦5,000 form + ₦110,000 primary + ₦18,000 tahfeez)
+      amountPaidKobo: BigInt(13300000),
+      paymentStatus: "PAID",
+      status: "SUBMITTED",
+    },
+  });
+
+  // Selection 1: Primary
+  const primarySelection = await prisma.applicationProgrammeSelection.upsert({
+    where: {
+      unique_application_programme: {
+        applicationId: app.id,
+        programmeId: primaryProg.id,
+      },
+    },
+    update: {},
+    create: {
+      applicationId: app.id,
+      programmeId: primaryProg.id,
+      targetClassId: primary1Class.id,
+      status: "PENDING",
+    },
+  });
+
+  // Selection 2: Tahfeez
+  const tahfeezSelection = await prisma.applicationProgrammeSelection.upsert({
+    where: {
+      unique_application_programme: {
+        applicationId: app.id,
+        programmeId: tahfeezProg.id,
+      },
+    },
+    update: {},
+    create: {
+      applicationId: app.id,
+      programmeId: tahfeezProg.id,
+      targetClassId: tahfeezClass.id,
+      status: "PENDING",
+    },
+  });
+
+  // Itemized Charge Breakdown Snapshot
+  await prisma.applicationChargeItem.createMany({
+    data: [
+      {
+        applicationId: app.id,
+        programmeSelectionId: null,
+        chargeType: "APPLICATION_FORM_FEE",
+        description: "Application Form Processing Fee",
+        unitAmountKobo: BigInt(500000),
+        quantity: 1,
+        totalAmountKobo: BigInt(500000),
+      },
+      {
+        applicationId: app.id,
+        programmeSelectionId: primarySelection.id,
+        chargeType: "PROGRAMME_TUITION",
+        description: "Primary 1 Admission Fee (Tuition, Uniform, Books)",
+        unitAmountKobo: BigInt(11000000),
+        quantity: 1,
+        totalAmountKobo: BigInt(11000000),
+      },
+      {
+        applicationId: app.id,
+        programmeSelectionId: tahfeezSelection.id,
+        chargeType: "PROGRAMME_TUITION",
+        description: "Tahfeez Admission Fee (Tuition & Study Materials)",
+        unitAmountKobo: BigInt(1800000),
+        quantity: 1,
+        totalAmountKobo: BigInt(1800000),
+      },
+    ],
+    skipDuplicates: true,
+  });
+
   console.log("✔ Development Demonstration Mocks Seeded Successfully.");
 }
