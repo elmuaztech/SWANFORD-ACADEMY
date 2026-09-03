@@ -1,4 +1,13 @@
-import { PrismaClient, RoleCode, ProgrammeCode, TermCode, FeeApplicableGender, ConfigCategory } from "@prisma/client";
+import {
+  PrismaClient,
+  RoleCode,
+  ProgrammeCode,
+  TermCode,
+  FeeApplicableGender,
+  ConfigCategory,
+  AdmissionCycleStatus,
+  ProgrammeAvailabilityStatus,
+} from "@prisma/client";
 
 /**
  * Swanford Academy - Production Foundation Seed
@@ -169,7 +178,44 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
     termsMap.set(t.termCode, term.id);
   }
 
-  // 6. System Configurations
+  // 6. Admission Cycle & Programme Availabilities (2026/2027 Main Intake)
+  const admissionCycle = await prisma.admissionCycle.upsert({
+    where: { code: "ADM-2026-MAIN" },
+    update: {
+      status: AdmissionCycleStatus.OPEN,
+    },
+    create: {
+      code: "ADM-2026-MAIN",
+      name: "2026/2027 Main Admission",
+      academicSessionId: session.id,
+      startDate: new Date("2026-08-01T07:00:00.000Z"), // 08:00 AM Africa/Lagos
+      endDate: new Date("2026-09-30T22:59:59.999Z"),   // 23:59:59 Africa/Lagos
+      status: AdmissionCycleStatus.OPEN,
+      description: "Main admission window for 2026/2027 academic session.",
+    },
+  });
+
+  for (const [, progId] of programmesMap.entries()) {
+    await prisma.admissionCycleProgramme.upsert({
+      where: {
+        unique_cycle_programme: {
+          admissionCycleId: admissionCycle.id,
+          programmeId: progId,
+        },
+      },
+      update: {
+        status: ProgrammeAvailabilityStatus.OPEN,
+      },
+      create: {
+        admissionCycleId: admissionCycle.id,
+        programmeId: progId,
+        status: ProgrammeAvailabilityStatus.OPEN,
+        maxCapacity: 60,
+      },
+    });
+  }
+
+  // 7. System Configurations
   const configsData = [
     { key: "school.name", value: "Swanford Academy", category: ConfigCategory.GENERAL },
     { key: "school.subtitle", value: "Nursery, Primary & Tahfeez School", category: ConfigCategory.GENERAL },

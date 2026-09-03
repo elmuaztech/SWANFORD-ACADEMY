@@ -1,4 +1,14 @@
-import { PrismaClient, EnrollmentType, EnrollmentStatus, Gender, RelationshipType, PaymentMethod, PaymentStatus, InvoiceStatus } from "@prisma/client";
+import {
+  PrismaClient,
+  EnrollmentType,
+  EnrollmentStatus,
+  Gender,
+  RelationshipType,
+  PaymentMethod,
+  PaymentStatus,
+  InvoiceStatus,
+  ApplicationPaymentStatus,
+} from "@prisma/client";
 
 /**
  * Swanford Academy - Development & QA Mock Seed
@@ -273,6 +283,7 @@ export async function seedDevelopmentMocks(prisma: PrismaClient) {
   // 6. Multi-Programme Public Application Demonstration
   // Ibrahim Sani applying for Primary 1 AND Tahfeez in ONE unified application
   const primary1Class = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "PRIMARY_1" } });
+  const admissionCycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
 
   const app = await prisma.application.upsert({
     where: { applicationNumber: "APP-2026-00001" },
@@ -280,6 +291,7 @@ export async function seedDevelopmentMocks(prisma: PrismaClient) {
     create: {
       applicationNumber: "APP-2026-00001",
       academicSessionId: session.id,
+      admissionCycleId: admissionCycle.id,
       applicantFirstName: "Ibrahim",
       applicantLastName: "Sani",
       applicantGender: Gender.MALE,
@@ -292,7 +304,7 @@ export async function seedDevelopmentMocks(prisma: PrismaClient) {
       existingGuardianId: guardian.id,
       totalAmountKobo: BigInt(13300000), // ₦133,000 total (₦5,000 form + ₦110,000 primary + ₦18,000 tahfeez)
       amountPaidKobo: BigInt(13300000),
-      paymentStatus: "PAID",
+      paymentStatus: ApplicationPaymentStatus.PAYMENT_CONFIRMED,
       status: "SUBMITTED",
     },
   });

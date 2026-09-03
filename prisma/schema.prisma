@@ -2,7 +2,9 @@
 // Swanford Academy - Master Database Schema (Prisma ORM)
 // Master Specification Reference: Sections 7, 8, 10, 11, 12, 13, 15, 16, 21, 24
 // Architecture Reference: docs/DATABASE_ARCHITECTURE_DESIGN.md
+// Admission Lifecycle Reference: docs/ADMISSION_LIFECYCLE_DESIGN.md
 // Engine: PostgreSQL 16+
+// Canonical Timezone: Africa/Lagos (WAT, UTC+1)
 // =============================================================================
 
 generator client {
@@ -97,6 +99,19 @@ enum EnrollmentStatus {
   WITHDRAWN
 }
 
+enum AdmissionCycleStatus {
+  UPCOMING
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum ProgrammeAvailabilityStatus {
+  OPEN
+  CLOSED
+  FULL
+}
+
 enum ApplicationStatus {
   DRAFT
   SUBMITTED
@@ -106,6 +121,14 @@ enum ApplicationStatus {
   APPROVED
   REJECTED
   ENROLLED
+}
+
+enum ApplicationPaymentStatus {
+  UNPAID
+  PAYMENT_PENDING
+  PAYMENT_CONFIRMED
+  WAIVED
+  REFUNDED
 }
 
 enum ProgrammeSelectionStatus {
@@ -432,21 +455,22 @@ model TeacherScope {
 // -----------------------------------------------------------------------------
 
 model AcademicSession {
-  id          String         @id @default(uuid()) @db.Uuid
-  name        String         @unique // e.g. "2026/2027"
-  startDate   DateTime       @map("start_date") @db.Date
-  endDate     DateTime       @map("end_date") @db.Date
-  isCurrent   Boolean        @default(false) @map("is_current")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
+  id              String            @id @default(uuid()) @db.Uuid
+  name            String            @unique // e.g. "2026/2027"
+  startDate       DateTime          @map("start_date") @db.Date
+  endDate         DateTime          @map("end_date") @db.Date
+  isCurrent       Boolean           @default(false) @map("is_current")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  terms       AcademicTerm[]
-  enrollments StudentProgrammeEnrollment[]
-  teacherScopes TeacherScope[]
-  applications Application[]
-  feeStructures FeeStructure[]
-  invoices    Invoice[]
-  expenses    Expense[]
+  terms           AcademicTerm[]
+  admissionCycles AdmissionCycle[]
+  enrollments     StudentProgrammeEnrollment[]
+  teacherScopes   TeacherScope[]
+  applications    Application[]
+  feeStructures   FeeStructure[]
+  invoices        Invoice[]
+  expenses        Expense[]
 
   @@map("academic_sessions")
 }
@@ -473,21 +497,22 @@ model AcademicTerm {
 }
 
 model Programme {
-  id                   String                          @id @default(uuid()) @db.Uuid
-  code                 ProgrammeCode                   @unique
-  name                 String
-  isMainAcademic       Boolean                         @default(true) @map("is_main_academic") // false for Tahfeez
-  description          String?
-  displayOrder         Int                             @default(0) @map("display_order")
-  createdAt            DateTime                        @default(now()) @map("created_at")
-  updatedAt            DateTime                        @updatedAt @map("updated_at")
+  id                          String                          @id @default(uuid()) @db.Uuid
+  code                        ProgrammeCode                   @unique
+  name                        String
+  isMainAcademic              Boolean                         @default(true) @map("is_main_academic") // false for Tahfeez
+  description                 String?
+  displayOrder                Int                             @default(0) @map("display_order")
+  createdAt                   DateTime                        @default(now()) @map("created_at")
+  updatedAt                   DateTime                        @updatedAt @map("updated_at")
 
-  classes              SchoolClass[]
-  subjects             Subject[]
-  enrollments          StudentProgrammeEnrollment[]
-  feeStructures        FeeStructure[]
-  invoices             Invoice[]
-  applicationSelections ApplicationProgrammeSelection[]
+  classes                     SchoolClass[]
+  subjects                    Subject[]
+  enrollments                 StudentProgrammeEnrollment[]
+  feeStructures               FeeStructure[]
+  invoices                    Invoice[]
+  applicationSelections       ApplicationProgrammeSelection[]
+  admissionAvailabilities     AdmissionCycleProgramme[]
 
   @@map("programmes")
 }
@@ -556,40 +581,83 @@ model StudentProgrammeEnrollment {
 }
 
 // -----------------------------------------------------------------------------
-// DOMAIN 4: ADMISSIONS LIFECYCLE (NORMALIZED MULTI-PROGRAMME SELECTION)
+// DOMAIN 4: ADMISSIONS LIFECYCLE (CYCLES, AVAILABILITY & NORMALIZED SELECTIONS)
 // -----------------------------------------------------------------------------
 
-model Application {
-  id                     String            @id @default(uuid()) @db.Uuid
-  applicationNumber      String            @unique @map("application_number") // APP-YYYY-NNNN
-  academicSessionId      String            @map("academic_session_id") @db.Uuid
-  
-  applicantFirstName     String            @map("applicant_first_name")
-  applicantLastName      String            @map("applicant_last_name")
-  applicantOtherNames    String?           @map("applicant_other_names")
-  applicantGender        Gender            @map("applicant_gender")
-  applicantDob           DateTime          @map("applicant_dob") @db.Date
+/// Controlled temporal recruitment intake window
+model AdmissionCycle {
+  id                String               @id @default(uuid()) @db.Uuid
+  academicSessionId String               @map("academic_session_id") @db.Uuid
+  code              String               @unique // e.g. "ADM-2026-MAIN"
+  name              String               // e.g. "2026/2027 Main Admission"
+  startDate         DateTime             @map("start_date") // Stored in UTC, interpreted in Africa/Lagos
+  endDate           DateTime             @map("end_date")   // Stored in UTC, interpreted in Africa/Lagos
+  status            AdmissionCycleStatus @default(UPCOMING)
+  description       String?
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
 
-  guardianFirstName      String            @map("guardian_first_name")
-  guardianLastName       String            @map("guardian_last_name")
-  guardianEmail          String            @map("guardian_email")
-  guardianPhone          String            @map("guardian_phone")
-  guardianRelationship   RelationshipType  @map("guardian_relationship")
-  existingGuardianId     String?           @map("existing_guardian_id") @db.Uuid
+  academicSession   AcademicSession      @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  programmeAvailabilities AdmissionCycleProgramme[]
+  applications      Application[]
+
+  @@index([status])
+  @@index([academicSessionId])
+  @@map("admission_cycles")
+}
+
+/// Programme-specific availability window within an Admission Cycle
+model AdmissionCycleProgramme {
+  id               String                      @id @default(uuid()) @db.Uuid
+  admissionCycleId String                      @map("admission_cycle_id") @db.Uuid
+  programmeId      String                      @map("programme_id") @db.Uuid
+  status           ProgrammeAvailabilityStatus @default(OPEN)
+  maxCapacity      Int?                        @map("max_capacity") // Administrative quota for cycle
+  notes            String?
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
+
+  admissionCycle   AdmissionCycle              @relation(fields: [admissionCycleId], references: [id], onDelete: Cascade)
+  programme        Programme                   @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+
+  @@unique([admissionCycleId, programmeId], name: "unique_cycle_programme")
+  @@index([admissionCycleId, status])
+  @@map("admission_cycle_programmes")
+}
+
+model Application {
+  id                     String                   @id @default(uuid()) @db.Uuid
+  applicationNumber      String                   @unique @map("application_number") // APP-YYYY-NNNN
+  academicSessionId      String                   @map("academic_session_id") @db.Uuid
+  admissionCycleId       String                   @map("admission_cycle_id") @db.Uuid
+  
+  applicantFirstName     String                   @map("applicant_first_name")
+  applicantLastName      String                   @map("applicant_last_name")
+  applicantOtherNames    String?                  @map("applicant_other_names")
+  applicantGender        Gender                   @map("applicant_gender")
+  applicantDob           DateTime                 @map("applicant_dob") @db.Date
+
+  guardianFirstName      String                   @map("guardian_first_name")
+  guardianLastName       String                   @map("guardian_last_name")
+  guardianEmail          String                   @map("guardian_email")
+  guardianPhone          String                   @map("guardian_phone")
+  guardianRelationship   RelationshipType         @map("guardian_relationship")
+  existingGuardianId     String?                  @map("existing_guardian_id") @db.Uuid
 
   // Unified financial breakdown and single checkout representation
-  totalAmountKobo        BigInt            @default(500000) @map("total_amount_kobo") @db.BigInt
-  amountPaidKobo         BigInt            @default(0) @map("amount_paid_kobo") @db.BigInt
-  paymentStatus          FeeStatus         @default(UNPAID) @map("payment_status")
-  emailVerified          Boolean           @default(false) @map("email_verified")
-  status                 ApplicationStatus @default(SUBMITTED)
-  admittedStudentId      String?           @unique @map("admitted_student_id") @db.Uuid
-  createdAt              DateTime          @default(now()) @map("created_at")
-  updatedAt              DateTime          @updatedAt @map("updated_at")
+  totalAmountKobo        BigInt                   @default(500000) @map("total_amount_kobo") @db.BigInt
+  amountPaidKobo         BigInt                   @default(0) @map("amount_paid_kobo") @db.BigInt
+  paymentStatus          ApplicationPaymentStatus @default(UNPAID) @map("payment_status")
+  emailVerified          Boolean                  @default(false) @map("email_verified")
+  status                 ApplicationStatus        @default(DRAFT)
+  admittedStudentId      String?                  @unique @map("admitted_student_id") @db.Uuid
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  updatedAt              DateTime                 @updatedAt @map("updated_at")
 
-  academicSession        AcademicSession   @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
-  existingGuardian       Guardian?         @relation("ExistingGuardianApplication", fields: [existingGuardianId], references: [id], onDelete: SetNull)
-  admittedStudent        Student?          @relation(fields: [admittedStudentId], references: [id], onDelete: SetNull)
+  academicSession        AcademicSession          @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  admissionCycle         AdmissionCycle           @relation(fields: [admissionCycleId], references: [id], onDelete: Restrict)
+  existingGuardian       Guardian?                @relation("ExistingGuardianApplication", fields: [existingGuardianId], references: [id], onDelete: SetNull)
+  admittedStudent        Student?                 @relation(fields: [admittedStudentId], references: [id], onDelete: SetNull)
   
   // Normalized multi-programme selections and itemized charge breakdown
   programmeSelections    ApplicationProgrammeSelection[]
@@ -598,6 +666,7 @@ model Application {
   paymentTransactions    PaymentTransaction[]
 
   @@index([status, academicSessionId])
+  @@index([admissionCycleId, status])
   @@index([guardianEmail])
   @@map("applications")
 }

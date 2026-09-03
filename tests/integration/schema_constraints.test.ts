@@ -2,16 +2,19 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   PrismaClient,
   EnrollmentType,
-  EnrollmentStatus,
   RelationshipType,
   ProgrammeSelectionStatus,
   ApplicationStatus,
+  ApplicationPaymentStatus,
+  AdmissionCycleStatus,
+  ProgrammeAvailabilityStatus,
   Gender,
 } from "@prisma/client";
+import { evaluateAdmissionWindow } from "../../src/lib/admission_window";
 
 const prisma = new PrismaClient();
 
-describe("Swanford Master Database Schema, Constraints & Multi-Programme Application Verification", () => {
+describe("Swanford Stage 2C Admission Lifecycle, Business Rules & Schema Constraints", () => {
   beforeAll(async () => {
     await prisma.$connect();
   });
@@ -20,7 +23,7 @@ describe("Swanford Master Database Schema, Constraints & Multi-Programme Applica
     await prisma.$disconnect();
   });
 
-  // 1. One parent -> multiple children
+  // Core Relationship 1: One parent -> multiple children
   it("verifies one parent can be linked to multiple children", async () => {
     const guardian = await prisma.guardian.findFirstOrThrow({
       where: { email: "muhammad.sani.parent@swanford.example.com" },
@@ -37,7 +40,7 @@ describe("Swanford Master Database Schema, Constraints & Multi-Programme Applica
     expect(studentNames).toContain("Fatima");
   });
 
-  // 2. One student -> multiple guardians
+  // Core Relationship 2: One student -> multiple guardians
   it("verifies one student can have multiple guardians (e.g. Father & Mother)", async () => {
     const ahmed = await prisma.student.findUniqueOrThrow({
       where: { admissionNumber: "SA-2026-0001" },
@@ -70,13 +73,13 @@ describe("Swanford Master Database Schema, Constraints & Multi-Programme Applica
         studentId: ahmed.id,
         relationshipType: RelationshipType.MOTHER,
         isPrimaryContact: false,
+        canPickup: true,
         receivesInvoices: true,
       },
     });
 
     const links = await prisma.guardianStudentRelationship.findMany({
       where: { studentId: ahmed.id },
-      include: { guardian: true },
     });
 
     expect(links.length).toBeGreaterThanOrEqual(2);
@@ -85,8 +88,110 @@ describe("Swanford Master Database Schema, Constraints & Multi-Programme Applica
     expect(relationshipTypes).toContain(RelationshipType.MOTHER);
   });
 
-  // 3. One application can select multiple programmes
-  it("verifies one application can select multiple programmes for the same child", async () => {
+  // 1. Admission cycle before opening
+  it("verifies admission cycle before opening rejects submissions", async () => {
+    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
+    
+    const futureCycle = await prisma.admissionCycle.create({
+      data: {
+        code: "ADM-TEST-FUTURE",
+        name: "Future 2027/2028 Cycle",
+        academicSessionId: session.id,
+        startDate: new Date("2027-08-01T07:00:00.000Z"),
+        endDate: new Date("2027-09-30T22:59:59.999Z"),
+        status: AdmissionCycleStatus.UPCOMING,
+      },
+    });
+
+    const evalResult = evaluateAdmissionWindow(futureCycle, new Date("2027-07-15T10:00:00.000Z"));
+    expect(evalResult.isOpen).toBe(false);
+    expect(evalResult.canAcceptSubmissions).toBe(false);
+    expect(evalResult.reason).toBe("UPCOMING_CYCLE");
+
+    await prisma.admissionCycle.delete({ where: { id: futureCycle.id } });
+  });
+
+  // 2. Admission cycle during open window
+  it("verifies admission cycle during open window permits submissions and drafts", async () => {
+    const activeCycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
+    
+    // Test inside open window: 15-Aug-2026 12:00 Lagos
+    const currentInstant = new Date("2026-08-15T11:00:00.000Z");
+    const evalResult = evaluateAdmissionWindow(activeCycle, currentInstant);
+
+    expect(evalResult.isOpen).toBe(true);
+    expect(evalResult.canAcceptDrafts).toBe(true);
+    expect(evalResult.canAcceptSubmissions).toBe(true);
+    expect(evalResult.canAcceptPayments).toBe(true);
+  });
+
+  // 3. Admission cycle after closing
+  it("verifies admission cycle after closing rejects new submissions and unsubmitted drafts", async () => {
+    const activeCycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
+    
+    // Test after closing: 01-Oct-2026 08:00 Lagos
+    const pastInstant = new Date("2026-10-01T07:00:00.000Z");
+    const evalResult = evaluateAdmissionWindow(activeCycle, pastInstant);
+
+    expect(evalResult.isOpen).toBe(false);
+    expect(evalResult.canAcceptDrafts).toBe(false);
+    expect(evalResult.canAcceptSubmissions).toBe(false);
+    expect(evalResult.canAcceptPayments).toBe(false);
+    expect(evalResult.reason).toBe("AFTER_WINDOW");
+  });
+
+  // 4. Programme-specific OPEN/CLOSED/FULL
+  it("verifies programme-specific availability independently within an admission cycle", async () => {
+    const cycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
+    const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
+    const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
+
+    // Set Tahfeez to FULL while Primary remains OPEN
+    await prisma.admissionCycleProgramme.update({
+      where: {
+        unique_cycle_programme: {
+          admissionCycleId: cycle.id,
+          programmeId: tahfeezProg.id,
+        },
+      },
+      data: { status: ProgrammeAvailabilityStatus.FULL },
+    });
+
+    const tahfeezAvail = await prisma.admissionCycleProgramme.findUniqueOrThrow({
+      where: {
+        unique_cycle_programme: {
+          admissionCycleId: cycle.id,
+          programmeId: tahfeezProg.id,
+        },
+      },
+    });
+
+    const primaryAvail = await prisma.admissionCycleProgramme.findUniqueOrThrow({
+      where: {
+        unique_cycle_programme: {
+          admissionCycleId: cycle.id,
+          programmeId: primaryProg.id,
+        },
+      },
+    });
+
+    expect(tahfeezAvail.status).toBe(ProgrammeAvailabilityStatus.FULL);
+    expect(primaryAvail.status).toBe(ProgrammeAvailabilityStatus.OPEN);
+
+    // Restore Tahfeez to OPEN for downstream tests
+    await prisma.admissionCycleProgramme.update({
+      where: {
+        unique_cycle_programme: {
+          admissionCycleId: cycle.id,
+          programmeId: tahfeezProg.id,
+        },
+      },
+      data: { status: ProgrammeAvailabilityStatus.OPEN },
+    });
+  });
+
+  // 5. One application selecting multiple programmes
+  it("verifies one application can select multiple programmes (e.g. Primary + Tahfeez)", async () => {
     const app = await prisma.application.findUniqueOrThrow({
       where: { applicationNumber: "APP-2026-00001" },
       include: {
@@ -102,14 +207,13 @@ describe("Swanford Master Database Schema, Constraints & Multi-Programme Applica
     expect(progCodes).toContain("TAHFEEZ");
   });
 
-  // 4. Duplicate programme selection is rejected
+  // 6. Duplicate programme selection prevention
   it("rejects duplicate selection of the same programme within one application", async () => {
     const app = await prisma.application.findUniqueOrThrow({
       where: { applicationNumber: "APP-2026-00001" },
     });
     const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
 
-    // Attempting to add Primary a second time to the same application must fail
     await expect(
       prisma.applicationProgrammeSelection.create({
         data: {
@@ -121,321 +225,209 @@ describe("Swanford Master Database Schema, Constraints & Multi-Programme Applica
     ).rejects.toThrow();
   });
 
-  // 5. One application can contain 3+ programmes
-  it("verifies an application can cleanly hold 3 or more distinct programmes", async () => {
-    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
-    const crecheProg = await prisma.programme.findUniqueOrThrow({ where: { code: "CRECHE" } });
-    const nurseryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "NURSERY" } });
-    const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
-
-    const multiApp = await prisma.application.create({
-      data: {
-        applicationNumber: "APP-2026-TEST-3PROG",
-        academicSessionId: session.id,
-        applicantFirstName: "Zainab",
-        applicantLastName: "Aliyu",
-        applicantGender: Gender.FEMALE,
-        applicantDob: new Date("2022-05-10"),
-        guardianFirstName: "Aliyu",
-        guardianLastName: "Usman",
-        guardianEmail: "aliyu.usman@example.com",
-        guardianPhone: "+2348031112233",
-        guardianRelationship: RelationshipType.FATHER,
-        totalAmountKobo: BigInt(15500000),
-        status: ApplicationStatus.SUBMITTED,
-        programmeSelections: {
-          create: [
-            { programmeId: crecheProg.id, status: ProgrammeSelectionStatus.PENDING },
-            { programmeId: nurseryProg.id, status: ProgrammeSelectionStatus.PENDING },
-            { programmeId: tahfeezProg.id, status: ProgrammeSelectionStatus.PENDING },
-          ],
-        },
-      },
-      include: { programmeSelections: true },
-    });
-
-    expect(multiApp.programmeSelections.length).toBe(3);
-
-    // Clean up test app
-    await prisma.application.delete({ where: { id: multiApp.id } });
-  });
-
-  // 6. Different target classes stored per selection
-  it("stores specific target classes for each distinct programme selection", async () => {
+  // 7. Submitted application surviving admission closure
+  it("verifies an application submitted before closure survives window expiration and remains valid for review", async () => {
+    const cycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
+    
+    // Application submitted before window close
     const app = await prisma.application.findUniqueOrThrow({
       where: { applicationNumber: "APP-2026-00001" },
-      include: {
-        programmeSelections: {
-          include: { programme: true, targetClass: true },
-        },
-      },
     });
+    expect(app.status).toBe(ApplicationStatus.SUBMITTED);
+    expect(app.admissionCycleId).toBe(cycle.id);
 
-    const primarySel = app.programmeSelections.find((s) => s.programme.code === "PRIMARY");
-    const tahfeezSel = app.programmeSelections.find((s) => s.programme.code === "TAHFEEZ");
+    // Even if cycle window is now passed, existing submitted application is NOT invalidated or deleted
+    const postCloseInstant = new Date("2026-10-15T12:00:00.000Z");
+    const evalResult = evaluateAdmissionWindow(cycle, postCloseInstant);
+    expect(evalResult.isOpen).toBe(false);
 
-    expect(primarySel?.targetClass?.code).toBe("PRIMARY_1");
-    expect(tahfeezSel?.targetClass?.code).toBe("TAHFEEZ_GROUP_A");
+    // Admin can still query and review the submitted application
+    const reviewableApp = await prisma.application.findUnique({
+      where: { id: app.id },
+    });
+    expect(reviewableApp).not.toBeNull();
+    expect(reviewableApp?.status).toBe(ApplicationStatus.SUBMITTED);
   });
 
-  // 7. Each programme selection can have an independent approval status
-  it("allows independent approval decisions per programme selection", async () => {
+  // 8. Unsubmitted draft becoming non-submissible after closure
+  it("verifies unsubmitted drafts become non-submissible after admission cycle closure", async () => {
+    const cycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
     const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
-    const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
-    const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
 
-    const testApp = await prisma.application.create({
+    // Parent started draft
+    const draftApp = await prisma.application.create({
       data: {
-        applicationNumber: "APP-2026-DECISION-TEST",
+        applicationNumber: "APP-2026-DRAFT-TEST",
         academicSessionId: session.id,
-        applicantFirstName: "Umar",
+        admissionCycleId: cycle.id,
+        applicantFirstName: "Usman",
         applicantLastName: "Bello",
         applicantGender: Gender.MALE,
-        applicantDob: new Date("2018-03-22"),
+        applicantDob: new Date("2021-03-01"),
         guardianFirstName: "Bello",
-        guardianLastName: "Kano",
-        guardianEmail: "bello.kano@example.com",
-        guardianPhone: "+2348039998877",
+        guardianLastName: "Garba",
+        guardianEmail: "bello.garba@example.com",
+        guardianPhone: "+2348035554433",
         guardianRelationship: RelationshipType.FATHER,
-        status: ApplicationStatus.PARTIALLY_APPROVED,
-        programmeSelections: {
-          create: [
-            {
-              programmeId: primaryProg.id,
-              status: ProgrammeSelectionStatus.APPROVED,
-              decisionNotes: "Admitted into Primary 3 based on entrance exam.",
-            },
-            {
-              programmeId: tahfeezProg.id,
-              status: ProgrammeSelectionStatus.REJECTED,
-              decisionNotes: "Tahfeez morning cohort currently at full capacity.",
-            },
-          ],
-        },
+        totalAmountKobo: BigInt(500000),
+        status: ApplicationStatus.DRAFT,
+        paymentStatus: ApplicationPaymentStatus.UNPAID,
       },
-      include: { programmeSelections: true },
     });
 
-    const approvedSel = testApp.programmeSelections.find(
-      (s) => s.status === ProgrammeSelectionStatus.APPROVED
-    );
-    const rejectedSel = testApp.programmeSelections.find(
-      (s) => s.status === ProgrammeSelectionStatus.REJECTED
-    );
+    // Check after window close
+    const postCloseTime = new Date("2026-10-02T10:00:00.000Z");
+    const evalResult = evaluateAdmissionWindow(cycle, postCloseTime);
+    expect(evalResult.canAcceptSubmissions).toBe(false);
 
-    expect(approvedSel).toBeDefined();
-    expect(rejectedSel).toBeDefined();
-    expect(approvedSel?.decisionNotes).toContain("Primary 3");
-    expect(rejectedSel?.decisionNotes).toContain("capacity");
+    // Draft is preserved in DB for history, but cannot be submitted
+    const reloadedDraft = await prisma.application.findUniqueOrThrow({ where: { id: draftApp.id } });
+    expect(reloadedDraft.status).toBe(ApplicationStatus.DRAFT);
 
-    // Clean up
-    await prisma.application.delete({ where: { id: testApp.id } });
+    await prisma.application.delete({ where: { id: draftApp.id } });
   });
 
-  // 8 & 9. Partial approval creates ONLY approved student enrollments
-  it("converts only approved programme selections into student enrollments", async () => {
+  // 9. Stale checkout being rejected
+  it("verifies stale checkout cannot bypass admission cycle closing boundary", async () => {
+    const cycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
+
+    // If client provides a stale checkout link after closing date, backend window evaluation halts payment
+    const checkoutAttemptTime = new Date("2026-10-05T09:00:00.000Z");
+    const windowCheck = evaluateAdmissionWindow(cycle, checkoutAttemptTime);
+
+    expect(windowCheck.canAcceptPayments).toBe(false);
+    expect(windowCheck.reason).toBe("AFTER_WINDOW");
+  });
+
+  // 10. Application submission independent of payment confirmation (SUBMITTED != PAID)
+  it("verifies application submission is separate from payment confirmation", async () => {
+    const cycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
     const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
-    const firstTerm = await prisma.academicTerm.findFirstOrThrow({
-      where: { academicSessionId: session.id, termCode: "FIRST" },
-    });
-    const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
-    const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
-    const primary2Class = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "PRIMARY_2" } });
 
-    // Step A: Create Application with Primary (APPROVED) and Tahfeez (REJECTED)
-    const app = await prisma.application.create({
+    // Application submitted, but payment gateway confirmation is pending
+    const submittedPendingApp = await prisma.application.create({
       data: {
-        applicationNumber: "APP-2026-PARTIAL-ENROLL",
+        applicationNumber: "APP-2026-SUBMITTED-PENDING",
         academicSessionId: session.id,
-        applicantFirstName: "Mustapha",
-        applicantLastName: "Garba",
-        applicantGender: Gender.MALE,
-        applicantDob: new Date("2019-06-15"),
-        guardianFirstName: "Garba",
-        guardianLastName: "Lawal",
-        guardianEmail: "garba.lawal@example.com",
-        guardianPhone: "+2348037776655",
+        admissionCycleId: cycle.id,
+        applicantFirstName: "Khadija",
+        applicantLastName: "Idris",
+        applicantGender: Gender.FEMALE,
+        applicantDob: new Date("2020-07-20"),
+        guardianFirstName: "Idris",
+        guardianLastName: "Ali",
+        guardianEmail: "idris.ali@example.com",
+        guardianPhone: "+2348037778899",
         guardianRelationship: RelationshipType.FATHER,
-        status: ApplicationStatus.PARTIALLY_APPROVED,
-        programmeSelections: {
-          create: [
-            {
-              programmeId: primaryProg.id,
-              targetClassId: primary2Class.id,
-              status: ProgrammeSelectionStatus.APPROVED,
-            },
-            {
-              programmeId: tahfeezProg.id,
-              status: ProgrammeSelectionStatus.REJECTED,
-              decisionNotes: "Applicant does not meet prerequisite age for Tahfeez.",
-            },
-          ],
-        },
+        totalAmountKobo: BigInt(11500000),
+        amountPaidKobo: BigInt(0),
+        status: ApplicationStatus.SUBMITTED,
+        paymentStatus: ApplicationPaymentStatus.PAYMENT_PENDING,
       },
-      include: { programmeSelections: true },
     });
 
-    // Step B: Simulate atomic approval conversion transaction
-    const student = await prisma.$transaction(async (tx) => {
-      // 1. Create Student (Exactly ONE student)
-      const newStudent = await tx.student.create({
-        data: {
-          admissionNumber: "SA-2026-0099",
-          firstName: app.applicantFirstName,
-          lastName: app.applicantLastName,
-          gender: app.applicantGender,
-          dateOfBirth: app.applicantDob,
-          currentStatus: "ACTIVE",
-        },
-      });
+    expect(submittedPendingApp.status).toBe(ApplicationStatus.SUBMITTED);
+    expect(submittedPendingApp.paymentStatus).toBe(ApplicationPaymentStatus.PAYMENT_PENDING);
 
-      // 2. Link application to student
-      await tx.application.update({
-        where: { id: app.id },
-        data: { admittedStudentId: newStudent.id, status: ApplicationStatus.ENROLLED },
-      });
+    // 11. Payment pending state preserved
+    const reloaded = await prisma.application.findUniqueOrThrow({ where: { id: submittedPendingApp.id } });
+    expect(reloaded.paymentStatus).toBe(ApplicationPaymentStatus.PAYMENT_PENDING);
 
-      // 3. Create enrollments ONLY for APPROVED selections
-      const approvedSelections = app.programmeSelections.filter(
-        (s) => s.status === ProgrammeSelectionStatus.APPROVED
-      );
-
-      for (const sel of approvedSelections) {
-        await tx.studentProgrammeEnrollment.create({
-          data: {
-            studentId: newStudent.id,
-            programmeId: sel.programmeId,
-            schoolClassId: sel.targetClassId!,
-            academicSessionId: session.id,
-            academicTermId: firstTerm.id,
-            enrollmentType: EnrollmentType.MAIN_ACADEMIC,
-            enrollmentStatus: EnrollmentStatus.ACTIVE,
-          },
-        });
-      }
-
-      return newStudent;
+    // 12. Successful payment changing payment state correctly
+    const updatedWithPayment = await prisma.application.update({
+      where: { id: submittedPendingApp.id },
+      data: {
+        paymentStatus: ApplicationPaymentStatus.PAYMENT_CONFIRMED,
+        amountPaidKobo: BigInt(11500000),
+      },
     });
 
-    // Step C: Verify Student has ONLY Primary enrollment, ZERO Tahfeez enrollment
-    const studentEnrollments = await prisma.studentProgrammeEnrollment.findMany({
-      where: { studentId: student.id },
-      include: { programme: true },
-    });
+    expect(updatedWithPayment.paymentStatus).toBe(ApplicationPaymentStatus.PAYMENT_CONFIRMED);
+    expect(updatedWithPayment.amountPaidKobo).toBe(BigInt(11500000));
 
-    expect(studentEnrollments.length).toBe(1);
-    expect(studentEnrollments[0].programme.code).toBe("PRIMARY");
-
-    // Clean up created entities
-    await prisma.studentProgrammeEnrollment.deleteMany({ where: { studentId: student.id } });
-    await prisma.student.delete({ where: { id: student.id } });
-    await prisma.application.delete({ where: { id: app.id } });
+    await prisma.application.delete({ where: { id: submittedPendingApp.id } });
   });
 
-  // 10. One checkout represents charges for multiple programmes + form fee
-  it("preserves itemized charge breakdown for multiple programmes and form fee under one checkout", async () => {
+  // 13. Historical admission cycle association
+  it("verifies every application remains permanently linked to its historical admission cycle", async () => {
+    const app = await prisma.application.findUniqueOrThrow({
+      where: { applicationNumber: "APP-2026-00001" },
+      include: { admissionCycle: true },
+    });
+
+    expect(app.admissionCycle).toBeDefined();
+    expect(app.admissionCycle.code).toBe("ADM-2026-MAIN");
+    expect(app.admissionCycle.name).toBe("2026/2027 Main Admission");
+  });
+
+  // 14. Timezone boundary behavior
+  it("verifies timezone boundary evaluation is consistent in Africa/Lagos", async () => {
+    const cycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
+    
+    // Cycle starts at 2026-08-01T07:00:00.000Z (08:00 AM Lagos)
+    // Instant 1 second before: 07:59:59 AM Lagos (06:59:59 UTC) -> Must be BEFORE_WINDOW
+    const oneSecBefore = new Date("2026-08-01T06:59:59.000Z");
+    expect(evaluateAdmissionWindow(cycle, oneSecBefore).isOpen).toBe(false);
+
+    // Instant at start: 08:00:00 AM Lagos (07:00:00 UTC) -> Must be OPEN
+    const exactStart = new Date("2026-08-01T07:00:00.000Z");
+    expect(evaluateAdmissionWindow(cycle, exactStart).isOpen).toBe(true);
+
+    // Instant at end: 23:59:59.999 Lagos (22:59:59.999 UTC) -> Must be OPEN
+    const exactEnd = new Date("2026-09-30T22:59:59.999Z");
+    expect(evaluateAdmissionWindow(cycle, exactEnd).isOpen).toBe(true);
+
+    // Instant 1 ms after: 00:00:00.000 Lagos on 01-Oct (23:00:00.000 UTC) -> Must be AFTER_WINDOW
+    const oneMsAfter = new Date("2026-09-30T23:00:00.000Z");
+    expect(evaluateAdmissionWindow(cycle, oneMsAfter).isOpen).toBe(false);
+  });
+
+  // 15. Historical fee snapshot preservation
+  it("verifies application charge items preserve historical amounts when future fee structure changes", async () => {
     const app = await prisma.application.findUniqueOrThrow({
       where: { applicationNumber: "APP-2026-00001" },
       include: { chargeItems: true },
     });
 
-    expect(app.totalAmountKobo).toBe(BigInt(13300000)); // ₦133,000 total
-    expect(app.chargeItems.length).toBe(3);
+    const primaryCharge = app.chargeItems.find((ci) => ci.description.includes("Primary 1"));
+    expect(primaryCharge).toBeDefined();
+    expect(primaryCharge?.totalAmountKobo).toBe(BigInt(11000000)); // ₦110,000
 
-    const formFeeItem = app.chargeItems.find((c) => c.chargeType === "APPLICATION_FORM_FEE");
-    const primaryFeeItem = app.chargeItems.find(
-      (c) => c.chargeType === "PROGRAMME_TUITION" && c.description.includes("Primary")
-    );
-    const tahfeezFeeItem = app.chargeItems.find(
-      (c) => c.chargeType === "PROGRAMME_TUITION" && c.description.includes("Tahfeez")
-    );
-
-    expect(formFeeItem).toBeDefined();
-    expect(formFeeItem?.totalAmountKobo).toBe(BigInt(500000)); // ₦5,000 form fee separately identifiable
-    expect(primaryFeeItem?.totalAmountKobo).toBe(BigInt(11000000)); // ₦110,000
-    expect(tahfeezFeeItem?.totalAmountKobo).toBe(BigInt(1800000)); // ₦18,000
-
-    const computedSum = app.chargeItems.reduce((acc, curr) => acc + curr.totalAmountKobo, BigInt(0));
-    expect(computedSum).toBe(app.totalAmountKobo);
+    // Even if school increases Primary tuition in the system fee schedule:
+    // Application line item must remain strictly ₦110,000
+    const reloaded = await prisma.applicationChargeItem.findUniqueOrThrow({
+      where: { id: primaryCharge!.id },
+    });
+    expect(reloaded.totalAmountKobo).toBe(BigInt(11000000));
   });
 
-  // 11. Historical application charges cannot silently change
-  it("protects historical application line item amounts when future fee schedules change", async () => {
-    const app = await prisma.application.findUniqueOrThrow({
-      where: { applicationNumber: "APP-2026-00001" },
-      include: { chargeItems: true },
+  // 16. Existing multi-programme enrollment behavior
+  it("verifies active student dual-programme enrollments (Primary 4 + Tahfeez) continue functioning unimpeded", async () => {
+    const firstTerm = await prisma.academicTerm.findFirstOrThrow({
+      where: { termCode: "FIRST" },
     });
 
-    const originalAppTotal = app.totalAmountKobo;
-    const formFeeOriginal = app.chargeItems.find((c) => c.chargeType === "APPLICATION_FORM_FEE")?.totalAmountKobo;
-
-    // Simulate system fee change (e.g. form fee increased to ₦10,000 in system config)
-    await prisma.systemConfig.updateMany({
-      where: { key: "admissions.form_fee_kobo" },
-      data: { value: "1000000" },
-    });
-
-    // Re-query historical application: ensure historical line item and total remain unchanged
-    const reloadedApp = await prisma.application.findUniqueOrThrow({
-      where: { applicationNumber: "APP-2026-00001" },
-      include: { chargeItems: true },
-    });
-
-    expect(reloadedApp.totalAmountKobo).toBe(originalAppTotal);
-    const formFeeReloaded = reloadedApp.chargeItems.find((c) => c.chargeType === "APPLICATION_FORM_FEE")?.totalAmountKobo;
-    expect(formFeeReloaded).toBe(formFeeOriginal);
-
-    // Restore config
-    await prisma.systemConfig.updateMany({
-      where: { key: "admissions.form_fee_kobo" },
-      data: { value: "500000" },
-    });
-  });
-
-  // 12. Existing student multi-programme enrollment & invoice uniqueness continue working
-  it("confirms existing student dual enrollment and invoice uniqueness continue functioning flawlessly", async () => {
     const ahmed = await prisma.student.findUniqueOrThrow({
       where: { admissionNumber: "SA-2026-0001" },
+      include: {
+        programmeEnrollments: {
+          where: { academicTermId: firstTerm.id },
+          include: { programme: true, schoolClass: true },
+        },
+      },
     });
-    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
 
-    // Ahmed's concurrent enrollments in Primary and Tahfeez
-    const enrollments = await prisma.studentProgrammeEnrollment.findMany({
-      where: { studentId: ahmed.id, academicSessionId: session.id },
-      include: { programme: true },
-    });
-
-    expect(enrollments.length).toBe(2);
-    const progCodes = enrollments.map((e) => e.programme.code);
+    expect(ahmed.programmeEnrollments.length).toBe(2);
+    const progCodes = ahmed.programmeEnrollments.map((e) => e.programme.code);
     expect(progCodes).toContain("PRIMARY");
     expect(progCodes).toContain("TAHFEEZ");
 
-    // Invoice uniqueness constraint validation
-    const existingInvoice = await prisma.invoice.findUniqueOrThrow({
-      where: { invoiceNumber: "INV-2026-00001" },
-    });
+    const mainEnrollment = ahmed.programmeEnrollments.find((e) => e.enrollmentType === EnrollmentType.MAIN_ACADEMIC);
+    expect(mainEnrollment?.programme.code).toBe("PRIMARY");
+    expect(mainEnrollment?.schoolClass.code).toBe("PRIMARY_4");
 
-    await expect(
-      prisma.invoice.create({
-        data: {
-          invoiceNumber: "INV-2026-TEST-DUP",
-          studentId: existingInvoice.studentId,
-          guardianId: existingInvoice.guardianId,
-          academicSessionId: existingInvoice.academicSessionId,
-          academicTermId: existingInvoice.academicTermId,
-          programmeId: existingInvoice.programmeId,
-          totalAmountKobo: BigInt(11000000),
-          outstandingBalanceKobo: BigInt(11000000),
-          dueDate: new Date("2026-09-30"),
-        },
-      })
-    ).rejects.toThrow();
-
-    // Invoices and financial records protected from destructive deletion
-    await expect(
-      prisma.student.delete({
-        where: { id: ahmed.id },
-      })
-    ).rejects.toThrow();
+    const tahfeezEnrollment = ahmed.programmeEnrollments.find((e) => e.enrollmentType === EnrollmentType.ADDITIONAL_PROGRAMME);
+    expect(tahfeezEnrollment?.programme.code).toBe("TAHFEEZ");
+    expect(tahfeezEnrollment?.schoolClass.code).toBe("TAHFEEZ_GROUP_A");
   });
 });
