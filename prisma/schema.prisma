@@ -208,6 +208,25 @@ enum NotificationStatus {
   SENT
   DELIVERED
   FAILED
+  RETRYABLE
+}
+
+enum ImportBatchStatus {
+  PROCESSING
+  COMPLETED
+  PARTIALLY_COMPLETED
+  FAILED
+}
+
+enum ImportRowStatus {
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+enum VerificationTokenType {
+  EMAIL_VERIFICATION
+  ACCOUNT_ACTIVATION
 }
 
 enum ConfigCategory {
@@ -230,6 +249,7 @@ model User {
   emailVerifiedAt      DateTime?     @map("email_verified_at")
   failedLoginAttempts  Int           @default(0) @map("failed_login_attempts")
   lockedUntil          DateTime?     @map("locked_until")
+  lastLoginAt          DateTime?     @map("last_login_at")
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
@@ -237,6 +257,7 @@ model User {
   userRoles            UserRole[]
   sessions             Session[]
   passwordResets       PasswordReset[]
+  emailVerifications   EmailVerification[]
   guardianProfile      Guardian?
   teacherProfile       Teacher?
   recordedPayments     Payment[]                        @relation("PaymentRecordedBy")
@@ -244,6 +265,7 @@ model User {
   applicationReviews   ApplicationReview[]              @relation("ApplicationReviewedBy")
   selectionReviews     ApplicationProgrammeSelection[]  @relation("SelectionReviewedBy")
   auditLogs            AuditLog[]
+  studentImportBatches StudentImportBatch[]
 
   @@index([status])
   @@map("users")
@@ -309,8 +331,9 @@ model Session {
   sessionTokenHash  String   @unique @map("session_token_hash")
   ipAddress         String?  @map("ip_address")
   userAgent         String?  @map("user_agent")
-  expiresAt         DateTime @map("expires_at")
-  createdAt         DateTime @default(now()) @map("created_at")
+  expiresAt         DateTime  @map("expires_at")
+  revokedAt         DateTime? @map("revoked_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
 
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -332,6 +355,23 @@ model PasswordReset {
   @@map("password_resets")
 }
 
+model EmailVerification {
+  id         String                @id @default(uuid()) @db.Uuid
+  userId     String                @map("user_id") @db.Uuid
+  tokenHash  String                @unique @map("token_hash")
+  email      String
+  tokenType  VerificationTokenType @default(EMAIL_VERIFICATION) @map("token_type")
+  expiresAt  DateTime              @map("expires_at")
+  usedAt     DateTime?             @map("used_at")
+  createdAt  DateTime              @default(now()) @map("created_at")
+
+  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([tokenType, expiresAt])
+  @@map("email_verifications")
+}
+
 // -----------------------------------------------------------------------------
 // DOMAIN 2: PEOPLE & RELATIONSHIPS
 // -----------------------------------------------------------------------------
@@ -343,10 +383,10 @@ model Guardian {
   firstName          String   @map("first_name")
   lastName           String   @map("last_name")
   otherNames         String?  @map("other_names")
-  email              String   @unique
-  phonePrimary       String   @map("phone_primary")
-  phoneSecondary     String?  @map("phone_secondary")
-  residentialAddress String   @map("residential_address")
+  email              String?   @unique
+  phonePrimary       String    @map("phone_primary")
+  phoneSecondary     String?   @map("phone_secondary")
+  residentialAddress String?   @map("residential_address")
   occupation         String?
   isVerified         Boolean  @default(false) @map("is_verified")
   verifiedAt         DateTime? @map("verified_at")
@@ -403,6 +443,7 @@ model Student {
   invoices        Invoice[]
   payments        Payment[]
   applicationOrigin Application?
+  importRows        StudentImportRow[]
 
   @@index([currentStatus])
   @@index([lastName, firstName])
@@ -466,8 +507,9 @@ model AcademicSession {
   terms           AcademicTerm[]
   admissionCycles AdmissionCycle[]
   enrollments     StudentProgrammeEnrollment[]
-  teacherScopes   TeacherScope[]
-  applications    Application[]
+  teacherScopes        TeacherScope[]
+  applications         Application[]
+  studentImportBatches StudentImportBatch[]
   feeStructures   FeeStructure[]
   invoices        Invoice[]
   expenses        Expense[]
@@ -732,6 +774,64 @@ model ApplicationReview {
   @@index([applicationId])
   @@map("application_reviews")
 }
+
+// -----------------------------------------------------------------------------
+// DOMAIN 4B: BULK STUDENT ENROLLMENT & ADMISSION SEQUENCING
+// -----------------------------------------------------------------------------
+
+/// Atomic sequence generator for permanent, concurrency-safe student admission numbers (SA-YYYY-NNNN)
+model AdmissionNumberSequence {
+  year         Int      @id
+  lastSequence Int      @default(0) @map("last_sequence")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admission_number_sequences")
+}
+
+/// Operational intake batch for bulk student onboarding
+model StudentImportBatch {
+  id                String             @id @default(uuid()) @db.Uuid
+  batchNumber       String             @unique @map("batch_number") // BATCH-YYYY-NNNNN
+  createdById       String?            @map("created_by_id") @db.Uuid
+  academicSessionId String             @map("academic_session_id") @db.Uuid
+  totalSubmitted    Int                @map("total_submitted")
+  totalSuccessful   Int                @default(0) @map("total_successful")
+  totalFailed       Int                @default(0) @map("total_failed")
+  status            ImportBatchStatus  @default(PROCESSING)
+  sourceType        String             @default("MANUAL_BULK_ENTRY") @map("source_type") // MANUAL_BULK_ENTRY | CSV_IMPORT
+  notes             String?
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  createdBy         User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  academicSession   AcademicSession    @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  rows              StudentImportRow[]
+
+  @@index([status])
+  @@index([academicSessionId])
+  @@map("student_import_batches")
+}
+
+/// Row-level audit and error tracking for bulk student enrollment
+model StudentImportRow {
+  id           String          @id @default(uuid()) @db.Uuid
+  batchId      String          @map("batch_id") @db.Uuid
+  rowNumber    Int             @map("row_number")
+  studentId    String?         @map("student_id") @db.Uuid
+  status       ImportRowStatus @default(SUCCESS)
+  rawDataJson  Json            @map("raw_data_json")
+  errorMessage String?         @map("error_message")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  batch        StudentImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student      Student?           @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@unique([batchId, rowNumber])
+  @@index([batchId, status])
+  @@index([studentId])
+  @@map("student_import_rows")
+}
+
 
 // -----------------------------------------------------------------------------
 // DOMAIN 5: INVOICING & SCHOOL LEDGER
@@ -1003,6 +1103,10 @@ model Notification {
   subject           String
   bodyText          String              @map("body_text")
   status            NotificationStatus  @default(PENDING)
+  metadata          Json?
+  attempts          Int                 @default(0)
+  maxAttempts       Int                 @default(3) @map("max_attempts")
+  nextRetryAt       DateTime?           @map("next_retry_at")
   providerMessageId String?             @map("provider_message_id")
   errorMessage      String?             @map("error_message")
   sentAt            DateTime?           @map("sent_at")

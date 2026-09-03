@@ -1,0 +1,399 @@
+import { prisma } from '@/lib/prisma';
+import {
+  Gender,
+  RelationshipType,
+  EnrollmentType,
+  EnrollmentStatus,
+  UserStatus,
+  VerificationTokenType,
+  ImportBatchStatus,
+  ImportRowStatus,
+} from '@prisma/client';
+import { reserveAdmissionNumberBlock } from './admission_number';
+import { createUnactivatedPasswordSentinel } from '@/lib/auth/password';
+import { generateSecureToken } from '@/lib/auth/tokens';
+
+/**
+ * Swanford Academy — Bulk Student Enrollment Service
+ *
+ * Core Principles:
+ * - Validate first, commit second.
+ * - Per-row atomic transaction isolation (controlled partial success).
+ * - Gaps permitted in reserved admission numbers.
+ * - Student unpolluted: traceability maintained via StudentImportRow.studentId.
+ * - Sibling guardian matching via email.
+ * - Never email passwords; creates one-time activation token and outbox notification.
+ * - Database enrollment NEVER depends on external email delivery.
+ */
+
+export interface BulkStudentRowInput {
+  rowNumber: number;
+  firstName: string;
+  lastName: string;
+  otherNames?: string;
+  gender: 'MALE' | 'FEMALE';
+  dateOfBirth: string; // YYYY-MM-DD
+  schoolClassId: string;
+  programmeIds: string[]; // Multi-programme support
+  guardianFirstName: string;
+  guardianLastName: string;
+  guardianEmail?: string;
+  guardianPhone: string;
+  relationshipType?: 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'SPONSOR';
+  residentialAddress?: string;
+}
+
+export interface BulkEnrollmentBatchInput {
+  academicSessionId: string;
+  academicTermId: string;
+  sourceType?: 'MANUAL_BULK_ENTRY' | 'CSV_IMPORT';
+  notes?: string;
+  rows: BulkStudentRowInput[];
+}
+
+export interface BulkEnrollmentResult {
+  batchId: string;
+  batchNumber: string;
+  totalSubmitted: number;
+  totalSuccessful: number;
+  totalFailed: number;
+  status: ImportBatchStatus;
+  successfulStudents: {
+    rowNumber: number;
+    studentId: string;
+    admissionNumber: string;
+    studentName: string;
+  }[];
+  failedRows: {
+    rowNumber: number;
+    errorMessage: string;
+  }[];
+}
+
+/**
+ * Generates an audit-compliant batch number: BATCH-YYYY-NNNNN
+ */
+export async function generateBatchNumber(year: number = new Date().getFullYear()): Promise<string> {
+  const count = await prisma.studentImportBatch.count();
+  const sequence = (count + 1).toString().padStart(5, '0');
+  return `BATCH-${year}-${sequence}`;
+}
+
+/**
+ * Validates a single student row payload
+ */
+export function validateRowPayload(row: BulkStudentRowInput): { valid: boolean; error?: string } {
+  if (!row.firstName?.trim()) return { valid: false, error: 'Student first name is required' };
+  if (!row.lastName?.trim()) return { valid: false, error: 'Student last name is required' };
+  if (!row.gender || !['MALE', 'FEMALE'].includes(row.gender)) {
+    return { valid: false, error: 'Valid gender (MALE or FEMALE) is required' };
+  }
+
+  const dob = new Date(row.dateOfBirth);
+  if (isNaN(dob.getTime())) {
+    return { valid: false, error: 'Invalid date of birth format' };
+  }
+
+  if (dob >= new Date()) {
+    return { valid: false, error: 'Date of birth must be in the past' };
+  }
+
+  if (!row.schoolClassId?.trim()) return { valid: false, error: 'School class ID is required' };
+  if (!row.programmeIds || row.programmeIds.length === 0) {
+    return { valid: false, error: 'At least one programme must be selected' };
+  }
+
+  if (!row.guardianFirstName?.trim()) return { valid: false, error: 'Guardian first name is required' };
+  if (!row.guardianLastName?.trim()) return { valid: false, error: 'Guardian last name is required' };
+  if (!row.guardianPhone?.trim()) return { valid: false, error: 'Guardian phone is required' };
+
+  if (row.guardianEmail?.trim()) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(row.guardianEmail.trim())) {
+      return { valid: false, error: 'Invalid guardian email format' };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Executes bulk student enrollment with per-row atomic transaction isolation.
+ */
+export async function executeBulkStudentEnrollment(
+  input: BulkEnrollmentBatchInput,
+  createdById?: string
+): Promise<BulkEnrollmentResult> {
+  if (!input.rows || input.rows.length === 0) {
+    throw new Error('No student rows provided for bulk enrollment');
+  }
+
+  const year = new Date().getFullYear();
+  const batchNumber = await generateBatchNumber(year);
+
+  // Verify session and term exist
+  const session = await prisma.academicSession.findUnique({
+    where: { id: input.academicSessionId },
+  });
+  if (!session) {
+    throw new Error(`Academic session ${input.academicSessionId} not found`);
+  }
+
+  const term = await prisma.academicTerm.findUnique({
+    where: { id: input.academicTermId },
+  });
+  if (!term || term.academicSessionId !== session.id) {
+    throw new Error(`Academic term ${input.academicTermId} is invalid for session ${session.id}`);
+  }
+
+  // 1. Create the persistent Import Batch in PROCESSING state
+  const batch = await prisma.studentImportBatch.create({
+    data: {
+      batchNumber,
+      createdById,
+      academicSessionId: session.id,
+      totalSubmitted: input.rows.length,
+      totalSuccessful: 0,
+      totalFailed: 0,
+      status: ImportBatchStatus.PROCESSING,
+      sourceType: input.sourceType || 'MANUAL_BULK_ENTRY',
+      notes: input.notes,
+    },
+  });
+
+  // 2. Atomically reserve a block of admission numbers
+  const admissionNumbers = await reserveAdmissionNumberBlock(input.rows.length, year);
+
+  const successfulStudents: BulkEnrollmentResult['successfulStudents'] = [];
+  const failedRows: BulkEnrollmentResult['failedRows'] = [];
+
+  // 3. Process each row in an isolated transaction
+  for (let i = 0; i < input.rows.length; i++) {
+    const row = input.rows[i];
+    const assignedAdmissionNumber = admissionNumbers[i];
+
+    // Pre-validate row payload
+    const validation = validateRowPayload(row);
+    if (!validation.valid) {
+      failedRows.push({ rowNumber: row.rowNumber, errorMessage: validation.error! });
+
+      await prisma.studentImportRow.create({
+        data: {
+          batchId: batch.id,
+          rowNumber: row.rowNumber,
+          status: ImportRowStatus.FAILED,
+          rawDataJson: row as unknown as object,
+          errorMessage: validation.error,
+        },
+      });
+      continue;
+    }
+
+    try {
+      // Execute row creation in an atomic transaction
+      const createdStudent = await prisma.$transaction(async (tx) => {
+        // Step A: Verify class and programmes
+        const schoolClass = await tx.schoolClass.findUnique({
+          where: { id: row.schoolClassId },
+        });
+        if (!schoolClass) {
+          throw new Error(`School class ${row.schoolClassId} does not exist`);
+        }
+
+        const programmes = await tx.programme.findMany({
+          where: { id: { in: row.programmeIds } },
+        });
+        if (programmes.length !== row.programmeIds.length) {
+          throw new Error('One or more selected programmes do not exist');
+        }
+
+        // Step B: Create Student
+        const student = await tx.student.create({
+          data: {
+            admissionNumber: assignedAdmissionNumber,
+            firstName: row.firstName.trim(),
+            lastName: row.lastName.trim(),
+            otherNames: row.otherNames?.trim() || null,
+            gender: row.gender as Gender,
+            dateOfBirth: new Date(row.dateOfBirth),
+          },
+        });
+
+        // Step C: Match or Create Guardian
+        let guardianId: string;
+        let guardianUserId: string | null = null;
+        const normalizedEmail = row.guardianEmail?.trim().toLowerCase() || null;
+
+        if (normalizedEmail) {
+          const existingGuardian = await tx.guardian.findUnique({
+            where: { email: normalizedEmail },
+          });
+
+          if (existingGuardian) {
+            guardianId = existingGuardian.id;
+            guardianUserId = existingGuardian.userId;
+          } else {
+            const newGuardian = await tx.guardian.create({
+              data: {
+                firstName: row.guardianFirstName.trim(),
+                lastName: row.guardianLastName.trim(),
+                email: normalizedEmail,
+                phonePrimary: row.guardianPhone.trim(),
+                residentialAddress: row.residentialAddress?.trim() || null,
+              },
+            });
+            guardianId = newGuardian.id;
+          }
+        } else {
+          // Parent without email: create unlinked Guardian
+          const newGuardian = await tx.guardian.create({
+            data: {
+              firstName: row.guardianFirstName.trim(),
+              lastName: row.guardianLastName.trim(),
+              email: null,
+              phonePrimary: row.guardianPhone.trim(),
+              residentialAddress: row.residentialAddress?.trim() || null,
+            },
+          });
+          guardianId = newGuardian.id;
+        }
+
+        // Step D: Create GuardianStudentRelationship
+        await tx.guardianStudentRelationship.create({
+          data: {
+            guardianId,
+            studentId: student.id,
+            relationshipType: (row.relationshipType as RelationshipType) || RelationshipType.LEGAL_GUARDIAN,
+            isPrimaryContact: true,
+          },
+        });
+
+        // Step E: Create StudentProgrammeEnrollment for each programme
+        for (const prog of programmes) {
+          await tx.studentProgrammeEnrollment.create({
+            data: {
+              studentId: student.id,
+              programmeId: prog.id,
+              schoolClassId: schoolClass.id,
+              academicSessionId: session.id,
+              academicTermId: term.id,
+              enrollmentType: prog.isMainAcademic ? EnrollmentType.MAIN_ACADEMIC : EnrollmentType.ADDITIONAL_PROGRAMME,
+              enrollmentStatus: EnrollmentStatus.ACTIVE,
+            },
+          });
+        }
+
+        // Step F: Parent Account Lifecycle (if email provided and user does not exist)
+        if (normalizedEmail && !guardianUserId) {
+          // Check if a User already exists with this email
+          let user = await tx.user.findUnique({ where: { email: normalizedEmail } });
+          if (!user) {
+            const sentinelPassword = createUnactivatedPasswordSentinel();
+            user = await tx.user.create({
+              data: {
+                email: normalizedEmail,
+                passwordHash: sentinelPassword,
+                status: UserStatus.PENDING_VERIFICATION,
+              },
+            });
+
+            // Link Guardian to User
+            await tx.guardian.update({
+              where: { id: guardianId },
+              data: { userId: user.id },
+            });
+
+            // Generate one-time ACCOUNT_ACTIVATION token (7-day expiry)
+            const { rawToken, tokenHash } = generateSecureToken();
+            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+            await tx.emailVerification.create({
+              data: {
+                userId: user.id,
+                tokenHash,
+                email: normalizedEmail,
+                tokenType: VerificationTokenType.ACCOUNT_ACTIVATION,
+                expiresAt,
+              },
+            });
+
+            // Step G: Persistent Outbox Notification
+            await tx.notification.create({
+              data: {
+                recipientUserId: user.id,
+                recipientEmail: normalizedEmail,
+                channel: 'EMAIL',
+                templateName: 'PARENT_WELCOME_ACTIVATION',
+                subject: 'Welcome to Swanford Academy — Activate Your Parent Portal Account',
+                bodyText: `Welcome to Swanford Academy. Please activate your parent account and set your password: /auth/activate?token=${rawToken}`,
+                metadata: { tokenHash, expiresAt: expiresAt.toISOString(), studentId: student.id },
+              },
+            });
+          }
+        }
+
+        // Step H: Record row success linking studentId
+        await tx.studentImportRow.create({
+          data: {
+            batchId: batch.id,
+            rowNumber: row.rowNumber,
+            studentId: student.id,
+            status: ImportRowStatus.SUCCESS,
+            rawDataJson: row as unknown as object,
+          },
+        });
+
+        return student;
+      });
+
+      successfulStudents.push({
+        rowNumber: row.rowNumber,
+        studentId: createdStudent.id,
+        admissionNumber: createdStudent.admissionNumber,
+        studentName: `${createdStudent.firstName} ${createdStudent.lastName}`,
+      });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown row processing error';
+      failedRows.push({ rowNumber: row.rowNumber, errorMessage });
+
+      // Record failed row outside the rolled-back transaction
+      await prisma.studentImportRow.create({
+        data: {
+          batchId: batch.id,
+          rowNumber: row.rowNumber,
+          status: ImportRowStatus.FAILED,
+          rawDataJson: row as unknown as object,
+          errorMessage,
+        },
+      });
+    }
+  }
+
+  // 4. Update Batch summary status
+  const finalStatus =
+    failedRows.length === 0
+      ? ImportBatchStatus.COMPLETED
+      : successfulStudents.length > 0
+        ? ImportBatchStatus.PARTIALLY_COMPLETED
+        : ImportBatchStatus.FAILED;
+
+  await prisma.studentImportBatch.update({
+    where: { id: batch.id },
+    data: {
+      totalSuccessful: successfulStudents.length,
+      totalFailed: failedRows.length,
+      status: finalStatus,
+    },
+  });
+
+  return {
+    batchId: batch.id,
+    batchNumber: batch.batchNumber,
+    totalSubmitted: input.rows.length,
+    totalSuccessful: successfulStudents.length,
+    totalFailed: failedRows.length,
+    status: finalStatus,
+    successfulStudents,
+    failedRows,
+  };
+}
