@@ -215,6 +215,26 @@ export async function assignTeacherScope(
     }
   }
 
+  // Check if identical scope already exists to prevent duplicate authorization records
+  const existingScope = await prisma.teacherScope.findFirst({
+    where: {
+      teacherId: input.teacherId,
+      academicSessionId: input.academicSessionId,
+      programmeId: input.programmeId,
+      schoolClassId: input.schoolClassId || null,
+      subjectId: input.subjectId || null,
+    },
+    include: {
+      programme: true,
+      schoolClass: true,
+      subject: true,
+    },
+  });
+
+  if (existingScope) {
+    return existingScope;
+  }
+
   const teacherScope = await prisma.$transaction(async (tx) => {
     const scope = await tx.teacherScope.create({
       data: {
