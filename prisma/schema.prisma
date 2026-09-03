@@ -99,6 +99,20 @@ enum EnrollmentStatus {
   WITHDRAWN
 }
 
+enum AcademicSessionStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum AcademicTermStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
 enum AdmissionCycleStatus {
   UPCOMING
   OPEN
@@ -499,13 +513,14 @@ model TeacherScope {
 // -----------------------------------------------------------------------------
 
 model AcademicSession {
-  id              String            @id @default(uuid()) @db.Uuid
-  name            String            @unique // e.g. "2026/2027"
-  startDate       DateTime          @map("start_date") @db.Date
-  endDate         DateTime          @map("end_date") @db.Date
-  isCurrent       Boolean           @default(false) @map("is_current")
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  id              String                @id @default(uuid()) @db.Uuid
+  name            String                @unique // e.g. "2026/2027"
+  startDate       DateTime              @map("start_date") @db.Date
+  endDate         DateTime              @map("end_date") @db.Date
+  status          AcademicSessionStatus @default(UPCOMING) @map("status")
+  isCurrent       Boolean               @default(false) @map("is_current")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
 
   terms           AcademicTerm[]
   admissionCycles AdmissionCycle[]
@@ -521,15 +536,16 @@ model AcademicSession {
 }
 
 model AcademicTerm {
-  id                String          @id @default(uuid()) @db.Uuid
-  academicSessionId String          @map("academic_session_id") @db.Uuid
-  termCode          TermCode        @map("term_code")
-  name              String          // e.g. "First Term"
-  startDate         DateTime        @map("start_date") @db.Date
-  endDate           DateTime        @map("end_date") @db.Date
-  isCurrent         Boolean         @default(false) @map("is_current")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
+  id                String             @id @default(uuid()) @db.Uuid
+  academicSessionId String             @map("academic_session_id") @db.Uuid
+  termCode          TermCode           @map("term_code")
+  name              String             // e.g. "First Term"
+  startDate         DateTime           @map("start_date") @db.Date
+  endDate           DateTime           @map("end_date") @db.Date
+  status            AcademicTermStatus @default(UPCOMING) @map("status")
+  isCurrent         Boolean            @default(false) @map("is_current")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
 
   academicSession   AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
   enrollments       StudentProgrammeEnrollment[]
@@ -546,6 +562,7 @@ model Programme {
   code                        ProgrammeCode                   @unique
   name                        String
   isMainAcademic              Boolean                         @default(true) @map("is_main_academic") // false for Tahfeez
+  isActive                    Boolean                         @default(true) @map("is_active")
   description                 String?
   displayOrder                Int                             @default(0) @map("display_order")
   createdAt                   DateTime                        @default(now()) @map("created_at")
@@ -553,6 +570,7 @@ model Programme {
 
   classes                     SchoolClass[]
   subjects                    Subject[]
+  gradingScales               GradingScale[]
   enrollments                 StudentProgrammeEnrollment[]
   feeStructures               FeeStructure[]
   invoices                    Invoice[]
@@ -564,19 +582,21 @@ model Programme {
 }
 
 model SchoolClass {
-  id                   String                          @id @default(uuid()) @db.Uuid
-  programmeId          String                          @map("programme_id") @db.Uuid
-  code                 String                          @unique // e.g. "PRI_1", "PRI_4", "TAH_A"
-  name                 String                          // e.g. "Primary 1"
-  arm                  String?                         // e.g. "A", "Gold"
-  capacity             Int                             @default(30)
-  createdAt            DateTime                        @default(now()) @map("created_at")
-  updatedAt            DateTime                        @updatedAt @map("updated_at")
+  id                    String                          @id @default(uuid()) @db.Uuid
+  programmeId           String                          @map("programme_id") @db.Uuid
+  code                  String                          @unique // e.g. "PRI_1", "PRI_4", "TAH_A"
+  name                  String                          // e.g. "Primary 1"
+  arm                   String?                         // e.g. "A", "Gold"
+  capacity              Int                             @default(30)
+  isActive              Boolean                         @default(true) @map("is_active")
+  displayOrder          Int                             @default(0) @map("display_order")
+  createdAt             DateTime                        @default(now()) @map("created_at")
+  updatedAt             DateTime                        @updatedAt @map("updated_at")
 
-  programme            Programme                       @relation(fields: [programmeId], references: [id], onDelete: Restrict)
-  enrollments          StudentProgrammeEnrollment[]
-  teacherScopes        TeacherScope[]
-  feeStructures        FeeStructure[]
+  programme             Programme                       @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  enrollments           StudentProgrammeEnrollment[]
+  teacherScopes         TeacherScope[]
+  feeStructures         FeeStructure[]
   applicationSelections ApplicationProgrammeSelection[]
 
   @@index([programmeId])
@@ -588,6 +608,9 @@ model Subject {
   programmeId   String         @map("programme_id") @db.Uuid
   code          String         @unique // e.g. "MATH", "ENG", "QURAN"
   name          String
+  description   String?
+  isActive      Boolean        @default(true) @map("is_active")
+  displayOrder  Int            @default(0) @map("display_order")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
@@ -596,6 +619,45 @@ model Subject {
 
   @@index([programmeId])
   @@map("subjects")
+}
+
+model GradingScale {
+  id           String        @id @default(uuid()) @db.Uuid
+  programmeId  String?       @map("programme_id") @db.Uuid
+  code         String        @unique // e.g. "PRIMARY_STANDARD_2026", "TAHFEEZ_EVALUATION"
+  name         String        // e.g. "Primary Standard Grading Scale"
+  passMark     Decimal       @map("pass_mark") @db.Decimal(5, 2)
+  maxScore     Decimal       @default(100.00) @map("max_score") @db.Decimal(5, 2)
+  isActive     Boolean       @default(true) @map("is_active")
+  description  String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  programme    Programme?    @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  bands        GradingBand[]
+
+  @@index([programmeId])
+  @@map("grading_scales")
+}
+
+model GradingBand {
+  id             String       @id @default(uuid()) @db.Uuid
+  gradingScaleId String       @map("grading_scale_id") @db.Uuid
+  grade          String       // e.g. "A", "B", "C", "D", "E", "F" or "Mumtaz", "Jayyid"
+  minScore       Decimal      @map("min_score") @db.Decimal(5, 2)
+  maxScore       Decimal      @map("max_score") @db.Decimal(5, 2)
+  points         Decimal?     @db.Decimal(4, 2)
+  remark         String       // e.g. "Distinction", "Credit", "Pass", "Fail"
+  isPass         Boolean      @default(true) @map("is_pass")
+  displayOrder   Int          @default(0) @map("display_order")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  gradingScale   GradingScale @relation(fields: [gradingScaleId], references: [id], onDelete: Cascade)
+
+  @@unique([gradingScaleId, grade])
+  @@index([gradingScaleId, minScore, maxScore])
+  @@map("grading_bands")
 }
 
 /// Crucial Multi-Programme Enrollment Junction Entity

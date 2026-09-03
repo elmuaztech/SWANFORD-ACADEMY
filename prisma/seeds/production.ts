@@ -7,6 +7,7 @@ import {
   ConfigCategory,
   AdmissionCycleStatus,
   ProgrammeAvailabilityStatus,
+  AcademicTermStatus,
 } from "@prisma/client";
 
 /**
@@ -139,19 +140,27 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
   // 5. Academic Session & Terms
   const session = await prisma.academicSession.upsert({
     where: { name: "2026/2027" },
-    update: { isCurrent: true },
+    update: { isCurrent: true, status: "ACTIVE" },
     create: {
       name: "2026/2027",
       startDate: new Date("2026-09-01"),
       endDate: new Date("2027-07-31"),
+      status: "ACTIVE",
       isCurrent: true,
     },
   });
 
-  const termsData = [
-    { termCode: TermCode.FIRST, name: "First Term", isCurrent: true, startDate: new Date("2026-09-01"), endDate: new Date("2026-12-15") },
-    { termCode: TermCode.SECOND, name: "Second Term", isCurrent: false, startDate: new Date("2027-01-10"), endDate: new Date("2027-04-10") },
-    { termCode: TermCode.THIRD, name: "Third Term", isCurrent: false, startDate: new Date("2027-05-02"), endDate: new Date("2027-07-25") },
+  const termsData: {
+    termCode: TermCode;
+    name: string;
+    isCurrent: boolean;
+    status: AcademicTermStatus;
+    startDate: Date;
+    endDate: Date;
+  }[] = [
+    { termCode: TermCode.FIRST, name: "First Term", isCurrent: true, status: AcademicTermStatus.ACTIVE, startDate: new Date("2026-09-01"), endDate: new Date("2026-12-15") },
+    { termCode: TermCode.SECOND, name: "Second Term", isCurrent: false, status: AcademicTermStatus.UPCOMING, startDate: new Date("2027-01-10"), endDate: new Date("2027-04-10") },
+    { termCode: TermCode.THIRD, name: "Third Term", isCurrent: false, status: AcademicTermStatus.UPCOMING, startDate: new Date("2027-05-02"), endDate: new Date("2027-07-25") },
   ];
 
   const termsMap = new Map<TermCode, string>();
@@ -163,13 +172,14 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
           termCode: t.termCode,
         },
       },
-      update: { name: t.name, isCurrent: t.isCurrent },
+      update: { name: t.name, isCurrent: t.isCurrent, status: t.status },
       create: {
         academicSessionId: session.id,
         termCode: t.termCode,
         name: t.name,
         startDate: t.startDate,
         endDate: t.endDate,
+        status: t.status,
         isCurrent: t.isCurrent,
       },
     });
@@ -213,12 +223,20 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
     });
   }
 
-  // 7. System Configurations
+  // 7. System Configurations & School Profile
   const configsData = [
     { key: "school.name", value: "Swanford Academy", category: ConfigCategory.GENERAL },
     { key: "school.subtitle", value: "Nursery, Primary & Tahfeez School", category: ConfigCategory.GENERAL },
     { key: "school.motto", value: "Illuminating the Path to Success", category: ConfigCategory.GENERAL },
+    { key: "school.mission", value: "To nurture academically sound, morally upright, and Quran-conscious global citizens.", category: ConfigCategory.GENERAL },
+    { key: "school.vision", value: "To be the premier citadel of blended academic excellence and authentic Islamic values in Northern Nigeria.", category: ConfigCategory.GENERAL },
     { key: "school.address", value: "PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE", category: ConfigCategory.GENERAL },
+    { key: "school.phone_primary", value: "08030000001", category: ConfigCategory.GENERAL },
+    { key: "school.email", value: "info@swanfordacademy.edu.ng", category: ConfigCategory.GENERAL },
+    { key: "school.proprietor", value: "Alhaji Muhammad Sani", category: ConfigCategory.GENERAL },
+    { key: "school.timezone", value: "Africa/Lagos", category: ConfigCategory.GENERAL },
+    { key: "school.primary_color", value: "#1E3A8A", category: ConfigCategory.GENERAL },
+    { key: "school.secondary_color", value: "#F59E0B", category: ConfigCategory.GENERAL },
     { key: "admissions.form_fee_kobo", value: "500000", category: ConfigCategory.ADMISSIONS },
     { key: "finance.bank_name", value: "Jaiz Bank", category: ConfigCategory.FINANCE },
     { key: "finance.account_number", value: "0012031162", category: ConfigCategory.FINANCE },
@@ -233,10 +251,56 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
     });
   }
 
-  // 7. Initial Fee Structures & Fee Items
-  const firstTermId = termsMap.get(TermCode.FIRST)!;
+  // 8. Standard Reference Grading Scales & Bands
   const primaryProgId = programmesMap.get(ProgrammeCode.PRIMARY)!;
   const tahfeezProgId = programmesMap.get(ProgrammeCode.TAHFEEZ)!;
+
+  await prisma.gradingScale.upsert({
+    where: { code: "PRIMARY_STANDARD_2026" },
+    update: {},
+    create: {
+      code: "PRIMARY_STANDARD_2026",
+      name: "Primary Standard Grading Scale",
+      programmeId: primaryProgId,
+      passMark: 40.00,
+      maxScore: 100.00,
+      description: "Standard British/Nigerian Primary Continuous Assessment & Exam Scale",
+      bands: {
+        create: [
+          { grade: "A", minScore: 70.00, maxScore: 100.00, points: 5.0, remark: "Distinction", isPass: true, displayOrder: 1 },
+          { grade: "B", minScore: 60.00, maxScore: 69.99, points: 4.0, remark: "Very Good", isPass: true, displayOrder: 2 },
+          { grade: "C", minScore: 50.00, maxScore: 59.99, points: 3.0, remark: "Credit", isPass: true, displayOrder: 3 },
+          { grade: "D", minScore: 40.00, maxScore: 49.99, points: 2.0, remark: "Pass", isPass: true, displayOrder: 4 },
+          { grade: "F", minScore: 0.00, maxScore: 39.99, points: 0.0, remark: "Fail", isPass: false, displayOrder: 5 },
+        ],
+      },
+    },
+  });
+
+  await prisma.gradingScale.upsert({
+    where: { code: "TAHFEEZ_STANDARD_2026" },
+    update: {},
+    create: {
+      code: "TAHFEEZ_STANDARD_2026",
+      name: "Tahfeez Quran Memorization Scale",
+      programmeId: tahfeezProgId,
+      passMark: 50.00,
+      maxScore: 100.00,
+      description: "Classical Tahfeez Hifz and Tajweed Assessment Scale",
+      bands: {
+        create: [
+          { grade: "Mumtaz", minScore: 85.00, maxScore: 100.00, points: 5.0, remark: "Excellent (Mumtaz)", isPass: true, displayOrder: 1 },
+          { grade: "Jayyid Jiddan", minScore: 70.00, maxScore: 84.99, points: 4.0, remark: "Very Good (Jayyid Jiddan)", isPass: true, displayOrder: 2 },
+          { grade: "Jayyid", minScore: 50.00, maxScore: 69.99, points: 3.0, remark: "Good (Jayyid)", isPass: true, displayOrder: 3 },
+          { grade: "Maqbul", minScore: 40.00, maxScore: 49.99, points: 2.0, remark: "Pass (Maqbul)", isPass: false, displayOrder: 4 },
+          { grade: "Rasib", minScore: 0.00, maxScore: 39.99, points: 0.0, remark: "Fail (Rasib)", isPass: false, displayOrder: 5 },
+        ],
+      },
+    },
+  });
+
+  // 9. Initial Fee Structures & Fee Items
+  const firstTermId = termsMap.get(TermCode.FIRST)!;
 
   // Primary 1st Term Boys: ₦110,000 (11000000 kobo)
   await prisma.feeStructure.upsert({

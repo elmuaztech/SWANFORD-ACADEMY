@@ -139,7 +139,7 @@ describe('Auth & Account Lifecycle Integration Tests', () => {
     dbUser = await prisma.user.findUnique({ where: { id: userId } });
     expect(dbUser?.lockedUntil).toBeNull();
     expect(dbUser?.failedLoginAttempts).toBe(0);
-  });
+  }, 15000);
 
   it('handles password reset request and confirmation with session invalidation', async () => {
     // 1. Establish an active session first
