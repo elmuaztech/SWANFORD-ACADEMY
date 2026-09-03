@@ -42,48 +42,46 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
     rolesMap.set(r.code, role.id);
   }
 
-  // 2. Core System Permissions
-  const permissionsData = [
-    { code: "users:manage", name: "Manage Users", module: "identity" },
-    { code: "roles:assign", name: "Assign Roles", module: "identity" },
-    { code: "students:view", name: "View Students", module: "students" },
-    { code: "students:manage", name: "Manage Students", module: "students" },
-    { code: "guardians:manage", name: "Manage Guardians", module: "guardians" },
-    { code: "academics:enroll", name: "Enroll Students in Programmes", module: "academics" },
-    { code: "attendance:record", name: "Record Attendance", module: "academics" },
-    { code: "assessments:grade", name: "Submit Grades & Assessments", module: "academics" },
-    { code: "admissions:review", name: "Review Applications", module: "admissions" },
-    { code: "admissions:approve", name: "Approve/Reject Admissions", module: "admissions" },
-    { code: "invoices:create", name: "Create & Issue Invoices", module: "finance" },
-    { code: "invoices:cancel", name: "Cancel Invoices", module: "finance" },
-    { code: "payments:record", name: "Record Ledger Payments", module: "finance" },
-    { code: "expenses:record", name: "Record School Expenses", module: "finance" },
-    { code: "finance:reports", name: "View Financial Reports", module: "finance" },
-    { code: "settings:manage", name: "Manage System Settings", module: "settings" },
-    { code: "audit:view", name: "View System Audit Logs", module: "audit" },
-  ];
+  // 2. Canonical System Permissions & Role-Permission Mappings
+  const { PERMISSION_DEFINITIONS, SYSTEM_ROLE_PERMISSIONS } = await import(
+    "../../src/lib/auth/permissions"
+  );
 
-  for (const p of permissionsData) {
+  const permMap = new Map<string, string>();
+  for (const p of Object.values(PERMISSION_DEFINITIONS)) {
     const perm = await prisma.permission.upsert({
       where: { code: p.code },
-      update: { name: p.name, module: p.module },
-      create: p,
+      update: { name: p.name, module: p.module, description: p.description },
+      create: {
+        code: p.code,
+        name: p.name,
+        module: p.module,
+        description: p.description,
+      },
     });
+    permMap.set(p.code, perm.id);
+  }
 
-    // Assign all permissions to SUPER_ADMIN
-    const superAdminRoleId = rolesMap.get(RoleCode.SUPER_ADMIN);
-    if (superAdminRoleId) {
+  // Seed system-controlled role-permission mappings for all 5 roles
+  for (const [roleCode, permCodes] of Object.entries(SYSTEM_ROLE_PERMISSIONS)) {
+    const roleId = rolesMap.get(roleCode);
+    if (!roleId) continue;
+
+    for (const permCode of permCodes) {
+      const permId = permMap.get(permCode);
+      if (!permId) continue;
+
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: {
-            roleId: superAdminRoleId,
-            permissionId: perm.id,
+            roleId,
+            permissionId: permId,
           },
         },
         update: {},
         create: {
-          roleId: superAdminRoleId,
-          permissionId: perm.id,
+          roleId,
+          permissionId: permId,
         },
       });
     }

@@ -475,7 +475,8 @@ model TeacherScope {
   id                String          @id @default(uuid()) @db.Uuid
   teacherId         String          @map("teacher_id") @db.Uuid
   academicSessionId String          @map("academic_session_id") @db.Uuid
-  schoolClassId     String          @map("school_class_id") @db.Uuid
+  programmeId       String          @map("programme_id") @db.Uuid
+  schoolClassId     String?         @map("school_class_id") @db.Uuid
   subjectId         String?         @map("subject_id") @db.Uuid
   isFormTeacher     Boolean         @default(false) @map("is_form_teacher")
   createdAt         DateTime        @default(now()) @map("created_at")
@@ -483,11 +484,13 @@ model TeacherScope {
 
   teacher           Teacher         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   academicSession   AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
-  schoolClass       SchoolClass     @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
+  programme         Programme       @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  schoolClass       SchoolClass?    @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
   subject           Subject?        @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
-  @@unique([teacherId, academicSessionId, schoolClassId, subjectId])
-  @@index([teacherId, academicSessionId])
+  @@index([teacherId, academicSessionId, programmeId])
+  @@index([schoolClassId])
+  @@index([subjectId])
   @@map("teacher_scopes")
 }
 
@@ -555,6 +558,7 @@ model Programme {
   invoices                    Invoice[]
   applicationSelections       ApplicationProgrammeSelection[]
   admissionAvailabilities     AdmissionCycleProgramme[]
+  teacherScopes               TeacherScope[]
 
   @@map("programmes")
 }
