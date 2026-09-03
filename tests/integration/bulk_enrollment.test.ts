@@ -91,6 +91,21 @@ describe('Bulk Student Enrollment Integration Tests', () => {
       });
     }
     primaryClassId = schoolClass.id;
+
+    // Clean up test guardian & students from prior runs for test idempotency
+    const testGuardian = await prisma.guardian.findUnique({
+      where: { email: 'muhammad.sani@example.com' },
+      select: { id: true, userId: true },
+    });
+    if (testGuardian) {
+      await prisma.guardianStudentRelationship.deleteMany({
+        where: { guardianId: testGuardian.id },
+      });
+      await prisma.guardian.delete({ where: { id: testGuardian.id } });
+      if (testGuardian.userId) {
+        await prisma.user.delete({ where: { id: testGuardian.userId } });
+      }
+    }
   });
 
   afterAll(async () => {
