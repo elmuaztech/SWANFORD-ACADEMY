@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requirePermission, AuthorizationError } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
+import { Prisma } from '@prisma/client';
 import { SafeUser } from '@/lib/auth/service';
 import { matchExistingGuardian } from './guardian_matching';
 
@@ -46,23 +47,28 @@ export type UpdateGuardianInput = z.input<typeof UpdateGuardianSchema>;
 
 export async function createGuardian(
   actor: SafeUser,
-  input: CreateGuardianInput
+  input: CreateGuardianInput,
+  externalTx?: Prisma.TransactionClient
 ) {
   await requirePermission(actor, PermissionCode.GUARDIAN_EDIT);
   const validated = CreateGuardianSchema.parse(input);
 
   const normalizedEmail = validated.email?.trim().toLowerCase() || null;
+  const dbClient = externalTx || prisma;
 
   // Check matching
-  const match = await matchExistingGuardian({
-    firstName: validated.firstName,
-    lastName: validated.lastName,
-    email: normalizedEmail,
-    phonePrimary: validated.phonePrimary,
-  });
+  const match = await matchExistingGuardian(
+    {
+      firstName: validated.firstName,
+      lastName: validated.lastName,
+      email: normalizedEmail,
+      phonePrimary: validated.phonePrimary,
+    },
+    dbClient
+  );
 
   if (match.matchedGuardianId && match.matchType === 'EXACT_EMAIL_MATCH' && !match.hasConflict) {
-    const existing = await prisma.guardian.findUniqueOrThrow({
+    const existing = await dbClient.guardian.findUniqueOrThrow({
       where: { id: match.matchedGuardianId },
     });
     return {
@@ -72,7 +78,7 @@ export async function createGuardian(
     };
   }
 
-  const guardian = await prisma.$transaction(async (tx) => {
+  const executeInTx = async (tx: Prisma.TransactionClient) => {
     const created = await tx.guardian.create({
       data: {
         title: validated.title || null,
@@ -101,7 +107,9 @@ export async function createGuardian(
     });
 
     return created;
-  });
+  };
+
+  const guardian = externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
 
   const warnings = match.conflictReason ? [match.conflictReason] : [];
 

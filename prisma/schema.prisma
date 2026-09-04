@@ -768,6 +768,7 @@ model Application {
   totalAmountKobo        BigInt                   @default(500000) @map("total_amount_kobo") @db.BigInt
   amountPaidKobo         BigInt                   @default(0) @map("amount_paid_kobo") @db.BigInt
   paymentStatus          ApplicationPaymentStatus @default(UNPAID) @map("payment_status")
+  paymentReference       String?                  @map("payment_reference")
   emailVerified          Boolean                  @default(false) @map("email_verified")
   status                 ApplicationStatus        @default(DRAFT)
   admittedStudentId      String?                  @unique @map("admitted_student_id") @db.Uuid
@@ -864,6 +865,15 @@ model AdmissionNumberSequence {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("admission_number_sequences")
+}
+
+/// Atomic sequence generator for permanent, concurrency-safe application numbers (APP-YYYY-NNNN)
+model ApplicationNumberSequence {
+  year         Int      @id
+  lastSequence Int      @default(0) @map("last_sequence")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("application_number_sequences")
 }
 
 /// Operational intake batch for bulk student onboarding

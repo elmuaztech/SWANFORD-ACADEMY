@@ -1,4 +1,4 @@
-import { Gender, StudentStatus, RoleCode } from '@prisma/client';
+import { Gender, StudentStatus, RoleCode, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requirePermission, AuthorizationError, getUserRoles, getUserPermissions } from '@/lib/auth/authorization';
@@ -99,7 +99,8 @@ export type StudentDetailedView = StudentDemographicView & StudentSensitiveDetai
 export async function createStudent(
   actor: SafeUser,
   input: CreateStudentInput,
-  year: number = new Date().getFullYear()
+  year: number = new Date().getFullYear(),
+  externalTx?: Prisma.TransactionClient
 ) {
   await requirePermission(actor, PermissionCode.STUDENT_CREATE);
   const validated = CreateStudentSchema.parse(input);
@@ -118,16 +119,19 @@ export async function createStudent(
   }
 
   // Duplicate detection (WARNING ONLY)
-  const duplicateCheck = await detectPotentialStudentDuplicates({
-    firstName: validated.firstName,
-    lastName: validated.lastName,
-    dateOfBirth: validated.dateOfBirth,
-  });
+  const duplicateCheck = await detectPotentialStudentDuplicates(
+    {
+      firstName: validated.firstName,
+      lastName: validated.lastName,
+      dateOfBirth: validated.dateOfBirth,
+    },
+    externalTx || prisma
+  );
 
   // Reserve unique, concurrency-safe admission number
-  const [admissionNumber] = await reserveAdmissionNumberBlock(1, year);
+  const [admissionNumber] = await reserveAdmissionNumberBlock(1, year, externalTx || prisma);
 
-  const student = await prisma.$transaction(async (tx) => {
+  const executeInTx = async (tx: Prisma.TransactionClient) => {
     const created = await tx.student.create({
       data: {
         admissionNumber,
@@ -165,7 +169,9 @@ export async function createStudent(
     });
 
     return created;
-  });
+  };
+
+  const student = externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
 
   return {
     student,

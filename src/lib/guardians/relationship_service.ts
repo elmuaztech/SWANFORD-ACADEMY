@@ -1,4 +1,4 @@
-import { RelationshipType, RelationshipStatus } from '@prisma/client';
+import { RelationshipType, RelationshipStatus, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requirePermission, AuthorizationError, getUserRoles } from '@/lib/auth/authorization';
@@ -36,15 +36,17 @@ export type CreateRelationshipInput = z.input<typeof CreateRelationshipSchema>;
  */
 export async function linkGuardianToStudent(
   actor: SafeUser,
-  input: CreateRelationshipInput
+  input: CreateRelationshipInput,
+  externalTx?: Prisma.TransactionClient
 ) {
   await requirePermission(actor, PermissionCode.GUARDIAN_RELATIONSHIP_MANAGE);
   const validated = CreateRelationshipSchema.parse(input);
+  const dbClient = externalTx || prisma;
 
   // 1. Verify student and guardian exist
   const [student, guardian] = await Promise.all([
-    prisma.student.findUnique({ where: { id: validated.studentId } }),
-    prisma.guardian.findUnique({ where: { id: validated.guardianId } }),
+    dbClient.student.findUnique({ where: { id: validated.studentId } }),
+    dbClient.guardian.findUnique({ where: { id: validated.guardianId } }),
   ]);
 
   if (!student) {
@@ -54,7 +56,7 @@ export async function linkGuardianToStudent(
     throw new AuthorizationError('Guardian not found.', 404, 'GUARDIAN_NOT_FOUND');
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const executeInTx = async (tx: Prisma.TransactionClient) => {
     // 2. Check existing active primary contacts for this student
     const currentPrimary = await tx.guardianStudentRelationship.findFirst({
       where: {
@@ -177,7 +179,9 @@ export async function linkGuardianToStudent(
     });
 
     return created;
-  });
+  };
+
+  const result = externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
 
   return result;
 }

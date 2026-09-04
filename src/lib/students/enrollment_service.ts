@@ -1,4 +1,4 @@
-import { EnrollmentType, EnrollmentStatus } from '@prisma/client';
+import { EnrollmentStatus, EnrollmentType, Prisma, StudentStatus } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requirePermission, AuthorizationError, getUserRoles } from '@/lib/auth/authorization';
@@ -34,21 +34,30 @@ export type EnrollStudentProgrammeInput = z.input<typeof EnrollStudentProgrammeS
  */
 export async function enrollStudentInProgramme(
   actor: SafeUser,
-  input: EnrollStudentProgrammeInput
+  input: EnrollStudentProgrammeInput,
+  externalTx?: Prisma.TransactionClient
 ) {
   await requirePermission(actor, PermissionCode.ENROLLMENT_MANAGE);
   const validated = EnrollStudentProgrammeSchema.parse(input);
+  const dbClient = externalTx || prisma;
 
-  // 1. Verify student exists and is active
-  const student = await prisma.student.findUnique({
+  // 1. Verify student exists and is eligible for enrollment (ACTIVE or INACTIVE)
+  const student = await dbClient.student.findUnique({
     where: { id: validated.studentId },
   });
   if (!student) {
     throw new AuthorizationError('Student not found.', 404, 'STUDENT_NOT_FOUND');
   }
+  if (student.currentStatus === StudentStatus.WITHDRAWN || student.currentStatus === StudentStatus.GRADUATED) {
+    throw new AuthorizationError(
+      `Cannot enroll a student with status '${student.currentStatus}'.`,
+      400,
+      'STUDENT_INELIGIBLE_STATUS'
+    );
+  }
 
   // 2. Verify programme exists and retrieve main/additional classification
-  const programme = await prisma.programme.findUnique({
+  const programme = await dbClient.programme.findUnique({
     where: { id: validated.programmeId },
   });
   if (!programme || !programme.isActive) {
@@ -56,7 +65,7 @@ export async function enrollStudentInProgramme(
   }
 
   // 3. Verify class belongs to programme
-  const schoolClass = await prisma.schoolClass.findUnique({
+  const schoolClass = await dbClient.schoolClass.findUnique({
     where: { id: validated.schoolClassId },
   });
   if (!schoolClass || schoolClass.programmeId !== programme.id || !schoolClass.isActive) {
@@ -68,7 +77,7 @@ export async function enrollStudentInProgramme(
   }
 
   // 4. Verify session and term exist and are linked
-  const term = await prisma.academicTerm.findUnique({
+  const term = await dbClient.academicTerm.findUnique({
     where: { id: validated.academicTermId },
   });
   if (!term || term.academicSessionId !== validated.academicSessionId) {
@@ -84,7 +93,7 @@ export async function enrollStudentInProgramme(
     validated.enrollmentType ||
     (programme.isMainAcademic ? EnrollmentType.MAIN_ACADEMIC : EnrollmentType.ADDITIONAL_PROGRAMME);
 
-  const result = await prisma.$transaction(async (tx) => {
+  const executeInTx = async (tx: Prisma.TransactionClient) => {
     // 5. If MAIN_ACADEMIC, verify student does not already have a MAIN_ACADEMIC enrollment for this term
     if (enrollmentType === EnrollmentType.MAIN_ACADEMIC) {
       const existingMain = await tx.studentProgrammeEnrollment.findFirst({
@@ -195,7 +204,9 @@ export async function enrollStudentInProgramme(
     });
 
     return created;
-  });
+  };
+
+  const result = externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
 
   return result;
 }
