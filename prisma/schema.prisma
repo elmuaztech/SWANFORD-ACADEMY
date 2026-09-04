@@ -44,10 +44,12 @@ enum TeacherStatus {
 
 enum StudentStatus {
   ACTIVE
+  INACTIVE
   GRADUATED
   TRANSFERRED_OUT
   WITHDRAWN
   SUSPENDED
+  ARCHIVED
 }
 
 enum Gender {
@@ -398,7 +400,7 @@ model Guardian {
   lastName           String   @map("last_name")
   otherNames         String?  @map("other_names")
   email              String?   @unique
-  phonePrimary       String    @map("phone_primary")
+  phonePrimary       String?   @map("phone_primary")
   phoneSecondary     String?   @map("phone_secondary")
   residentialAddress String?   @map("residential_address")
   occupation         String?
@@ -441,11 +443,17 @@ model Student {
   firstName       String         @map("first_name")
   lastName        String         @map("last_name")
   otherNames      String?        @map("other_names")
+  preferredName   String?        @map("preferred_name")
   gender          Gender
   dateOfBirth     DateTime       @map("date_of_birth") @db.Date
   bloodGroup      String?        @map("blood_group")
   genotype        String?
   medicalNotes    String?        @map("medical_notes")
+  allergies       String?        @map("allergies")
+  medicalConditions String?      @map("medical_conditions")
+  emergencyContactName String?   @map("emergency_contact_name")
+  emergencyContactPhone String?  @map("emergency_contact_phone")
+  emergencyContactRelationship String? @map("emergency_contact_relationship")
   admissionDate   DateTime       @default(now()) @map("admission_date") @db.Date
   currentStatus   StudentStatus  @default(ACTIVE) @map("current_status")
   createdAt       DateTime       @default(now()) @map("created_at")
@@ -473,6 +481,10 @@ model GuardianStudentRelationship {
   canPickup        Boolean            @default(true) @map("can_pickup")
   receivesInvoices Boolean            @default(true) @map("receives_invoices")
   status           RelationshipStatus @default(ACTIVE)
+  startDate        DateTime           @default(now()) @map("start_date")
+  endDate          DateTime?          @map("end_date")
+  revokedAt        DateTime?          @map("revoked_at")
+  revokedReason    String?            @map("revoked_reason")
   createdAt        DateTime           @default(now()) @map("created_at")
   updatedAt        DateTime           @updatedAt @map("updated_at")
 

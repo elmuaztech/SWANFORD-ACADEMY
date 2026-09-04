@@ -404,7 +404,10 @@ describe("Swanford Stage 2C Admission Lifecycle, Business Rules & Schema Constra
   // 16. Existing multi-programme enrollment behavior
   it("verifies active student dual-programme enrollments (Primary 4 + Tahfeez) continue functioning unimpeded", async () => {
     const firstTerm = await prisma.academicTerm.findFirstOrThrow({
-      where: { termCode: "FIRST" },
+      where: {
+        academicSession: { name: "2026/2027" },
+        termCode: "FIRST",
+      },
     });
 
     const ahmed = await prisma.student.findUniqueOrThrow({
