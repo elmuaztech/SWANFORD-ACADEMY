@@ -150,8 +150,8 @@ describe('Stage 7 — Integration: Admission Cycles & Programme Availabilities',
       academicSessionId,
       code: `ADM-PAST-${Date.now()}`,
       name: 'Past Cycle',
-      startDate: new Date('2025-01-01'),
-      endDate: new Date('2025-02-01'),
+      startDate: new Date('2094-01-01'),
+      endDate: new Date('2094-02-01'),
       status: AdmissionCycleStatus.OPEN,
     });
 
@@ -159,13 +159,13 @@ describe('Stage 7 — Integration: Admission Cycles & Programme Availabilities',
       academicSessionId,
       code: `ADM-ACTIVE-${Date.now()}`,
       name: 'Current Active Cycle',
-      startDate: new Date('2026-01-01'),
-      endDate: new Date('2026-12-31'),
+      startDate: new Date('2095-01-01'),
+      endDate: new Date('2095-12-31'),
       status: AdmissionCycleStatus.OPEN,
     });
 
-    // Check at test date 2026-06-15 (inside active cycle, outside past cycle)
-    const active = await getActiveAdmissionCycle(new Date('2026-06-15T12:00:00Z'));
+    // Check at test date 2095-06-15 (inside active cycle, outside past cycle)
+    const active = await getActiveAdmissionCycle(new Date('2095-06-15T12:00:00Z'));
     expect(active).toBeDefined();
     expect(active?.cycle.id).toBe(activeCycle.id);
   });

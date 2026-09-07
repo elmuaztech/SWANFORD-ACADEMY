@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { prisma } from '@/lib/prisma';
 import {
   formatApplicationNumber,
   generateNextApplicationNumber,
@@ -7,6 +8,13 @@ import {
 import { formatAdmissionNumber } from '@/lib/students/admission_number';
 
 describe('Stage 7 — Unit: Application Number Generator & Sequence Isolation', () => {
+  const testYear = 2088; // Isolated test year
+
+  beforeAll(async () => {
+    await prisma.applicationNumberSequence.deleteMany({
+      where: { year: testYear },
+    });
+  });
   it('formats application numbers to the canonical APP-YYYY-NNNN standard with 4 digits', () => {
     expect(formatApplicationNumber(2026, 1)).toBe('APP-2026-0001');
     expect(formatApplicationNumber(2026, 42)).toBe('APP-2026-0042');
@@ -24,7 +32,6 @@ describe('Stage 7 — Unit: Application Number Generator & Sequence Isolation', 
   });
 
   it('atomically reserves sequential application number blocks', async () => {
-    const testYear = 2088; // Isolated test year
     const block1 = await reserveApplicationNumberBlock(3, testYear);
     expect(block1).toHaveLength(3);
     expect(block1[0]).toBe('APP-2088-0001');
