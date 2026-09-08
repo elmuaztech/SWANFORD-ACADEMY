@@ -277,6 +277,8 @@ model User {
   guardianProfile      Guardian?
   teacherProfile       Teacher?
   recordedPayments     Payment[]                        @relation("PaymentRecordedBy")
+  reconciledPayments   Payment[]                        @relation("PaymentReconciledBy")
+  reversedPayments     Payment[]                        @relation("PaymentReversedBy")
   recordedExpenses     Expense[]                        @relation("ExpenseRecordedBy")
   applicationReviews   ApplicationReview[]              @relation("ApplicationReviewedBy")
   selectionReviews     ApplicationProgrammeSelection[]  @relation("SelectionReviewedBy")
@@ -991,6 +993,7 @@ model Invoice {
 
   items                  InvoiceItem[]
   payments               Payment[]
+  allocations            PaymentAllocation[]
   receipts               Receipt[]
   paymentTransactions    PaymentTransaction[]
 
@@ -1004,15 +1007,16 @@ model Invoice {
 
 /// Frozen line item snapshot created at invoice issuance
 model InvoiceItem {
-  id              String   @id @default(uuid()) @db.Uuid
-  invoiceId       String   @map("invoice_id") @db.Uuid
+  id              String              @id @default(uuid()) @db.Uuid
+  invoiceId       String              @map("invoice_id") @db.Uuid
   description     String
-  unitAmountKobo  BigInt   @map("unit_amount_kobo") @db.BigInt
-  quantity        Int      @default(1)
-  totalAmountKobo BigInt   @map("total_amount_kobo") @db.BigInt
-  createdAt       DateTime @default(now()) @map("created_at")
+  unitAmountKobo  BigInt              @map("unit_amount_kobo") @db.BigInt
+  quantity        Int                 @default(1)
+  totalAmountKobo BigInt              @map("total_amount_kobo") @db.BigInt
+  createdAt       DateTime            @default(now()) @map("created_at")
 
-  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  invoice         Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  allocations     PaymentAllocation[]
 
   @@index([invoiceId])
   @@map("invoice_items")
@@ -1020,47 +1024,118 @@ model InvoiceItem {
 
 /// Official school financial credit ledger entry
 model Payment {
-  id                 String        @id @default(uuid()) @db.Uuid
-  paymentReference   String        @unique @map("payment_reference") // PAY-YYYY-NNNNN
-  invoiceId          String        @map("invoice_id") @db.Uuid
-  studentId          String        @map("student_id") @db.Uuid
-  payerGuardianId    String?       @map("payer_guardian_id") @db.Uuid
-  amountKobo         BigInt        @map("amount_kobo") @db.BigInt
-  paymentMethod      PaymentMethod @map("payment_method")
-  status             PaymentStatus @default(CONFIRMED)
+  id                 String              @id @default(uuid()) @db.Uuid
+  paymentReference   String              @unique @map("payment_reference") // PAY-YYYY-NNNNN
+  invoiceId          String              @map("invoice_id") @db.Uuid
+  studentId          String              @map("student_id") @db.Uuid
+  payerGuardianId    String?             @map("payer_guardian_id") @db.Uuid
+  amountKobo         BigInt              @map("amount_kobo") @db.BigInt
+  paymentMethod      PaymentMethod       @map("payment_method")
+  status             PaymentStatus       @default(CONFIRMED)
+  bankReference      String?             @map("bank_reference")
+  bankName           String?             @map("bank_name")
+  idempotencyKey     String?             @unique @map("idempotency_key")
   notes              String?
-  recordedByUserId   String?       @map("recorded_by_user_id") @db.Uuid
-  paidAt             DateTime      @default(now()) @map("paid_at")
-  createdAt          DateTime      @default(now()) @map("created_at")
+  recordedByUserId   String?             @map("recorded_by_user_id") @db.Uuid
+  reconciledAt       DateTime?           @map("reconciled_at")
+  reconciledByUserId String?             @map("reconciled_by_user_id") @db.Uuid
+  reversedAt         DateTime?           @map("reversed_at")
+  reversedByUserId   String?             @map("reversed_by_user_id") @db.Uuid
+  reversalReason     String?             @map("reversal_reason")
+  paidAt             DateTime            @default(now()) @map("paid_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
 
-  invoice            Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
-  student            Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  payerGuardian      Guardian?     @relation("GuardianPayer", fields: [payerGuardianId], references: [id], onDelete: SetNull)
-  recordedByUser     User?         @relation("PaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  invoice            Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  student            Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  payerGuardian      Guardian?           @relation("GuardianPayer", fields: [payerGuardianId], references: [id], onDelete: SetNull)
+  recordedByUser     User?               @relation("PaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  reconciledByUser   User?               @relation("PaymentReconciledBy", fields: [reconciledByUserId], references: [id], onDelete: SetNull)
+  reversedByUser     User?               @relation("PaymentReversedBy", fields: [reversedByUserId], references: [id], onDelete: SetNull)
   
+  allocations        PaymentAllocation[]
   receipt            Receipt?
   gatewayTransaction PaymentTransaction?
 
   @@index([invoiceId])
   @@index([studentId])
   @@index([paidAt])
+  @@index([status])
+  @@index([bankReference])
   @@map("payments")
 }
 
-model Receipt {
-  id            String   @id @default(uuid()) @db.Uuid
-  receiptNumber String   @unique @map("receipt_number") // REC-YYYY-NNNNN
-  paymentId     String   @unique @map("payment_id") @db.Uuid
-  invoiceId     String   @map("invoice_id") @db.Uuid
-  issuedToName  String   @map("issued_to_name")
-  amountKobo    BigInt   @map("amount_kobo") @db.BigInt
-  issuedAt      DateTime @default(now()) @map("issued_at")
+/// Direct payment allocation to specific invoices and/or invoice items (No wallet system)
+model PaymentAllocation {
+  id             String       @id @default(uuid()) @db.Uuid
+  paymentId      String       @map("payment_id") @db.Uuid
+  invoiceId      String       @map("invoice_id") @db.Uuid
+  invoiceItemId  String?      @map("invoice_item_id") @db.Uuid
+  amountKobo     BigInt       @map("amount_kobo") @db.BigInt
+  createdAt      DateTime     @default(now()) @map("created_at")
 
-  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  payment        Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  invoiceItem    InvoiceItem? @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@index([invoiceItemId])
+  @@map("payment_allocations")
+}
+
+model Receipt {
+  id            String    @id @default(uuid()) @db.Uuid
+  receiptNumber String    @unique @map("receipt_number") // REC-YYYY-NNNNN
+  paymentId     String    @unique @map("payment_id") @db.Uuid
+  invoiceId     String    @map("invoice_id") @db.Uuid
+  issuedToName  String    @map("issued_to_name")
+  amountKobo    BigInt    @map("amount_kobo") @db.BigInt
+  isVoided      Boolean   @default(false) @map("is_voided")
+  voidedAt      DateTime? @map("voided_at")
+  voidReason    String?   @map("void_reason")
+  issuedAt      DateTime  @default(now()) @map("issued_at")
+
+  payment       Payment   @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
 
   @@index([invoiceId])
   @@map("receipts")
+}
+
+/// Atomic sequence generator for permanent, concurrency-safe invoice numbers (INV-YYYY-NNNNN)
+model InvoiceNumberSequence {
+  year         Int      @id
+  lastSequence Int      @default(0) @map("last_sequence")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("invoice_number_sequences")
+}
+
+/// Atomic sequence generator for permanent, concurrency-safe payment references (PAY-YYYY-NNNNN)
+model PaymentReferenceSequence {
+  year         Int      @id
+  lastSequence Int      @default(0) @map("last_sequence")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("payment_reference_sequences")
+}
+
+/// Atomic sequence generator for permanent, concurrency-safe receipt numbers (REC-YYYY-NNNNN)
+model ReceiptNumberSequence {
+  year         Int      @id
+  lastSequence Int      @default(0) @map("last_sequence")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("receipt_number_sequences")
+}
+
+/// Atomic sequence generator for permanent, concurrency-safe expense numbers (EXP-YYYY-NNNNN)
+model ExpenseNumberSequence {
+  year         Int      @id
+  lastSequence Int      @default(0) @map("last_sequence")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("expense_number_sequences")
 }
 
 // -----------------------------------------------------------------------------

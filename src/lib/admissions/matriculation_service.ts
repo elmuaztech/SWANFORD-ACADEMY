@@ -13,6 +13,8 @@ import { createStudent } from '@/lib/students/student_service';
 import { createGuardian } from '@/lib/guardians/guardian_service';
 import { linkGuardianToStudent } from '@/lib/guardians/relationship_service';
 import { enrollStudentInProgramme } from '@/lib/students/enrollment_service';
+import { createInvoice } from '@/lib/finance/invoice_service';
+import { resolveFeeStructureForStudent } from '@/lib/finance/fee_structure_service';
 import { z } from 'zod';
 
 export const MatriculateApplicationSchema = z.object({
@@ -283,7 +285,69 @@ export async function matriculateApplication(
       enrollments.push(enrollment);
     }
 
-    // 11. Finalize Application State -> ENROLLED
+    // 11. Initial School-Fee Invoicing (Stage 8 Integration - Amendment 3)
+    // Keep the ₦5,000 application form fee separate. Create initial term school fee invoice(s)
+    // if applicable fee structures exist, preventing duplicate billing.
+    const issuedInvoices = [];
+    for (const sel of approvedSelections) {
+      const existingInvoice = await tx.invoice.findUnique({
+        where: {
+          unique_student_programme_term_invoice: {
+            studentId: student.id,
+            programmeId: sel.programmeId,
+            academicSessionId: application.academicSessionId,
+            academicTermId: firstTerm.id,
+          },
+        },
+      });
+
+      if (!existingInvoice) {
+        const schoolClassId = resolvedClasses[sel.programmeId];
+        const feeStructure = await resolveFeeStructureForStudent(
+          {
+            studentId: student.id,
+            programmeId: sel.programmeId,
+            academicSessionId: application.academicSessionId,
+            academicTermId: firstTerm.id,
+            schoolClassId,
+            isAdmissionFee: true,
+          },
+          tx
+        );
+
+        if (feeStructure && feeStructure.feeItems.length > 0) {
+          // Exclude any application form fee line to keep application charge strictly separate
+          const feeItems = feeStructure.feeItems.filter(
+            (item) => !item.name.toLowerCase().includes('application form')
+          );
+
+          if (feeItems.length > 0) {
+            const dueDate = firstTerm.startDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+            const invoice = await createInvoice(
+              null, // internal system action during matriculation
+              {
+                studentId: student.id,
+                guardianId,
+                academicSessionId: application.academicSessionId,
+                academicTermId: firstTerm.id,
+                programmeId: sel.programmeId,
+                feeStructureId: feeStructure.id,
+                dueDate,
+                items: feeItems.map((fi) => ({
+                  description: fi.name,
+                  unitAmountKobo: fi.amountKobo,
+                  quantity: 1,
+                })),
+              },
+              tx
+            );
+            issuedInvoices.push(invoice);
+          }
+        }
+      }
+    }
+
+    // 12. Finalize Application State -> ENROLLED
     const updatedApplication = await tx.application.update({
       where: { id: application.id },
       data: {
@@ -297,7 +361,7 @@ export async function matriculateApplication(
       },
     });
 
-    // 12. Write Immutable Audit Log
+    // 13. Write Immutable Audit Log
     await tx.auditLog.create({
       data: {
         userId: actor.id,
@@ -310,6 +374,8 @@ export async function matriculateApplication(
           studentId: student.id,
           guardianId,
           enrolledProgrammes: approvedSelections.map((s) => s.programme.name),
+          issuedInvoicesCount: issuedInvoices.length,
+          issuedInvoiceNumbers: issuedInvoices.map((inv) => inv.invoiceNumber),
         },
       },
     });
@@ -318,6 +384,7 @@ export async function matriculateApplication(
       student,
       guardianId,
       enrollments,
+      invoices: issuedInvoices,
       application: updatedApplication,
     };
   });

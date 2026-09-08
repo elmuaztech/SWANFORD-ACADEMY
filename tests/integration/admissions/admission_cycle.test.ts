@@ -146,6 +146,16 @@ describe('Stage 7 — Integration: Admission Cycles & Programme Availabilities',
   });
 
   it('evaluates active admission cycle correctly with Africa/Lagos time window', async () => {
+    // Close any previous test cycles overlapping the 2095 window
+    await prisma.admissionCycle.updateMany({
+      where: {
+        startDate: { lte: new Date('2095-12-31') },
+        endDate: { gte: new Date('2095-01-01') },
+        status: AdmissionCycleStatus.OPEN,
+      },
+      data: { status: AdmissionCycleStatus.CLOSED },
+    });
+
     await createAdmissionCycle(adminUser, {
       academicSessionId,
       code: `ADM-PAST-${Date.now()}`,
