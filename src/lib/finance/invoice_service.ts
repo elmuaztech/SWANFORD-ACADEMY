@@ -11,6 +11,9 @@ import { parseKoboFromDto } from '@/lib/money';
 import { getNextInvoiceNumber } from './sequences';
 import { resolveFeeStructureForStudent } from './fee_structure_service';
 import { z } from 'zod';
+import { enqueueNotification } from '@/lib/notifications/outbox';
+import { NotificationCategory } from '@/lib/notifications/types';
+import { renderInvoiceIssuedEmail } from '@/lib/notifications/templates';
 
 export const InvoiceItemInputSchema = z.object({
   description: z.string().min(1, 'Description is required').max(200),
@@ -252,6 +255,38 @@ export async function createInvoice(
         },
       },
     });
+
+    // 9. Enqueue Invoice Issued Notification (FINANCE, mandatory)
+    if (invoice.guardian?.email) {
+      const guardianName = `${invoice.guardian.firstName} ${invoice.guardian.lastName}`.trim();
+      const studentName = `${invoice.student.firstName} ${invoice.student.lastName}`.trim();
+      const rendered = renderInvoiceIssuedEmail({
+        guardianName,
+        studentName,
+        invoiceNumber: invoice.invoiceNumber,
+        totalAmountKobo: invoice.totalAmountKobo,
+        dueDateFormatted: invoice.dueDate.toLocaleDateString('en-GB', { timeZone: 'Africa/Lagos' }),
+      });
+
+      await enqueueNotification(
+        {
+          idempotencyKey: `FINANCE:INVOICE_ISSUED:${invoice.id}:${invoice.invoiceNumber}`,
+          recipientEmail: invoice.guardian.email,
+          channel: 'EMAIL',
+          category: NotificationCategory.FINANCE,
+          templateName: 'INVOICE_ISSUED',
+          subject: rendered.subject,
+          bodyText: rendered.text,
+          htmlBody: rendered.html,
+          metadata: {
+            invoiceId: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+            studentId: invoice.studentId,
+          },
+        },
+        tx
+      );
+    }
 
     return invoice;
   };

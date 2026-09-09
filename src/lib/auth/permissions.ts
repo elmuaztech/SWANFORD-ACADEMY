@@ -65,6 +65,7 @@ export const PermissionCode = {
   // 8. COMMUNICATION
   COMMUNICATION_ANNOUNCE: 'communication:announce',
   NOTIFICATION_VIEW: 'notifications:view',
+  NOTIFICATION_RETRY: 'notifications:retry',
 
   // 9. PARENT (Subordinate to active GuardianStudentRelationship)
   PARENT_CHILD_VIEW: 'parent_child:view',
@@ -326,6 +327,12 @@ export const PERMISSION_DEFINITIONS: Record<PermissionCodeType, PermissionDefini
     module: 'communication',
     description: 'Monitor communication delivery logs and outbox queue',
   },
+  [PermissionCode.NOTIFICATION_RETRY]: {
+    code: PermissionCode.NOTIFICATION_RETRY,
+    name: 'Retry Notifications',
+    module: 'communication',
+    description: 'Manually re-queue failed or retryable outbox notifications',
+  },
 
   // Parent
   [PermissionCode.PARENT_CHILD_VIEW]: {
@@ -401,6 +408,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<RoleCode, PermissionCodeType[]> = {
     // Communication
     PermissionCode.COMMUNICATION_ANNOUNCE,
     PermissionCode.NOTIFICATION_VIEW,
+    PermissionCode.NOTIFICATION_RETRY,
   ],
 
   [RoleCode.ACCOUNTANT]: [

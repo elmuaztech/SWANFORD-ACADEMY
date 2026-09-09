@@ -2,6 +2,9 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword, verifyPassword, validatePasswordStrength } from './password';
 import { generateSecureToken, hashToken } from './tokens';
 import { UserStatus, VerificationTokenType } from '@prisma/client';
+import { enqueueNotification } from '@/lib/notifications/outbox';
+import { NotificationCategory } from '@/lib/notifications/types';
+import { renderPasswordResetEmail, renderPasswordChangedEmail } from '@/lib/notifications/templates';
 
 /**
  * Swanford Academy — Authentication & Account Lifecycle Service
@@ -260,17 +263,28 @@ export async function requestPasswordReset(email: string, ipAddress?: string): P
     });
 
     // Queue persistent notification in outbox
-    await tx.notification.create({
-      data: {
+    const resetUrl = `/auth/reset-password?token=${rawToken}`;
+    const rendered = renderPasswordResetEmail({
+      recipientName: user.email.split('@')[0],
+      resetUrl,
+      expiresInMinutes: 60,
+    });
+
+    await enqueueNotification(
+      {
+        idempotencyKey: `SECURITY:PASSWORD_RESET:${user.id}:${tokenHash}`,
         recipientUserId: user.id,
         recipientEmail: user.email,
         channel: 'EMAIL',
+        category: NotificationCategory.SECURITY,
         templateName: 'PASSWORD_RESET_REQUEST',
-        subject: 'Swanford Academy — Password Reset Request',
-        bodyText: `A password reset was requested for your account. Use the following link within 1 hour: /auth/reset-password?token=${rawToken}`,
+        subject: rendered.subject,
+        bodyText: rendered.text,
+        htmlBody: rendered.html,
         metadata: { tokenHash, expiresAt: expiresAt.toISOString() },
       },
-    });
+      tx
+    );
 
     await tx.auditLog.create({
       data: {
@@ -303,7 +317,11 @@ export async function confirmPasswordReset(input: {
 
   const resetRecord = await prisma.passwordReset.findUnique({
     where: { tokenHash },
-    include: { user: true },
+    include: {
+      user: {
+        include: { guardianProfile: true, teacherProfile: true },
+      },
+    },
   });
 
   if (!resetRecord || resetRecord.usedAt !== null || resetRecord.expiresAt <= now) {
@@ -349,6 +367,36 @@ export async function confirmPasswordReset(input: {
         ipAddress: input.ipAddress,
       },
     });
+
+    // 5. Enqueue security notification: password changed
+    const guardian = resetRecord.user.guardianProfile;
+    const teacher = resetRecord.user.teacherProfile;
+    const recipientName = guardian
+      ? `${guardian.firstName} ${guardian.lastName}`.trim()
+      : teacher
+      ? `${teacher.firstName} ${teacher.lastName}`.trim()
+      : resetRecord.user.email;
+
+    const rendered = renderPasswordChangedEmail({
+      recipientName,
+      changeDateFormatted: now.toLocaleString('en-GB', { timeZone: 'Africa/Lagos' }),
+    });
+
+    await enqueueNotification(
+      {
+        idempotencyKey: `SECURITY:PASSWORD_CHANGED:${resetRecord.userId}:${tokenHash}`,
+        recipientUserId: resetRecord.userId,
+        recipientEmail: resetRecord.user.email,
+        channel: 'EMAIL',
+        category: NotificationCategory.SECURITY,
+        templateName: 'PASSWORD_CHANGED',
+        subject: rendered.subject,
+        bodyText: rendered.text,
+        htmlBody: rendered.html,
+        metadata: { tokenHash },
+      },
+      tx
+    );
   });
 }
 

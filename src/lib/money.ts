@@ -81,6 +81,8 @@ export function formatNaira(
   return `${signStr}${symbolStr}${formattedWhole}`;
 }
 
+export const formatKoboToNaira = formatNaira;
+
 /**
  * Safely sums multiple Kobo values using exact BigInt arithmetic.
  */

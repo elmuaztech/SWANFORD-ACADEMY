@@ -41,6 +41,9 @@ import {
   PaystackTransactionData,
   ProcessTransactionResult,
 } from "./types";
+import { enqueueNotification } from "@/lib/notifications/outbox";
+import { NotificationCategory } from "@/lib/notifications/types";
+import { renderApplicationFeeConfirmedEmail, renderPaymentConfirmedEmail } from "@/lib/notifications/templates";
 
 export interface InitializeApplicationPaymentParams {
   sessionToken: string;
@@ -357,7 +360,7 @@ export async function processVerifiedTransaction(
 
       // Check if already confirmed
       if (lockedApp.payment_status === ApplicationPaymentStatus.PAYMENT_CONFIRMED) {
-        return;
+        return { schoolPaymentId: null, receiptNumber: null, notificationPayload: null };
       }
 
       // Transition Application state
@@ -414,6 +417,7 @@ export async function processVerifiedTransaction(
 
       notificationPayload = {
         recipientEmail: lockedApp.guardian_email,
+        guardianFirstName: lockedApp.guardian_first_name,
         type: "APPLICATION_PAYMENT_CONFIRMED",
         applicationNumber: lockedApp.application_number,
         amountKobo: gatewayAmountKobo.toString(),
@@ -618,29 +622,88 @@ export async function processVerifiedTransaction(
         amountKobo: gatewayAmountKobo.toString(),
       };
     }
+
+    return { schoolPaymentId, receiptNumber, notificationPayload };
   };
 
   // Execute single ACID transaction
-  if ("$transaction" in rootClient) {
-    await (rootClient as typeof prisma).$transaction(executeFinancialTransaction);
-  } else {
-    await executeFinancialTransaction(rootClient as Prisma.TransactionClient);
-  }
+  type FinancialTxResult = {
+    schoolPaymentId: string | null;
+    receiptNumber: string | null;
+    notificationPayload: Record<string, unknown> | null;
+  };
+
+  const financialResult: FinancialTxResult = "$transaction" in rootClient
+    ? await (rootClient as typeof prisma).$transaction(executeFinancialTransaction)
+    : await executeFinancialTransaction(rootClient as Prisma.TransactionClient);
+
+  schoolPaymentId = financialResult.schoolPaymentId;
+  receiptNumber = financialResult.receiptNumber;
+  const payload = financialResult.notificationPayload;
 
   // 7. Decoupled Outbox Notification (outside transaction)
-  if (notificationPayload) {
+  // Reconciles to exactly ONE authoritative key: FINANCE:PAYMENT_CONFIRMED:PAYSTACK:${reference}
+  if (payload) {
     try {
-      await prisma.notification.create({
-        data: {
+      let recipientEmail = (payload.recipientEmail as string) || "";
+      let guardianName = "Parent / Guardian";
+      let subject = "Swanford Academy — Payment Confirmation";
+      let bodyText = `Your payment of ₦${(Number(gatewayAmountKobo) / 100).toFixed(
+        2
+      )} has been confirmed successfully (Ref: ${reference}).`;
+      let htmlBody: string | null = null;
+
+      if (payload.type === "APPLICATION_PAYMENT_CONFIRMED") {
+        guardianName = (payload.guardianFirstName as string) || "Parent / Guardian";
+        const appNum = (payload.applicationNumber as string) || "";
+        const rendered = renderApplicationFeeConfirmedEmail({
+          guardianName,
+          applicantName: guardianName,
+          applicationNumber: appNum,
+          paymentReference: reference,
+          amountKobo: gatewayAmountKobo,
+        });
+        subject = rendered.subject;
+        bodyText = rendered.text;
+        htmlBody = rendered.html;
+      } else if (payload.type === "INVOICE_PAYMENT_CONFIRMED") {
+        const guardianId = payload.guardianId as string;
+        if (guardianId) {
+          const guardian = await prisma.guardian.findUnique({
+            where: { id: guardianId },
+            select: { email: true, firstName: true, lastName: true },
+          });
+          if (guardian) {
+            recipientEmail = guardian.email || recipientEmail;
+            guardianName = `${guardian.firstName} ${guardian.lastName}`.trim();
+          }
+        }
+        const rendered = renderPaymentConfirmedEmail({
+          guardianName,
+          receiptNumber: (payload.receiptNumber as string) || "Pending",
+          paymentReference: reference,
+          amountKobo: gatewayAmountKobo,
+          remainingBalanceKobo: BigInt(0),
+          paymentMethod: "Paystack Online",
+        });
+        subject = rendered.subject;
+        bodyText = rendered.text;
+        htmlBody = rendered.html;
+      }
+
+      if (recipientEmail) {
+        await enqueueNotification({
+          idempotencyKey: `FINANCE:PAYMENT_CONFIRMED:PAYSTACK:${reference}`,
+          category: NotificationCategory.FINANCE,
           channel: "EMAIL",
+          recipientEmail,
           templateName: "PAYMENT_CONFIRMATION",
-          subject: "Swanford Academy — Payment Confirmation",
-          bodyText: `Your payment of ₦${(Number(gatewayAmountKobo) / 100).toFixed(
-            2
-          )} has been confirmed successfully (Ref: ${reference}).`,
-          metadata: notificationPayload as Prisma.InputJsonValue,
-        },
-      });
+          subject,
+          bodyText,
+          htmlBody,
+          metadata: notificationPayload,
+        });
+      }
     } catch (err) {
       // Notification failure must NEVER roll back confirmed financial transactions
       console.error("[Notification Outbox Warning] Failed to enqueue payment notification:", err);

@@ -15,6 +15,13 @@ import { generateNextApplicationNumber } from './application_number';
 import { calculateApplicationCharges } from './fee_calculation';
 import { matchExistingGuardian } from '@/lib/guardians/guardian_matching';
 import { z } from 'zod';
+import { enqueueNotification } from '@/lib/notifications/outbox';
+import { NotificationCategory } from '@/lib/notifications/types';
+import {
+  renderApplicationSubmittedEmail,
+  renderApplicationFeeConfirmedEmail,
+  renderAdmissionDecisionEmail,
+} from '@/lib/notifications/templates';
 
 export const CreateApplicationSchema = z.object({
   admissionCycleId: z.string().uuid(),
@@ -355,6 +362,33 @@ export async function submitApplication(
       },
     });
 
+    // Enqueue non-authoritative submission notification (ADMISSION_GENERAL, optional)
+    const rendered = renderApplicationSubmittedEmail({
+      guardianName: `${updated.guardianFirstName} ${updated.guardianLastName}`.trim(),
+      applicantName: `${updated.applicantFirstName} ${updated.applicantLastName}`.trim(),
+      applicationNumber: updated.applicationNumber,
+      programmesList: updated.programmeSelections.map((ps) => ps.programme.name).join(', '),
+      totalFeeKobo: updated.totalAmountKobo,
+    });
+
+    await enqueueNotification(
+      {
+        idempotencyKey: `ADMISSION:SUBMITTED:${applicationId}:${updated.applicationNumber}`,
+        recipientEmail: updated.guardianEmail,
+        channel: 'EMAIL',
+        category: NotificationCategory.ADMISSION_GENERAL,
+        templateName: 'APPLICATION_SUBMISSION',
+        subject: rendered.subject,
+        bodyText: rendered.text,
+        htmlBody: rendered.html,
+        metadata: {
+          applicationId,
+          applicationNumber: updated.applicationNumber,
+        },
+      },
+      tx
+    );
+
     return updated;
   };
 
@@ -422,6 +456,33 @@ export async function confirmApplicationPayment(
         },
       },
     });
+
+    // Enqueue payment confirmation notification (FINANCE, mandatory)
+    const rendered = renderApplicationFeeConfirmedEmail({
+      guardianName: `${application.guardianFirstName} ${application.guardianLastName}`.trim(),
+      applicantName: `${application.applicantFirstName} ${application.applicantLastName}`.trim(),
+      applicationNumber: application.applicationNumber,
+      paymentReference: validated.paymentReference,
+      amountKobo: validated.amountPaidKobo,
+    });
+
+    await enqueueNotification(
+      {
+        idempotencyKey: `FINANCE:APP_FEE_CONFIRMED:${applicationId}:${validated.paymentReference}`,
+        recipientEmail: application.guardianEmail,
+        channel: 'EMAIL',
+        category: NotificationCategory.FINANCE,
+        templateName: 'APPLICATION_FEE_CONFIRMED',
+        subject: rendered.subject,
+        bodyText: rendered.text,
+        htmlBody: rendered.html,
+        metadata: {
+          applicationId,
+          paymentReference: validated.paymentReference,
+        },
+      },
+      tx
+    );
 
     return updated;
   };
@@ -536,6 +597,39 @@ export async function reviewProgrammeSelection(
         },
       },
     });
+
+    // 4. Enqueue admission decision notification if a terminal or actionable decision has been reached (ADMISSION_DECISION, mandatory)
+    if (
+      computedAppStatus === ApplicationStatus.APPROVED ||
+      computedAppStatus === ApplicationStatus.PARTIALLY_APPROVED ||
+      computedAppStatus === ApplicationStatus.REJECTED
+    ) {
+      const rendered = renderAdmissionDecisionEmail({
+        guardianName: `${application.guardianFirstName} ${application.guardianLastName}`.trim(),
+        applicantName: `${application.applicantFirstName} ${application.applicantLastName}`.trim(),
+        applicationNumber: application.applicationNumber,
+        decision: computedAppStatus as 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED',
+        notes: validated.decisionNotes || undefined,
+      });
+
+      await enqueueNotification(
+        {
+          idempotencyKey: `ADMISSION_DECISION:${computedAppStatus}:${application.id}`,
+          recipientEmail: application.guardianEmail,
+          channel: 'EMAIL',
+          category: NotificationCategory.ADMISSION_DECISION,
+          templateName: 'ADMISSION_DECISION',
+          subject: rendered.subject,
+          bodyText: rendered.text,
+          htmlBody: rendered.html,
+          metadata: {
+            applicationId: application.id,
+            decision: computedAppStatus,
+          },
+        },
+        tx
+      );
+    }
 
     return {
       selection: updatedSelection,

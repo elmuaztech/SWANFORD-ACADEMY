@@ -253,10 +253,21 @@ enum NotificationChannel {
 
 enum NotificationStatus {
   PENDING
+  PROCESSING
   SENT
   DELIVERED
   FAILED
   RETRYABLE
+  FAILED_PERMANENT
+}
+
+enum NotificationCategory {
+  SECURITY
+  FINANCE
+  ADMISSION_DECISION
+  ADMISSION_GENERAL
+  ACADEMIC
+  GENERAL
 }
 
 enum ImportBatchStatus {
@@ -316,6 +327,7 @@ model User {
   selectionReviews     ApplicationProgrammeSelection[]  @relation("SelectionReviewedBy")
   auditLogs            AuditLog[]
   studentImportBatches StudentImportBatch[]
+  notificationPreferences NotificationPreference[]
 
   @@index([status])
   @@map("users")
@@ -1357,27 +1369,52 @@ model AuditLog {
 }
 
 model Notification {
-  id                String              @id @default(uuid()) @db.Uuid
-  recipientUserId   String?             @map("recipient_user_id") @db.Uuid
-  recipientEmail    String?             @map("recipient_email")
-  recipientPhone    String?             @map("recipient_phone")
+  id                String               @id @default(uuid()) @db.Uuid
+  idempotencyKey    String?              @unique @map("idempotency_key")
+  recipientUserId   String?              @map("recipient_user_id") @db.Uuid
+  recipientEmail    String?              @map("recipient_email")
+  recipientPhone    String?              @map("recipient_phone")
   channel           NotificationChannel
-  templateName      String              @map("template_name")
+  category          NotificationCategory @default(GENERAL)
+  templateName      String               @map("template_name")
   subject           String
-  bodyText          String              @map("body_text")
-  status            NotificationStatus  @default(PENDING)
+  bodyText          String               @map("body_text")
+  htmlBody          String?              @map("html_body")
+  status            NotificationStatus   @default(PENDING)
   metadata          Json?
-  attempts          Int                 @default(0)
-  maxAttempts       Int                 @default(3) @map("max_attempts")
-  nextRetryAt       DateTime?           @map("next_retry_at")
-  providerMessageId String?             @map("provider_message_id")
-  errorMessage      String?             @map("error_message")
-  sentAt            DateTime?           @map("sent_at")
-  createdAt         DateTime            @default(now()) @map("created_at")
+  attempts          Int                  @default(0)
+  maxAttempts       Int                  @default(3) @map("max_attempts")
+  nextRetryAt       DateTime?            @map("next_retry_at")
+  lockedAt          DateTime?            @map("locked_at")
+  lockedBy          String?              @map("locked_by")
+  leaseExpiresAt    DateTime?            @map("lease_expires_at")
+  leaseVersion      Int                  @default(0) @map("lease_version")
+  providerMessageId String?              @map("provider_message_id")
+  errorMessage      String?              @map("error_message")
+  sentAt            DateTime?            @map("sent_at")
+  deliveredAt       DateTime?            @map("delivered_at")
+  createdAt         DateTime             @default(now()) @map("created_at")
 
+  @@index([status, nextRetryAt])
   @@index([status, channel])
   @@index([recipientEmail])
+  @@index([category])
   @@map("notifications")
+}
+
+model NotificationPreference {
+  id         String               @id @default(uuid()) @db.Uuid
+  userId     String               @map("user_id") @db.Uuid
+  category   NotificationCategory
+  channel    NotificationChannel
+  enabled    Boolean              @default(true)
+  updatedAt  DateTime             @updatedAt @map("updated_at")
+  createdAt  DateTime             @default(now()) @map("created_at")
+
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, channel])
+  @@map("notification_preferences")
 }
 
 model SystemConfig {

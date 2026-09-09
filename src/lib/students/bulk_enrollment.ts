@@ -12,6 +12,9 @@ import {
 import { reserveAdmissionNumberBlock } from './admission_number';
 import { createUnactivatedPasswordSentinel } from '@/lib/auth/password';
 import { generateSecureToken } from '@/lib/auth/tokens';
+import { enqueueNotification } from '@/lib/notifications/outbox';
+import { NotificationCategory } from '@/lib/notifications/types';
+import { renderAccountActivationEmail } from '@/lib/notifications/templates';
 
 /**
  * Swanford Academy — Bulk Student Enrollment Service
@@ -318,17 +321,28 @@ export async function executeBulkStudentEnrollment(
             });
 
             // Step G: Persistent Outbox Notification
-            await tx.notification.create({
-              data: {
+            const activationUrl = `/auth/activate?token=${rawToken}`;
+            const rendered = renderAccountActivationEmail({
+              recipientName: `${row.guardianFirstName} ${row.guardianLastName}`.trim(),
+              activationUrl,
+              expiresInHours: 72,
+            });
+
+            await enqueueNotification(
+              {
+                idempotencyKey: `SECURITY:ACCOUNT_ACTIVATION:${user.id}:${tokenHash}`,
                 recipientUserId: user.id,
                 recipientEmail: normalizedEmail,
                 channel: 'EMAIL',
+                category: NotificationCategory.SECURITY,
                 templateName: 'PARENT_WELCOME_ACTIVATION',
-                subject: 'Welcome to Swanford Academy — Activate Your Parent Portal Account',
-                bodyText: `Welcome to Swanford Academy. Please activate your parent account and set your password: /auth/activate?token=${rawToken}`,
+                subject: rendered.subject,
+                bodyText: rendered.text,
+                htmlBody: rendered.html,
                 metadata: { tokenHash, expiresAt: expiresAt.toISOString(), studentId: student.id },
               },
-            });
+              tx
+            );
           }
         }
 

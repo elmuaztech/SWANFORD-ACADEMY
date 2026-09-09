@@ -16,6 +16,9 @@ import { enrollStudentInProgramme } from '@/lib/students/enrollment_service';
 import { createInvoice } from '@/lib/finance/invoice_service';
 import { resolveFeeStructureForStudent } from '@/lib/finance/fee_structure_service';
 import { z } from 'zod';
+import { enqueueNotification } from '@/lib/notifications/outbox';
+import { NotificationCategory } from '@/lib/notifications/types';
+import { renderMatriculationEnrolledEmail } from '@/lib/notifications/templates';
 
 export const MatriculateApplicationSchema = z.object({
   applicationId: z.string().uuid(),
@@ -379,6 +382,39 @@ export async function matriculateApplication(
         },
       },
     });
+
+    // 14. Enqueue matriculation enrolled notification (ADMISSION_DECISION, mandatory)
+    const guardian = await tx.guardian.findUnique({ where: { id: guardianId } });
+    const recipientEmail = guardian?.email || application.guardianEmail;
+    const guardianName = guardian
+      ? `${guardian.firstName} ${guardian.lastName}`.trim()
+      : `${application.guardianFirstName} ${application.guardianLastName}`.trim();
+
+    const rendered = renderMatriculationEnrolledEmail({
+      guardianName,
+      studentName: `${student.firstName} ${student.lastName}`.trim(),
+      admissionNumber: student.admissionNumber,
+      enrolledProgrammes: approvedSelections.map((s) => s.programme.name).join(', '),
+    });
+
+    await enqueueNotification(
+      {
+        idempotencyKey: `ADMISSION_DECISION:MATRICULATED:${application.id}:${student.admissionNumber}`,
+        recipientEmail,
+        channel: 'EMAIL',
+        category: NotificationCategory.ADMISSION_DECISION,
+        templateName: 'MATRICULATION_ENROLLED',
+        subject: rendered.subject,
+        bodyText: rendered.text,
+        htmlBody: rendered.html,
+        metadata: {
+          applicationId: application.id,
+          studentId: student.id,
+          admissionNumber: student.admissionNumber,
+        },
+      },
+      tx
+    );
 
     return {
       student,

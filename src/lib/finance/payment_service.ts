@@ -12,6 +12,9 @@ import { SafeUser } from '@/lib/auth/service';
 import { parseKoboFromDto } from '@/lib/money';
 import { getNextPaymentReference, getNextReceiptNumber } from './sequences';
 import { z } from 'zod';
+import { enqueueNotification } from '@/lib/notifications/outbox';
+import { NotificationCategory } from '@/lib/notifications/types';
+import { renderPaymentConfirmedEmail, renderPaymentReversedEmail } from '@/lib/notifications/templates';
 
 export const PaymentAllocationItemSchema = z.object({
   invoiceItemId: z.string().uuid(),
@@ -348,6 +351,44 @@ export async function recordManualPayment(
       },
     });
 
+    // 8. Enqueue Payment Confirmed Notification if confirmed
+    if (status === PaymentStatus.CONFIRMED && receipt) {
+      const guardian = await tx.guardian.findUnique({
+        where: { id: lockedInvoice.guardian_id },
+      });
+      if (guardian?.email) {
+        const guardianName = `${guardian.firstName} ${guardian.lastName}`.trim();
+        const remainingKobo = lockedInvoice.total_amount_kobo - (lockedInvoice.amount_paid_kobo + paymentKobo);
+        const rendered = renderPaymentConfirmedEmail({
+          guardianName,
+          receiptNumber: receipt.receiptNumber,
+          paymentReference: payment.paymentReference,
+          amountKobo: payment.amountKobo,
+          remainingBalanceKobo: remainingKobo > BigInt(0) ? remainingKobo : BigInt(0),
+          paymentMethod: payment.paymentMethod,
+        });
+
+        await enqueueNotification(
+          {
+            idempotencyKey: `FINANCE:PAYMENT_CONFIRMED:MANUAL:${payment.id}:${receipt.receiptNumber}`,
+            recipientEmail: guardian.email,
+            channel: 'EMAIL',
+            category: NotificationCategory.FINANCE,
+            templateName: 'PAYMENT_CONFIRMATION',
+            subject: rendered.subject,
+            bodyText: rendered.text,
+            htmlBody: rendered.html,
+            metadata: {
+              paymentId: payment.id,
+              receiptNumber: receipt.receiptNumber,
+              invoiceId: lockedInvoice.id,
+            },
+          },
+          tx
+        );
+      }
+    }
+
     return {
       payment,
       receipt,
@@ -486,6 +527,41 @@ export async function confirmOrReconcilePayment(
       },
     });
 
+    // 5. Enqueue Payment Confirmed Notification (FINANCE, mandatory)
+    const guardian = await tx.guardian.findUnique({
+      where: { id: lockedInvoice.guardian_id },
+    });
+    if (guardian?.email && receipt) {
+      const guardianName = `${guardian.firstName} ${guardian.lastName}`.trim();
+      const rendered = renderPaymentConfirmedEmail({
+        guardianName,
+        receiptNumber: receipt.receiptNumber,
+        paymentReference: updatedPayment.paymentReference,
+        amountKobo: updatedPayment.amountKobo,
+        remainingBalanceKobo: newOutstanding,
+        paymentMethod: updatedPayment.paymentMethod,
+      });
+
+      await enqueueNotification(
+        {
+          idempotencyKey: `FINANCE:PAYMENT_CONFIRMED:MANUAL:${payment.id}:${receipt.receiptNumber}`,
+          recipientEmail: guardian.email,
+          channel: 'EMAIL',
+          category: NotificationCategory.FINANCE,
+          templateName: 'PAYMENT_CONFIRMATION',
+          subject: rendered.subject,
+          bodyText: rendered.text,
+          htmlBody: rendered.html,
+          metadata: {
+            paymentId: payment.id,
+            receiptNumber: receipt.receiptNumber,
+            invoiceId: lockedInvoice.id,
+          },
+        },
+        tx
+      );
+    }
+
     return {
       payment: updatedPayment,
       receipt,
@@ -623,6 +699,38 @@ export async function reversePayment(
         },
       },
     });
+
+    // 6. Enqueue Payment Reversal Notification (FINANCE, mandatory)
+    const guardian = await tx.guardian.findUnique({
+      where: { id: payment.invoice.guardianId },
+    });
+    if (guardian?.email) {
+      const guardianName = `${guardian.firstName} ${guardian.lastName}`.trim();
+      const rendered = renderPaymentReversedEmail({
+        guardianName,
+        receiptNumber: payment.receipt?.receiptNumber || payment.paymentReference,
+        reversedAmountKobo: payment.amountKobo,
+        reversalReason: updatedPayment.reversalReason || 'Administrative adjustment',
+      });
+
+      await enqueueNotification(
+        {
+          idempotencyKey: `FINANCE:PAYMENT_REVERSED:${payment.id}:${updatedPayment.reversedAt?.getTime() || Date.now()}`,
+          recipientEmail: guardian.email,
+          channel: 'EMAIL',
+          category: NotificationCategory.FINANCE,
+          templateName: 'PAYMENT_REVERSED',
+          subject: rendered.subject,
+          bodyText: rendered.text,
+          htmlBody: rendered.html,
+          metadata: {
+            paymentId: payment.id,
+            invoiceId: lockedInvoice.id,
+          },
+        },
+        tx
+      );
+    }
 
     return updatedPayment;
   };
