@@ -7,12 +7,22 @@ describe('Stage 6 — Unit: Student Duplicate Detection', () => {
   const testDob = new Date('2015-05-14');
 
   beforeEach(async () => {
-    // Clean up any existing students matching test name
-    await prisma.student.deleteMany({
+    // Clean up any test students matching test admission numbers
+    const existing = await prisma.student.findMany({
       where: {
-        firstName: { in: ['Amina', 'Amina-Duplicate', 'Zainab'] },
+        admissionNumber: { startsWith: 'TEST-D' },
       },
+      select: { id: true },
     });
+    const ids = existing.map((s) => s.id);
+    if (ids.length > 0) {
+      await prisma.guardianStudentRelationship.deleteMany({
+        where: { studentId: { in: ids } },
+      });
+      await prisma.student.deleteMany({
+        where: { id: { in: ids } },
+      });
+    }
   });
 
   it('detects potential duplicate when firstName, lastName, and DOB match exactly (case-insensitive)', async () => {

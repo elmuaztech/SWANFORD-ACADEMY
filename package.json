@@ -21,7 +21,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:seed:mocks": "tsx prisma/seed.ts --mocks",
-    "db:smoke": "node scripts/db-smoke-test.mjs"
+    "db:smoke": "node scripts/db-smoke-test.mjs",
+    "worker:paystack": "tsx scripts/paystack-worker.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
