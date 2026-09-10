@@ -19,16 +19,19 @@ export interface NavbarProps {
   currentPath?: string;
 }
 
+export const DEFAULT_PUBLIC_NAV_ITEMS: NavItem[] = [
+  { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
+  { label: "Programmes", href: "/programmes" },
+  { label: "Admissions", href: "/admissions" },
+  { label: "Fees", href: "/fees" },
+  { label: "Contact", href: "/contact" },
+];
+
 export function Navbar({
   userRole,
   userName,
-  navItems = [
-    { label: "Overview", href: "/" },
-    { label: "Admissions", href: "/admissions" },
-    { label: "Finance", href: "/finance" },
-    { label: "Academic", href: "/academic" },
-    { label: "Portal", href: "/portal" },
-  ],
+  navItems = DEFAULT_PUBLIC_NAV_ITEMS,
   currentPath = "/",
 }: NavbarProps) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);

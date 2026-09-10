@@ -29,3 +29,4 @@ export * from "./ui/image-upload";
 export * from "./layout/navbar";
 export * from "./layout/mobile-nav";
 export * from "./layout/page-header";
+export * from "./layout/public-footer";
