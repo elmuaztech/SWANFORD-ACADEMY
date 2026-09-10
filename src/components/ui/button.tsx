@@ -27,18 +27,18 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // Base styles: clear focus ring, smooth transition, active state, minimum touch target height
     const baseStyles =
       "inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-150 select-none " +
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 " +
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] focus-visible:ring-offset-2 " +
       "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none " +
       "active:scale-[0.98] min-h-[44px]";
 
     // Variant styles
     const variantStyles = {
-      primary: "bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900 shadow-sm",
-      secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200 active:bg-slate-300 border border-slate-200/80",
-      outline: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 shadow-xs",
-      ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+      primary: "bg-[#800020] text-white hover:bg-[#6b001a] active:bg-[#520014] shadow-sm",
+      secondary: "bg-[#FAF7F2] text-stone-800 hover:bg-[#F2ECE1] active:bg-[#E8DCCB] border border-[#EFE9DF]",
+      outline: "border border-stone-300 bg-white text-stone-700 hover:bg-[#FAF7F2] active:bg-[#F2ECE1] shadow-xs",
+      ghost: "text-stone-700 hover:bg-[#FAF7F2] hover:text-stone-900",
       danger: "bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 shadow-sm",
-      link: "text-emerald-700 underline-offset-4 hover:underline p-0 min-h-auto min-w-auto bg-transparent active:scale-100",
+      link: "text-[#800020] underline-offset-4 hover:underline p-0 min-h-auto min-w-auto bg-transparent active:scale-100",
     }[variant];
 
     // Size styles (guaranteeing >=44px touch height on mobile while adapting padding)

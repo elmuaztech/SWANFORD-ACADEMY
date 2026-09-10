@@ -22,6 +22,8 @@ export * from "./ui/tabs";
 export * from "./ui/pagination";
 export * from "./ui/dropdown";
 export * from "./ui/states";
+export * from "./ui/avatar";
+export * from "./ui/image-upload";
 
 // Structural Layouts
 export * from "./layout/navbar";

@@ -243,6 +243,7 @@ export async function matriculateApplication(
         gender: application.applicantGender,
         dateOfBirth: application.applicantDob,
         admissionDate: new Date(),
+        profilePhotoId: application.profilePhotoId || undefined,
       },
       currentYear,
       tx

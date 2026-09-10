@@ -30,6 +30,7 @@ export const CreateApplicationSchema = z.object({
   applicantOtherNames: z.string().max(50).trim().optional().nullable(),
   applicantGender: z.nativeEnum(Gender),
   applicantDob: z.coerce.date(),
+  profilePhotoId: z.string().uuid().optional().nullable(),
 
   guardianFirstName: z.string().min(2).max(50).trim(),
   guardianLastName: z.string().min(2).max(50).trim(),
@@ -239,6 +240,7 @@ export async function createDraftApplication(
         guardianPhone: validated.guardianPhone,
         guardianRelationship: validated.guardianRelationship,
         existingGuardianId,
+        profilePhotoId: validated.profilePhotoId || null,
         totalAmountKobo: pricing.totalAmountKobo,
         amountPaidKobo: BigInt(0),
         paymentStatus: ApplicationPaymentStatus.UNPAID,

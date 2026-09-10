@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { hashPassword, verifyPassword, validatePasswordStrength } from './password';
 import { generateSecureToken, hashToken } from './tokens';
-import { UserStatus, VerificationTokenType } from '@prisma/client';
+import { UserStatus, VerificationTokenType, RoleCode } from '@prisma/client';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { NotificationCategory } from '@/lib/notifications/types';
 import { renderPasswordResetEmail, renderPasswordChangedEmail } from '@/lib/notifications/templates';
@@ -31,6 +31,8 @@ export interface SafeUser {
   createdAt: Date;
   guardianId?: string;
   teacherId?: string;
+  profilePhotoId?: string | null;
+  roles?: RoleCode[];
 }
 
 export function sanitizeUser(user: {
@@ -43,6 +45,8 @@ export function sanitizeUser(user: {
   createdAt: Date;
   guardianProfile?: { id: string } | null;
   teacherProfile?: { id: string } | null;
+  profilePhotoId?: string | null;
+  userRoles?: Array<{ role: { code: RoleCode } }>;
 }): SafeUser {
   return {
     id: user.id,
@@ -54,6 +58,8 @@ export function sanitizeUser(user: {
     createdAt: user.createdAt,
     guardianId: user.guardianProfile?.id,
     teacherId: user.teacherProfile?.id,
+    profilePhotoId: user.profilePhotoId || null,
+    roles: user.userRoles?.map((ur) => ur.role.code),
   };
 }
 

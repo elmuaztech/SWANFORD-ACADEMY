@@ -143,3 +143,6 @@ export function TableMobileCard({
     </div>
   );
 }
+
+export const TableHeader = TableHead;
+

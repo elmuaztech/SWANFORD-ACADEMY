@@ -287,3 +287,71 @@ export async function linkGuardianUserAccount(
 
   return updated;
 }
+
+/**
+ * Lists guardians with search and pagination for administrative management.
+ */
+export async function listGuardians(
+  actor: SafeUser,
+  options?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }
+) {
+  await requirePermission(actor, PermissionCode.GUARDIAN_VIEW);
+
+  const limit = Math.min(options?.limit || 50, 100);
+  const offset = options?.offset || 0;
+
+  const whereClause: Prisma.GuardianWhereInput = {};
+
+  if (options?.search?.trim()) {
+    const query = options.search.trim();
+    whereClause.OR = [
+      { firstName: { contains: query, mode: 'insensitive' } },
+      { lastName: { contains: query, mode: 'insensitive' } },
+      { email: { contains: query, mode: 'insensitive' } },
+      { phonePrimary: { contains: query } },
+    ];
+  }
+
+  const [total, guardians] = await Promise.all([
+    prisma.guardian.count({ where: whereClause }),
+    prisma.guardian.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: {
+            id: true,
+            status: true,
+            profilePhotoId: true,
+          },
+        },
+        relationships: {
+          include: {
+            student: {
+              select: {
+                id: true,
+                admissionNumber: true,
+                firstName: true,
+                lastName: true,
+                currentStatus: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      take: limit,
+      skip: offset,
+    }),
+  ]);
+
+  return {
+    total,
+    limit,
+    offset,
+    guardians,
+  };
+}

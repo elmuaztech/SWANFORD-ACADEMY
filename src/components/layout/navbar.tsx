@@ -40,17 +40,17 @@ export function Navbar({
           {/* Brand Logo & Name */}
           <Link
             href="/"
-            className="flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded-lg py-1 select-none"
+            className="flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] rounded-lg py-1 select-none"
             aria-label={`${SCHOOL_PROFILE.name} Home`}
           >
-            <div className="w-9 h-9 rounded-lg bg-emerald-800 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-[#800020] text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
               S
             </div>
             <div className="flex flex-col">
-              <span className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none">
+              <span className="text-sm sm:text-base font-bold text-stone-900 tracking-tight leading-none">
                 {SCHOOL_PROFILE.name}
               </span>
-              <span className="text-[11px] text-emerald-700 font-medium leading-tight mt-0.5 hidden sm:inline">
+              <span className="text-[11px] text-[#800020] font-medium leading-tight mt-0.5 hidden sm:inline">
                 {SCHOOL_PROFILE.subtitle}
               </span>
             </div>
@@ -67,8 +67,8 @@ export function Navbar({
                   aria-current={isActive ? "page" : undefined}
                   className={`px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors duration-150 min-h-[40px] inline-flex items-center ${
                     isActive
-                      ? "text-emerald-800 bg-emerald-50"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      ? "text-[#800020] bg-[#FDF2F4] font-bold"
+                      : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
                   }`}
                 >
                   {item.label}

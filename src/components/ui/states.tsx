@@ -8,14 +8,17 @@ import { toUserFacingError } from "@/lib/ui/error_messages";
 export function LoadingState({
   title = "Loading school records...",
   description = "Please wait while we retrieve the latest information.",
+  message,
   variant = "spinner",
   className = "",
 }: {
   title?: string;
   description?: string;
+  message?: string;
   variant?: "spinner" | "skeleton";
   className?: string;
 }) {
+  const displayTitle = message || title;
   if (variant === "skeleton") {
     return (
       <div className={`space-y-3 animate-pulse p-4 sm:p-6 bg-white rounded-xl border border-slate-200 ${className}`}>
@@ -46,7 +49,7 @@ export function LoadingState({
           />
         </svg>
       </div>
-      <h4 className="text-sm sm:text-base font-semibold text-slate-800 tracking-tight">{title}</h4>
+      <h4 className="text-sm sm:text-base font-semibold text-slate-800 tracking-tight">{displayTitle}</h4>
       <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm">{description}</p>
     </div>
   );
@@ -114,6 +117,8 @@ export function ErrorState({
   message,
   onRetry,
   retryLabel = "Try Again",
+  actionLabel,
+  onAction,
   className = "",
 }: {
   error?: unknown;
@@ -121,11 +126,15 @@ export function ErrorState({
   message?: string;
   onRetry?: () => void;
   retryLabel?: string;
+  actionLabel?: string;
+  onAction?: () => void;
   className?: string;
 }) {
   const translated = toUserFacingError(error);
   const displayTitle = title || translated.title;
   const displayMessage = message || translated.message;
+  const handleAction = onRetry || onAction;
+  const buttonLabel = actionLabel || retryLabel;
 
   return (
     <div
@@ -141,10 +150,10 @@ export function ErrorState({
       <h4 className="text-base sm:text-lg font-bold text-rose-950 tracking-tight">{displayTitle}</h4>
       <p className="text-xs sm:text-sm text-slate-600 mt-1.5 max-w-md leading-relaxed">{displayMessage}</p>
 
-      {onRetry && (
+      {handleAction && (
         <div className="mt-5">
-          <Button variant="outline" size="md" onClick={onRetry} className="border-rose-300 text-rose-800 hover:bg-rose-100">
-            {retryLabel}
+          <Button variant="outline" size="md" onClick={handleAction} className="border-rose-300 text-rose-800 hover:bg-rose-100">
+            {buttonLabel}
           </Button>
         </div>
       )}

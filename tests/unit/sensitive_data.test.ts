@@ -6,6 +6,7 @@ import { SafeUser } from '@/lib/auth/service';
 
 describe('Stage 6 — Unit: Sensitive Data Field-Level Visibility & Projections', () => {
   let studentId: string;
+  let studentAdmissionNumber: string;
   let superAdminUser: SafeUser;
   let teacherUser: SafeUser;
   let parentUser: SafeUser;
@@ -76,6 +77,7 @@ describe('Stage 6 — Unit: Sensitive Data Field-Level Visibility & Projections'
       },
     });
     studentId = student.id;
+    studentAdmissionNumber = student.admissionNumber;
 
     // 3. Enroll student in class
     await prisma.studentProgrammeEnrollment.create({
@@ -306,7 +308,7 @@ describe('Stage 6 — Unit: Sensitive Data Field-Level Visibility & Projections'
   });
 
   it('Generic listStudents queries NEVER project medical or emergency fields regardless of caller role', async () => {
-    const listResult = await listStudents(superAdminUser, { search: 'Zainab' });
+    const listResult = await listStudents(superAdminUser, { search: studentAdmissionNumber });
 
     expect(listResult.students.length).toBeGreaterThanOrEqual(1);
     const item = listResult.students.find((s) => s.id === studentId)!;

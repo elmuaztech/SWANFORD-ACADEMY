@@ -245,6 +245,32 @@ enum ExpenseStatus {
   VOIDED
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum AssessmentType {
+  CONTINUOUS_ASSESSMENT
+  EXAMINATION
+  TAHFEEZ_EVALUATION
+  PROJECT
+}
+
+enum AssessmentStatus {
+  DRAFT
+  SUBMITTED
+  FINALIZED
+}
+
+enum AssessmentScoreStatus {
+  SCORED
+  ABSENT
+  EXEMPT
+}
+
 enum NotificationChannel {
   EMAIL
   SMS
@@ -295,6 +321,11 @@ enum ConfigCategory {
   ACADEMICS
 }
 
+enum MediaType {
+  PROFILE_PHOTO
+  DOCUMENT
+}
+
 // -----------------------------------------------------------------------------
 // DOMAIN 1: IDENTITY, RBAC & SECURITY PERSISTENCE
 // -----------------------------------------------------------------------------
@@ -328,8 +359,13 @@ model User {
   auditLogs            AuditLog[]
   studentImportBatches StudentImportBatch[]
   notificationPreferences NotificationPreference[]
+  createdAssessments   Assessment[]                     @relation("AssessmentCreatedBy")
+  profilePhotoId       String?                          @map("profile_photo_id") @db.Uuid
+  profilePhoto         MediaAsset?                      @relation("UserProfilePhoto", fields: [profilePhotoId], references: [id], onDelete: SetNull)
+  uploadedMedia        MediaAsset[]                     @relation("UploadedMedia")
 
   @@index([status])
+  @@index([profilePhotoId])
   @@map("users")
 }
 
@@ -479,6 +515,7 @@ model Teacher {
 
   user           User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   scopes         TeacherScope[]
+  recordedAttendance AttendanceRecord[]
 
   @@map("teachers")
 }
@@ -512,9 +549,14 @@ model Student {
   payments        Payment[]
   applicationOrigin Application?
   importRows        StudentImportRow[]
+  attendanceRecords AttendanceRecord[]
+  assessmentScores  AssessmentScore[]
+  profilePhotoId    String?            @map("profile_photo_id") @db.Uuid
+  profilePhoto      MediaAsset?        @relation("StudentProfilePhoto", fields: [profilePhotoId], references: [id], onDelete: SetNull)
 
   @@index([currentStatus])
   @@index([lastName, firstName])
+  @@index([profilePhotoId])
   @@map("students")
 }
 
@@ -589,6 +631,8 @@ model AcademicSession {
   feeStructures   FeeStructure[]
   invoices        Invoice[]
   expenses        Expense[]
+  attendanceRecords AttendanceRecord[]
+  assessments     Assessment[]
 
   @@map("academic_sessions")
 }
@@ -610,6 +654,8 @@ model AcademicTerm {
   feeStructures     FeeStructure[]
   invoices          Invoice[]
   expenses          Expense[]
+  attendanceRecords AttendanceRecord[]
+  assessments     Assessment[]
 
   @@unique([academicSessionId, termCode])
   @@map("academic_terms")
@@ -635,6 +681,8 @@ model Programme {
   applicationSelections       ApplicationProgrammeSelection[]
   admissionAvailabilities     AdmissionCycleProgramme[]
   teacherScopes               TeacherScope[]
+  attendanceRecords           AttendanceRecord[]
+  assessments                 Assessment[]
 
   @@map("programmes")
 }
@@ -656,6 +704,8 @@ model SchoolClass {
   teacherScopes         TeacherScope[]
   feeStructures         FeeStructure[]
   applicationSelections ApplicationProgrammeSelection[]
+  attendanceRecords     AttendanceRecord[]
+  assessments           Assessment[]
 
   @@index([programmeId])
   @@map("school_classes")
@@ -674,6 +724,7 @@ model Subject {
 
   programme     Programme      @relation(fields: [programmeId], references: [id], onDelete: Restrict)
   teacherScopes TeacherScope[]
+  assessments   Assessment[]
 
   @@index([programmeId])
   @@map("subjects")
@@ -693,6 +744,7 @@ model GradingScale {
 
   programme    Programme?    @relation(fields: [programmeId], references: [id], onDelete: Restrict)
   bands        GradingBand[]
+  assessments  Assessment[]
 
   @@index([programmeId])
   @@map("grading_scales")
@@ -744,6 +796,94 @@ model StudentProgrammeEnrollment {
   @@index([schoolClassId, academicSessionId, academicTermId])
   @@index([programmeId, academicSessionId])
   @@map("student_programme_enrollments")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 3B: ATTENDANCE & ACADEMIC ASSESSMENTS
+// -----------------------------------------------------------------------------
+
+model AttendanceRecord {
+  id                  String           @id @default(uuid()) @db.Uuid
+  studentId           String           @map("student_id") @db.Uuid
+  programmeId         String           @map("programme_id") @db.Uuid
+  schoolClassId       String           @map("school_class_id") @db.Uuid
+  academicSessionId   String           @map("academic_session_id") @db.Uuid
+  academicTermId      String           @map("academic_term_id") @db.Uuid
+  date                DateTime         @db.Date
+  status              AttendanceStatus
+  remarks             String?
+  recordedByTeacherId String           @map("recorded_by_teacher_id") @db.Uuid
+  recordedAt          DateTime         @default(now()) @map("recorded_at")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  student             Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  programme           Programme        @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  schoolClass         SchoolClass      @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
+  academicSession     AcademicSession  @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm        AcademicTerm     @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  recordedByTeacher   Teacher          @relation(fields: [recordedByTeacherId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, programmeId, schoolClassId, date])
+  @@index([schoolClassId, programmeId, date])
+  @@index([studentId, academicTermId])
+  @@index([date])
+  @@map("attendance_records")
+}
+
+model Assessment {
+  id                String           @id @default(uuid()) @db.Uuid
+  title             String
+  type              AssessmentType
+  programmeId       String           @map("programme_id") @db.Uuid
+  schoolClassId     String           @map("school_class_id") @db.Uuid
+  subjectId         String?          @map("subject_id") @db.Uuid
+  academicSessionId String           @map("academic_session_id") @db.Uuid
+  academicTermId    String           @map("academic_term_id") @db.Uuid
+  gradingScaleId    String           @map("grading_scale_id") @db.Uuid
+  maxScore          Decimal          @map("max_score") @db.Decimal(5, 2)
+  weightPercentage  Decimal          @default(100.00) @map("weight_percentage") @db.Decimal(5, 2)
+  status            AssessmentStatus @default(DRAFT)
+  createdById       String           @map("created_by_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  programme         Programme        @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  schoolClass       SchoolClass      @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
+  subject           Subject?         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  academicSession   AcademicSession  @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm      AcademicTerm     @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  gradingScale      GradingScale     @relation(fields: [gradingScaleId], references: [id], onDelete: Restrict)
+  createdBy         User             @relation("AssessmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  scores            AssessmentScore[]
+
+  @@index([schoolClassId, programmeId, academicTermId])
+  @@index([subjectId, academicTermId])
+  @@index([status])
+  @@map("assessments")
+}
+
+model AssessmentScore {
+  id           String                @id @default(uuid()) @db.Uuid
+  assessmentId String                @map("assessment_id") @db.Uuid
+  studentId    String                @map("student_id") @db.Uuid
+  rawScore     Decimal?              @map("raw_score") @db.Decimal(5, 2)
+  grade        String?
+  points       Decimal?              @db.Decimal(4, 2)
+  remark       String?
+  isPass       Boolean?              @map("is_pass")
+  scoreStatus  AssessmentScoreStatus @default(SCORED) @map("score_status")
+  teacherNotes String?               @map("teacher_notes")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  assessment   Assessment            @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student      Student               @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([assessmentId, studentId])
+  @@index([studentId])
+  @@index([scoreStatus])
+  @@map("assessment_scores")
 }
 
 // -----------------------------------------------------------------------------
@@ -832,10 +972,13 @@ model Application {
   reviews                ApplicationReview[]
   paymentTransactions    PaymentTransaction[]
   paymentSessions        PaymentSession[]
+  profilePhotoId         String?                          @map("profile_photo_id") @db.Uuid
+  profilePhoto           MediaAsset?                      @relation("ApplicationProfilePhoto", fields: [profilePhotoId], references: [id], onDelete: SetNull)
 
   @@index([status, academicSessionId])
   @@index([admissionCycleId, status])
   @@index([guardianEmail])
+  @@index([profilePhotoId])
   @@map("applications")
 }
 
@@ -1428,3 +1571,32 @@ model SystemConfig {
 
   @@map("system_configs")
 }
+
+// -----------------------------------------------------------------------------
+// DOMAIN 11: MEDIA & ASSET STORAGE
+// -----------------------------------------------------------------------------
+
+model MediaAsset {
+  id           String        @id @default(uuid()) @db.Uuid
+  storageKey   String        @unique @map("storage_key")
+  mediaType    MediaType     @default(PROFILE_PHOTO) @map("media_type")
+  mimeType     String        @map("mime_type")
+  fileSize     Int           @map("file_size")
+  width        Int?
+  height       Int?
+  checksum     String?
+  uploadedById String?       @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  // Relationships
+  uploadedBy   User?         @relation("UploadedMedia", fields: [uploadedById], references: [id], onDelete: SetNull)
+  students     Student[]     @relation("StudentProfilePhoto")
+  applications Application[] @relation("ApplicationProfilePhoto")
+  users        User[]        @relation("UserProfilePhoto")
+
+  @@index([mediaType])
+  @@index([uploadedById])
+  @@map("media_assets")
+}
+

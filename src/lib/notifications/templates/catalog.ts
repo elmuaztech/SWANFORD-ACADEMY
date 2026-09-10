@@ -309,3 +309,102 @@ export function renderPaymentReversedEmail(data: {
     ],
   });
 }
+
+// -----------------------------------------------------------------------------
+// 4. ACADEMIC & ATTENDANCE TEMPLATES
+// -----------------------------------------------------------------------------
+
+export function renderResultPublishedEmail(data: {
+  recipientName: string;
+  studentName: string;
+  subjectName: string;
+  grade: string;
+  resultsUrl: string;
+}): RenderedEmail {
+  return renderMasterEmail(`Swanford Academy — Academic Result Published: ${data.studentName}`, {
+    title: 'Academic Results Published',
+    recipientName: data.recipientName,
+    headline: `New Academic Result Available for ${data.studentName}`,
+    contentParagraphs: [
+      `Official results have been published for ${data.studentName} in ${data.subjectName}.`,
+      `Final Grade: ${data.grade}.`,
+      'You can view the full performance breakdown, teacher remarks, and continuous assessment summary on the Parent Portal.',
+    ],
+    callToAction: {
+      label: 'View Results on Portal',
+      url: data.resultsUrl,
+    },
+    footerNotes: [
+      'Swanford Academy · Academic Registry',
+    ],
+  });
+}
+
+export function renderAssessmentSubmittedEmail(data: {
+  recipientName: string;
+  teacherName: string;
+  assessmentTitle: string;
+  className: string;
+  subjectName?: string;
+  reviewUrl: string;
+}): RenderedEmail {
+  return renderMasterEmail(`Assessment Submitted for Review: ${data.assessmentTitle}`, {
+    title: 'Assessment Review',
+    recipientName: data.recipientName,
+    headline: 'Teacher Submitted Assessment Scores for Review',
+    contentParagraphs: [
+      `Teacher ${data.teacherName} has submitted scores for "${data.assessmentTitle}" in ${data.className}${data.subjectName ? ` (${data.subjectName})` : ''}.`,
+      'Please review the score submissions and finalize/publish the results when approved.',
+    ],
+    callToAction: {
+      label: 'Review Assessment',
+      url: data.reviewUrl,
+    },
+  });
+}
+
+export function renderAttendanceWarningEmail(data: {
+  recipientName: string;
+  studentName: string;
+  className: string;
+  absentDaysCount: number;
+  attendancePercentage: number;
+  portalUrl: string;
+}): RenderedEmail {
+  return renderMasterEmail(`Swanford Academy — Attendance Alert for ${data.studentName}`, {
+    title: 'Attendance Alert',
+    recipientName: data.recipientName,
+    headline: `Attendance Notice: ${data.studentName}`,
+    contentParagraphs: [
+      `Our records show that ${data.studentName} (${data.className}) has accumulated ${data.absentDaysCount} absences this term, bringing current attendance to ${data.attendancePercentage}%.`,
+      'Regular attendance is vital for your child’s academic and Tahfeez progression. If these absences are due to illness or an emergency, please notify the school administration or provide a medical note.',
+    ],
+    callToAction: {
+      label: 'View Attendance Record',
+      url: data.portalUrl,
+    },
+    footerNotes: [
+      'Swanford Academy Administration · Student Welfare Desk',
+    ],
+  });
+}
+
+export function renderGeneralBroadcastEmail(data: {
+  recipientName: string;
+  headline: string;
+  bodyParagraphs: string[];
+  actionLabel?: string;
+  actionUrl?: string;
+}): RenderedEmail {
+  return renderMasterEmail(`Swanford Academy Announcement: ${data.headline}`, {
+    title: 'School Announcement',
+    recipientName: data.recipientName,
+    headline: data.headline,
+    contentParagraphs: data.bodyParagraphs,
+    callToAction: data.actionLabel && data.actionUrl ? {
+      label: data.actionLabel,
+      url: data.actionUrl,
+    } : undefined,
+  });
+}
+

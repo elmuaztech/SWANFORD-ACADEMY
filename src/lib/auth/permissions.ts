@@ -22,6 +22,7 @@ export const PermissionCode = {
   STUDENT_VIEW: 'students:view',
   STUDENT_CREATE: 'students:create',
   STUDENT_EDIT: 'students:edit',
+  STUDENT_PROFILE_PHOTO_UPDATE: 'students:profile_photo_update',
   STUDENT_MEDICAL_VIEW: 'students:medical_view',
   STUDENT_MEDICAL_EDIT: 'students:medical_edit',
   STUDENT_ARCHIVE: 'students:archive',
@@ -128,6 +129,12 @@ export const PERMISSION_DEFINITIONS: Record<PermissionCodeType, PermissionDefini
     name: 'Edit Students',
     module: 'students',
     description: 'Modify student demographic and profile data',
+  },
+  [PermissionCode.STUDENT_PROFILE_PHOTO_UPDATE]: {
+    code: PermissionCode.STUDENT_PROFILE_PHOTO_UPDATE,
+    name: 'Update Student Profile Photo',
+    module: 'students',
+    description: 'Upload or replace student profile photos (strictly scoped by TeacherScope)',
   },
   [PermissionCode.STUDENT_MEDICAL_VIEW]: {
     code: PermissionCode.STUDENT_MEDICAL_VIEW,
@@ -375,6 +382,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<RoleCode, PermissionCodeType[]> = {
     PermissionCode.STUDENT_VIEW,
     PermissionCode.STUDENT_CREATE,
     PermissionCode.STUDENT_EDIT,
+    PermissionCode.STUDENT_PROFILE_PHOTO_UPDATE,
     PermissionCode.STUDENT_MEDICAL_VIEW,
     PermissionCode.STUDENT_MEDICAL_EDIT,
     PermissionCode.STUDENT_ARCHIVE,
@@ -433,6 +441,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<RoleCode, PermissionCodeType[]> = {
     // Teacher permissions are ALWAYS scoped by TeacherScope:
     // Programme -> Class -> Subject -> Academic Session
     PermissionCode.STUDENT_VIEW,
+    PermissionCode.STUDENT_PROFILE_PHOTO_UPDATE,
     PermissionCode.ATTENDANCE_VIEW,
     PermissionCode.ATTENDANCE_RECORD,
     PermissionCode.ASSESSMENT_VIEW,

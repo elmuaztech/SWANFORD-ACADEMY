@@ -30,6 +30,7 @@ export const CreateStudentSchema = z.object({
     message: 'Date of birth must be in the past',
   }),
   admissionDate: z.coerce.date().optional(),
+  profilePhotoId: z.string().uuid().optional().nullable(),
   // Sensitive medical and emergency fields
   bloodGroup: z.string().trim().optional(),
   genotype: z.string().trim().optional(),
@@ -60,6 +61,7 @@ export const UpdateStudentSchema = z.object({
   emergencyContactName: z.string().trim().nullable().optional(),
   emergencyContactPhone: z.string().trim().nullable().optional(),
   emergencyContactRelationship: z.string().trim().nullable().optional(),
+  profilePhotoId: z.string().uuid().optional().nullable(),
 });
 
 export type CreateStudentInput = z.input<typeof CreateStudentSchema>;
@@ -76,6 +78,7 @@ export interface StudentDemographicView {
   dateOfBirth: Date;
   admissionDate: Date;
   currentStatus: StudentStatus;
+  profilePhotoId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -151,6 +154,7 @@ export async function createStudent(
         emergencyContactName: validated.emergencyContactName || null,
         emergencyContactPhone: validated.emergencyContactPhone || null,
         emergencyContactRelationship: validated.emergencyContactRelationship || null,
+        profilePhotoId: validated.profilePhotoId || null,
       },
     });
 

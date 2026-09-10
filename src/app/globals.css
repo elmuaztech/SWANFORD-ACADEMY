@@ -1,10 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #fdfcf9;
+  --foreground: #1c1917;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  /* Swanford Academy Brand Tokens */
+  --maroon-deep: #4a0e17;
+  --maroon-primary: #800020;
+  --maroon-hover: #9b1b30;
+  --maroon-soft: #fdf2f4;
+  --cream-canvas: #fdfcf9;
+  --cream-card: #ffffff;
+  --cream-section: #faf7f2;
+  --cream-border: #efe9df;
 
   /* Touch target standard */
   --min-touch-target: 44px;
@@ -44,7 +54,7 @@ body {
 
 /* Accessible focus styling */
 :focus-visible {
-  outline: 2px solid #059669;
+  outline: 2px solid #800020;
   outline-offset: 2px;
 }
 
