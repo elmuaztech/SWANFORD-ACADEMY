@@ -105,8 +105,7 @@ export async function POST(request: NextRequest) {
     if (!application) {
       return NextResponse.json(
         {
-          error:
-            'No matching admission application was found with the provided application number and contact details. Please check your credentials.',
+          error: 'No matching application found with the provided details',
         },
         { status: 404 }
       );

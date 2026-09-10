@@ -45,7 +45,7 @@ export default function ProgrammesPage() {
                 </p>
                 <div className="p-4 bg-[#FDFBF7] rounded-xl border border-[#EADBDA] text-xs text-[#524B46] space-y-1">
                   <p className="font-semibold text-[#1C1A1A]">Placement Guidance:</p>
-                  <p>Contact the school admissions office for appropriate level placement.</p>
+                  <p>Contact the school for placement guidance.</p>
                 </div>
                 <div className="pt-2">
                   <Link href="/admissions">

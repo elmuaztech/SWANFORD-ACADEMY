@@ -247,7 +247,7 @@ describe('Integration Tests: Work Package D — Public Website & Admissions Expe
       expect(statusRes.status).toBe(404);
 
       const data = await statusRes.json();
-      expect(data.error).toContain('No matching admission application was found');
+      expect(data.error).toBe('No matching application found with the provided details');
     });
   });
 
