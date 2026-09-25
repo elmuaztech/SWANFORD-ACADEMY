@@ -6,6 +6,11 @@ import {
   Prisma,
   ProgrammeSelectionStatus,
   RelationshipType,
+  RoleCode,
+  UserStatus,
+  VerificationTokenType,
+  NotificationChannel,
+  NotificationStatus,
 } from '@prisma/client';
 import { requirePermission, AuthorizationError } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
@@ -17,10 +22,13 @@ import { matchExistingGuardian } from '@/lib/guardians/guardian_matching';
 import { z } from 'zod';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { NotificationCategory } from '@/lib/notifications/types';
+import { createUnactivatedPasswordSentinel } from '@/lib/auth/password';
+import { generateSecureToken } from '@/lib/auth/tokens';
 import {
   renderApplicationSubmittedEmail,
   renderApplicationFeeConfirmedEmail,
   renderAdmissionDecisionEmail,
+  renderAccountActivationEmail,
 } from '@/lib/notifications/templates';
 
 export const CreateApplicationSchema = z.object({
@@ -386,10 +394,36 @@ export async function submitApplication(
         metadata: {
           applicationId,
           applicationNumber: updated.applicationNumber,
+          totalFeeKobo: updated.totalAmountKobo.toString(),
         },
       },
       tx
     );
+
+    // Administrative In-App Alert for Super Admin & Admissions Staff
+    await tx.notification.create({
+      data: {
+        idempotencyKey: `ADMIN_NOTIF:APPLICATION_SUBMITTED:${applicationId}`,
+        recipientUserId: null,
+        recipientEmail: null,
+        channel: NotificationChannel.EMAIL,
+        category: NotificationCategory.ADMISSION_GENERAL,
+        templateName: 'ADMIN_ADMISSION_ALERT',
+        subject: `New Admission Application: ${updated.applicationNumber} — ${updated.applicantFirstName} ${updated.applicantLastName}`,
+        bodyText: `A new admission application (${updated.applicationNumber}) has been submitted for ${updated.applicantFirstName} ${updated.applicantLastName}.\nProgrammes: ${updated.programmeSelections.map((ps) => ps.programme.name).join(', ')}\nTotal Fee: ₦${(Number(updated.totalAmountKobo) / 100).toLocaleString()}\nGuardian: ${updated.guardianFirstName} ${updated.guardianLastName} (${updated.guardianEmail})`,
+        status: NotificationStatus.DELIVERED,
+        sentAt: new Date(),
+        metadata: {
+          applicationId: updated.id,
+          applicationNumber: updated.applicationNumber,
+          applicantName: `${updated.applicantFirstName} ${updated.applicantLastName}`,
+          guardianEmail: updated.guardianEmail,
+          totalAmountKobo: updated.totalAmountKobo.toString(),
+          status: 'SUBMITTED',
+          linkUrl: `/admin/admissions/${updated.id}`,
+        },
+      },
+    });
 
     return updated;
   };
@@ -533,6 +567,18 @@ export async function reviewProgrammeSelection(
     );
   }
 
+  if (validated.decision === 'APPROVED') {
+    await requirePermission(actor, PermissionCode.ADMISSION_APPLICATION_APPROVE);
+    const actorRoles = actor.roles || [];
+    if (!actorRoles.includes(RoleCode.SUPER_ADMIN)) {
+      throw new AuthorizationError(
+        'Only a user with the SUPER_ADMIN role may accept an admission and trigger portal creation.',
+        403,
+        'SUPER_ADMIN_REQUIRED'
+      );
+    }
+  }
+
   const newSelectionStatus =
     validated.decision === 'APPROVED'
       ? ProgrammeSelectionStatus.APPROVED
@@ -631,6 +677,132 @@ export async function reviewProgrammeSelection(
         },
         tx
       );
+    }
+
+    // 5. SUPER ADMIN ACCEPTANCE GATE: Portal User Account Provisioning
+    // A portal account must NEVER be created automatically before a Super Admin accepts the admission.
+    // Enforced strictly on backend: only when overall decision reaches APPROVED or PARTIALLY_APPROVED.
+    if (
+      computedAppStatus === ApplicationStatus.APPROVED ||
+      computedAppStatus === ApplicationStatus.PARTIALLY_APPROVED
+    ) {
+      const normalizedGuardianEmail = application.guardianEmail.trim().toLowerCase();
+      const existingUser = await tx.user.findUnique({
+        where: { email: normalizedGuardianEmail },
+      });
+
+      if (!existingUser) {
+        const sentinelHash = createUnactivatedPasswordSentinel();
+        const { rawToken, tokenHash } = generateSecureToken();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        const parentRole = await tx.role.findUnique({
+          where: { code: RoleCode.PARENT },
+        });
+
+        if (parentRole) {
+          let userPhone: string | null = null;
+          if (application.guardianPhone && application.guardianPhone.trim()) {
+            const existingPhoneUser = await tx.user.findFirst({
+              where: { phoneNumber: application.guardianPhone.trim() },
+            });
+            if (!existingPhoneUser) {
+              userPhone = application.guardianPhone.trim();
+            }
+          }
+
+          const newUser = await tx.user.create({
+            data: {
+              email: normalizedGuardianEmail,
+              phoneNumber: userPhone,
+              passwordHash: sentinelHash,
+              status: UserStatus.PENDING_VERIFICATION,
+              userRoles: {
+                create: [{ roleId: parentRole.id }],
+              },
+              emailVerifications: {
+                create: {
+                  tokenHash,
+                  email: normalizedGuardianEmail,
+                  tokenType: VerificationTokenType.ACCOUNT_ACTIVATION,
+                  expiresAt,
+                },
+              },
+            },
+          });
+
+          // Immutable Audit Log for portal account provisioning
+          await tx.auditLog.create({
+            data: {
+              userId: actor.id,
+              action: 'PARENT_PORTAL_ACCOUNT_PROVISIONED_ON_ADMISSION_ACCEPTANCE',
+              entityType: 'User',
+              entityId: newUser.id,
+              newValues: {
+                email: normalizedGuardianEmail,
+                applicationNumber: application.applicationNumber,
+                role: RoleCode.PARENT,
+                status: UserStatus.PENDING_VERIFICATION,
+              },
+            },
+          });
+
+          // Enqueue Account Activation Email with single-use secure token link
+          const appUrl = process.env.APP_URL || 'http://localhost:3000';
+          const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+          const guardianFullName = `${application.guardianFirstName} ${application.guardianLastName}`.trim();
+
+          const activationEmail = renderAccountActivationEmail({
+            recipientName: guardianFullName,
+            activationUrl,
+            expiresInHours: 24,
+          });
+
+          await enqueueNotification(
+            {
+              idempotencyKey: `AUTH:ACTIVATION:ADMISSION:${application.id}:${newUser.id}`,
+              recipientEmail: normalizedGuardianEmail,
+              recipientUserId: newUser.id,
+              channel: 'EMAIL',
+              category: NotificationCategory.SECURITY,
+              templateName: 'ACCOUNT_ACTIVATION',
+              subject: activationEmail.subject,
+              bodyText: activationEmail.text,
+              htmlBody: activationEmail.html,
+              metadata: {
+                applicationId: application.id,
+                applicationNumber: application.applicationNumber,
+                userId: newUser.id,
+                activationUrl,
+              },
+            },
+            tx
+          );
+
+          // Administrative In-App Alert for Super Admin
+          await tx.notification.create({
+            data: {
+              idempotencyKey: `ADMIN_NOTIF:PARENT_PROVISIONED:${application.id}:${newUser.id}`,
+              recipientUserId: null,
+              recipientEmail: null,
+              channel: NotificationChannel.EMAIL,
+              category: NotificationCategory.SECURITY,
+              templateName: 'ADMIN_ACCOUNT_PROVISIONED_ALERT',
+              subject: `Parent Portal Account Provisioned: ${normalizedGuardianEmail}`,
+              bodyText: `Parent portal account provisioned for ${guardianFullName} (${normalizedGuardianEmail}) following admission acceptance for application ${application.applicationNumber}.\nActivation email dispatched with single-use token.`,
+              status: NotificationStatus.DELIVERED,
+              sentAt: new Date(),
+              metadata: {
+                applicationId: application.id,
+                applicationNumber: application.applicationNumber,
+                userId: newUser.id,
+                parentEmail: normalizedGuardianEmail,
+                action: 'PARENT_PORTAL_ACCOUNT_PROVISIONED',
+              },
+            },
+          });
+        }
+      }
     }
 
     return {

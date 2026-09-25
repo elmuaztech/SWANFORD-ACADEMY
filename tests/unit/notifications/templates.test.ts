@@ -10,6 +10,12 @@ import {
   renderInvoiceIssuedEmail,
   renderPaymentConfirmedEmail,
   renderPaymentReversedEmail,
+  renderPasswordResetOtpEmail,
+  renderAdmissionInvoiceEmail,
+  renderPaymentReceiptEmail,
+  renderPaymentFailedEmail,
+  renderSmtpTestEmail,
+  renderWelcomeNewUserEmail,
 } from '@/lib/notifications/templates';
 
 describe('Stage 10: Notification Templates & Data Minimization', () => {
@@ -20,7 +26,7 @@ describe('Stage 10: Notification Templates & Data Minimization', () => {
       expiresInHours: 24,
     });
 
-    expect(rendered.subject).toContain('Activate Your Parent Portal Account');
+    expect(rendered.subject).toBe('SWANFORD ACADEMY');
     expect(rendered.html).toContain('#0F2942'); // Swanford Navy
     expect(rendered.html).toContain('#D4AF37'); // Swanford Gold
     expect(rendered.html).toContain('Amina Bello');
@@ -161,5 +167,100 @@ describe('Stage 10: Notification Templates & Data Minimization', () => {
     expect(rendered.subject).toContain('REC-2026-0010');
     expect(rendered.html).toContain('Voided Receipt Number');
     expect(rendered.html).toContain('Duplicate bank deposit credit');
+  });
+
+  it('renders password reset OTP email with prominent 4-digit code and 5-minute strict expiry', () => {
+    const rendered = renderPasswordResetOtpEmail({
+      recipientName: 'Musa Danladi',
+      otpCode: '8492',
+      expiresInMinutes: 5,
+    });
+
+    expect(rendered.subject).toContain('Password Reset Verification Code');
+    expect(rendered.html).toContain('8492');
+    expect(rendered.text).toContain('8492');
+    expect(rendered.html).toContain('5 minutes');
+    expect(rendered.text).toContain('5 minutes');
+    expect(rendered.html).toContain('Single-use security code');
+    // Anti-leakage checks
+    expect(rendered.html).not.toMatch(/password_hash|\$2a\$|\$2b\$/i);
+  });
+
+  it('renders admission invoice with line items and due date', () => {
+    const rendered = renderAdmissionInvoiceEmail({
+      guardianName: 'Dr. Kabir Sani',
+      applicantName: 'Maryam Kabir',
+      invoiceNumber: 'ADM-INV-2026-001',
+      totalAmountKobo: BigInt(2500000), // ₦25,000.00
+      dueDateFormatted: '25/09/2026',
+      payUrl: 'https://swanford.academy/pay/ADM-INV-2026-001',
+      lineItems: [
+        { description: 'Application & Screening Processing', amountKobo: BigInt(2500000) },
+      ],
+    });
+
+    expect(rendered.subject).toContain('ADM-INV-2026-001');
+    expect(rendered.html).toContain('Maryam Kabir');
+    expect(rendered.html).toContain('₦25,000.00');
+    expect(rendered.html).toContain('25/09/2026');
+    expect(rendered.html).toContain('Pay Admission Fee Online');
+  });
+
+  it('renders payment receipt with transaction reference, paid amount, and remaining balance', () => {
+    const rendered = renderPaymentReceiptEmail({
+      guardianName: 'Alhaji Gambo',
+      receiptNumber: 'REC-2026-0123',
+      paymentReference: 'PAY-REF-9988',
+      amountKobo: BigInt(5000000), // ₦50,000.00
+      remainingBalanceKobo: BigInt(0),
+      paymentMethod: 'Paystack Online (Debit Card)',
+      paymentDateFormatted: '20/09/2026 14:30 WAT',
+      studentName: 'Aisha Gambo',
+      invoiceNumber: 'INV-2026-0044',
+    });
+
+    expect(rendered.subject).toContain('REC-2026-0123');
+    expect(rendered.html).toContain('REC-2026-0123');
+    expect(rendered.html).toContain('PAY-REF-9988');
+    expect(rendered.html).toContain('Aisha Gambo');
+    expect(rendered.html).toContain('₦50,000.00');
+    expect(rendered.html).toContain('RECEIPT PAID IN FULL');
+  });
+
+  it('renders failed payment notification with reference, reason, and ledger reassurance', () => {
+    const rendered = renderPaymentFailedEmail({
+      guardianName: 'Mrs. Amina Garba',
+      reference: 'TXN-FAIL-5544',
+      amountKobo: BigInt(3000000),
+      failureReason: 'Insufficient funds on card',
+      retryUrl: 'https://swanford.academy/pay/retry?ref=TXN-FAIL-5544',
+    });
+
+    expect(rendered.subject).toContain('TXN-FAIL-5544');
+    expect(rendered.html).toContain('Insufficient funds on card');
+    expect(rendered.html).toContain('No funds were credited to the school ledger');
+    expect(rendered.html).toContain('Retry Payment');
+  });
+
+  it('renders SMTP test email with provider info and verified branding', () => {
+    const rendered = renderSmtpTestEmail({
+      initiatorEmail: 'admin@swanford.edu.ng',
+      recipientEmail: 'test@example.com',
+      providerInfo: 'Gmail SMTP (smtp.gmail.com:587 via STARTTLS)',
+      securityInfo: 'TLS / STARTTLS Verified (App Password)',
+    });
+
+    expect(rendered.subject).toContain('SMTP Delivery Verification Test');
+    expect(rendered.html).toContain('admin@swanford.edu.ng');
+    expect(rendered.html).toContain('Gmail SMTP');
+    expect(rendered.html).toContain('SWANFORD ACADEMY');
+    // Dominant maroon branding check
+    expect(rendered.html).toContain('#5B0612');
+    expect(rendered.html).toContain('#D4AF37');
+    // Accessible image fallback & enlarged centered crest
+    expect(rendered.html).toContain('alt="Swanford Academy Crest"');
+    expect(rendered.html).toContain('width="80"');
+    expect(rendered.html).toContain('height="80"');
+    expect(rendered.html).not.toContain('NURSERY · PRIMARY · TAHFEEZ');
   });
 });

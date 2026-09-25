@@ -15,10 +15,10 @@ import {
 } from '@/lib/auth/cookies';
 
 describe('Auth Unit Tests — Password Security & Strength', () => {
-  it('rejects passwords shorter than 8 characters', () => {
-    const res = validatePasswordStrength('short');
+  it('rejects passwords shorter than 6 characters', () => {
+    const res = validatePasswordStrength('12345');
     expect(res.valid).toBe(false);
-    expect(res.message).toContain('at least 8 characters');
+    expect(res.message).toContain('at least 6 characters');
   });
 
   it('rejects passwords longer than 72 characters (bcrypt maximum)', () => {
@@ -28,9 +28,11 @@ describe('Auth Unit Tests — Password Security & Strength', () => {
     expect(res.message).toContain('must not exceed 72 characters');
   });
 
-  it('accepts valid passwords between 8 and 72 characters', () => {
-    const res = validatePasswordStrength('ValidPassword123!');
+  it('accepts valid passwords between 6 and 72 characters', () => {
+    const res = validatePasswordStrength('123456');
     expect(res.valid).toBe(true);
+    const res2 = validatePasswordStrength('ValidPassword123!');
+    expect(res2.valid).toBe(true);
   });
 
   it('hashes and correctly verifies passwords with bcryptjs 12 rounds', async () => {

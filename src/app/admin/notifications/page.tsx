@@ -60,6 +60,8 @@ export default function AdminNotificationsPage() {
   const [retryTarget, setRetryTarget] = useState<NotificationItem | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
 
+
+
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -155,6 +157,7 @@ export default function AdminNotificationsPage() {
     }
   };
 
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "SENT":
@@ -188,21 +191,24 @@ export default function AdminNotificationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <PageHeader
-          title="Communication Outbox & Notifications"
-          subtitle="Monitor transactional email delivery, review idempotency logs, and retry failed transmissions."
-          secondaryAction={
-            <Button
-              variant="outline"
-              onClick={() => fetchNotifications()}
-              disabled={loading}
-            >
-              Refresh
-            </Button>
-          }
-        />
+    <div className="space-y-6">
+      <PageHeader
+        title="Email History & Notifications"
+        subtitle="Review sent school emails, delivery status, and retry failed messages."
+        breadcrumbs={[
+          { label: "Dashboard", href: "/admin" },
+          { label: "Notifications" },
+        ]}
+        secondaryAction={
+          <Button
+            variant="outline"
+            onClick={() => fetchNotifications()}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        }
+      />
 
         {successMessage && (
           <Alert variant="success" onClose={() => setSuccessMessage(null)}>
@@ -215,6 +221,7 @@ export default function AdminNotificationsPage() {
             {error}
           </Alert>
         )}
+
 
         {/* Filter Controls */}
         <Card className="p-4">
@@ -539,6 +546,5 @@ export default function AdminNotificationsPage() {
           </Modal>
         )}
       </div>
-    </div>
-  );
-}
+    );
+  }

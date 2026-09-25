@@ -17,9 +17,204 @@ const prisma = new PrismaClient();
 describe("Swanford Stage 2C Admission Lifecycle, Business Rules & Schema Constraints", () => {
   beforeAll(async () => {
     await prisma.$connect();
+
+    const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
+    const firstTerm = await prisma.academicTerm.findFirstOrThrow({
+      where: { academicSessionId: session.id, termCode: "FIRST" },
+    });
+    const cycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
+    const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
+    const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
+    const pri4Class = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "PRIMARY_4" } });
+    const tahAClass = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "TAHFEEZ_GROUP_A" } });
+
+    // 1. Guardian Muhammad Sani
+    const guardian = await prisma.guardian.upsert({
+      where: { email: "muhammad.sani.parent@swanford.example.com" },
+      update: {},
+      create: {
+        title: "Alhaji",
+        firstName: "Muhammad",
+        lastName: "Sani",
+        email: "muhammad.sani.parent@swanford.example.com",
+        phonePrimary: "+2348030001122",
+        residentialAddress: "12 Crescent Road, GRA, Dutse",
+        isVerified: true,
+      },
+    });
+
+    // 2. Students Ahmed and Fatima
+    const ahmed = await prisma.student.upsert({
+      where: { admissionNumber: "SA-2026-0001" },
+      update: {
+        firstName: "Ahmed",
+        lastName: "Sani",
+      },
+      create: {
+        admissionNumber: "SA-2026-0001",
+        firstName: "Ahmed",
+        lastName: "Sani",
+        gender: Gender.MALE,
+        dateOfBirth: new Date("2016-05-12"),
+      },
+    });
+
+    const fatima = await prisma.student.upsert({
+      where: { admissionNumber: "SA-2026-0002" },
+      update: {
+        firstName: "Fatima",
+        lastName: "Sani",
+      },
+      create: {
+        admissionNumber: "SA-2026-0002",
+        firstName: "Fatima",
+        lastName: "Sani",
+        gender: Gender.FEMALE,
+        dateOfBirth: new Date("2018-09-20"),
+      },
+    });
+
+    // 3. Link Guardian to Students
+    await prisma.guardianStudentRelationship.upsert({
+      where: { guardianId_studentId: { guardianId: guardian.id, studentId: ahmed.id } },
+      update: {},
+      create: {
+        guardianId: guardian.id,
+        studentId: ahmed.id,
+        relationshipType: RelationshipType.FATHER,
+        isPrimaryContact: true,
+      },
+    });
+
+    await prisma.guardianStudentRelationship.upsert({
+      where: { guardianId_studentId: { guardianId: guardian.id, studentId: fatima.id } },
+      update: {},
+      create: {
+        guardianId: guardian.id,
+        studentId: fatima.id,
+        relationshipType: RelationshipType.FATHER,
+        isPrimaryContact: true,
+      },
+    });
+
+    // 4. Enrollments for Ahmed (Primary 4 + Tahfeez)
+    await prisma.studentProgrammeEnrollment.upsert({
+      where: {
+        unique_student_programme_term_enrollment: {
+          studentId: ahmed.id,
+          programmeId: primaryProg.id,
+          academicSessionId: session.id,
+          academicTermId: firstTerm.id,
+        },
+      },
+      update: {},
+      create: {
+        studentId: ahmed.id,
+        programmeId: primaryProg.id,
+        schoolClassId: pri4Class.id,
+        academicSessionId: session.id,
+        academicTermId: firstTerm.id,
+        enrollmentType: EnrollmentType.MAIN_ACADEMIC,
+      },
+    });
+
+    await prisma.studentProgrammeEnrollment.upsert({
+      where: {
+        unique_student_programme_term_enrollment: {
+          studentId: ahmed.id,
+          programmeId: tahfeezProg.id,
+          academicSessionId: session.id,
+          academicTermId: firstTerm.id,
+        },
+      },
+      update: {},
+      create: {
+        studentId: ahmed.id,
+        programmeId: tahfeezProg.id,
+        schoolClassId: tahAClass.id,
+        academicSessionId: session.id,
+        academicTermId: firstTerm.id,
+        enrollmentType: EnrollmentType.ADDITIONAL_PROGRAMME,
+      },
+    });
+
+    // 5. Application APP-2026-00001
+    const app = await prisma.application.upsert({
+      where: { applicationNumber: "APP-2026-00001" },
+      update: {},
+      create: {
+        applicationNumber: "APP-2026-00001",
+        academicSessionId: session.id,
+        admissionCycleId: cycle.id,
+        applicantFirstName: "Zainab",
+        applicantLastName: "Sani",
+        applicantGender: Gender.FEMALE,
+        applicantDob: new Date("2020-03-15"),
+        guardianFirstName: "Muhammad",
+        guardianLastName: "Sani",
+        guardianEmail: "muhammad.sani.parent@swanford.example.com",
+        guardianPhone: "+2348030001122",
+        guardianRelationship: RelationshipType.FATHER,
+        status: ApplicationStatus.SUBMITTED,
+        paymentStatus: ApplicationPaymentStatus.PAYMENT_CONFIRMED,
+        totalAmountKobo: BigInt(11500000),
+      },
+    });
+
+    // Selections for app
+    await prisma.applicationProgrammeSelection.upsert({
+      where: {
+        unique_application_programme: {
+          applicationId: app.id,
+          programmeId: primaryProg.id,
+        },
+      },
+      update: {},
+      create: {
+        applicationId: app.id,
+        programmeId: primaryProg.id,
+        targetClassId: pri4Class.id,
+        status: ProgrammeSelectionStatus.PENDING,
+      },
+    });
+
+    await prisma.applicationProgrammeSelection.upsert({
+      where: {
+        unique_application_programme: {
+          applicationId: app.id,
+          programmeId: tahfeezProg.id,
+        },
+      },
+      update: {},
+      create: {
+        applicationId: app.id,
+        programmeId: tahfeezProg.id,
+        targetClassId: tahAClass.id,
+        status: ProgrammeSelectionStatus.PENDING,
+      },
+    });
+
+    // Charge items for app
+    await prisma.applicationChargeItem.deleteMany({ where: { applicationId: app.id } });
+    await prisma.applicationChargeItem.create({
+      data: {
+        applicationId: app.id,
+        description: "Primary 1 Admission Tuition",
+        unitAmountKobo: BigInt(11000000),
+        totalAmountKobo: BigInt(11000000),
+      },
+    });
   });
 
   afterAll(async () => {
+    // Clean up temporary test fixtures so database remains 100% clean
+    await prisma.applicationChargeItem.deleteMany({ where: { application: { applicationNumber: "APP-2026-00001" } } });
+    await prisma.applicationProgrammeSelection.deleteMany({ where: { application: { applicationNumber: "APP-2026-00001" } } });
+    await prisma.application.deleteMany({ where: { applicationNumber: "APP-2026-00001" } });
+    await prisma.studentProgrammeEnrollment.deleteMany({ where: { student: { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } } } });
+    await prisma.guardianStudentRelationship.deleteMany({ where: { student: { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } } } });
+    await prisma.student.deleteMany({ where: { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } } });
+    await prisma.guardian.deleteMany({ where: { email: { in: ["muhammad.sani.parent@swanford.example.com", "aisha.sani.mother@swanford.example.com"] } } });
     await prisma.$disconnect();
   });
 

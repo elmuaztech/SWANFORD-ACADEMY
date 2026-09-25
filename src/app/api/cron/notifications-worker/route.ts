@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { reapStaleNotificationLocks, processPendingNotifications } from '@/lib/notifications/worker';
+import { processDueScheduledReminders } from '@/lib/finance/reminder_service';
 
 /**
  * Swanford Academy — Bounded Cron Worker Endpoint
@@ -44,7 +45,10 @@ export async function GET(request: NextRequest) {
     // 2. Reap stale locks
     const reapedCount = await reapStaleNotificationLocks();
 
-    // 3. Process bounded batch
+    // 3. Process due server-side scheduled payment reminders
+    const remindersProcessed = await processDueScheduledReminders();
+
+    // 4. Process bounded batch
     const batchResult = await processPendingNotifications({
       batchSize: 25,
       workerId: `vercel-cron-${Date.now()}`,
@@ -56,6 +60,7 @@ export async function GET(request: NextRequest) {
       success: true,
       durationMs,
       reapedCount,
+      remindersProcessed,
       batch: {
         processedCount: batchResult.processedCount,
         succeededCount: batchResult.succeededCount,

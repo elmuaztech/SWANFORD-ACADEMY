@@ -133,7 +133,7 @@ export default function ParentChildProfilePage({
               size="xl"
             />
             <div>
-              <h3 className="text-xl font-bold text-stone-900">
+              <h3 className="text-xl font-bold text-[#5B0612]">
                 {student.firstName} {student.lastName}
               </h3>
               <p className="font-mono text-sm font-semibold text-[#800020]">{student.admissionNumber}</p>

@@ -29,7 +29,7 @@ export default function ContactPage() {
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
               Get in Touch
             </div>
-            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#1C1A1A]">
+            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#5B0612]">
               Contact Swanford Academy
             </h1>
             <p className="text-sm sm:text-base text-[#524B46] max-w-2xl mx-auto">
@@ -45,7 +45,7 @@ export default function ContactPage() {
               {/* Left Column: School Information */}
               <div className="lg:col-span-6 space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-[#1C1A1A] mb-4">
+                  <h2 className="text-2xl font-bold text-[#5B0612] mb-4">
                     School Location &amp; Administration
                   </h2>
                   <div className="bg-[#FDFBF7] p-6 sm:p-8 rounded-2xl border border-[#EADBDA] space-y-4">
@@ -53,7 +53,7 @@ export default function ContactPage() {
                       <span className="text-xs uppercase tracking-wider text-[#8C827A] font-bold block">
                         Campus Address:
                       </span>
-                      <p className="font-bold text-[#1C1A1A] text-base">{SCHOOL_PROFILE.name}</p>
+                      <p className="font-bold text-[#5B0612] text-base">{SCHOOL_PROFILE.name}</p>
                       <p className="text-sm text-[#524B46] leading-relaxed">{SCHOOL_PROFILE.address}</p>
                     </div>
 
@@ -64,33 +64,10 @@ export default function ContactPage() {
                       <p className="text-sm font-semibold text-[#1C1A1A]">{SCHOOL_PROFILE.contactPerson}</p>
                     </div>
 
-                    <div className="pt-3 border-t border-[#EADBDA] space-y-1 text-xs text-[#524B46]">
-                      <span className="text-xs uppercase tracking-wider text-[#8C827A] font-bold block">
-                        Canonical Timezone:
-                      </span>
-                      <p>West Africa Time (WAT) &bull; Africa/Lagos</p>
-                    </div>
+
                   </div>
                 </div>
 
-                {/* Office Hours */}
-                <div className="bg-white p-6 rounded-2xl border border-[#EADBDA] shadow-xs space-y-4">
-                  <h3 className="font-bold text-base text-[#1C1A1A]">Admissions Desk Hours</h3>
-                  <div className="text-xs sm:text-sm text-[#524B46] space-y-2.5">
-                    <div className="flex justify-between border-b border-[#EADBDA] pb-2">
-                      <span>Monday &ndash; Thursday</span>
-                      <strong className="text-[#1C1A1A]">8:00 AM &ndash; 3:30 PM</strong>
-                    </div>
-                    <div className="flex justify-between border-b border-[#EADBDA] pb-2">
-                      <span>Friday</span>
-                      <strong className="text-[#1C1A1A]">8:00 AM &ndash; 12:30 PM</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Saturday &ndash; Sunday</span>
-                      <span className="text-[#8C827A]">Closed</span>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Right Column: Send an Inquiry */}
@@ -98,7 +75,7 @@ export default function ContactPage() {
                 <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
                   <CardContent className="p-6 sm:p-8 space-y-6">
                     <div>
-                      <h2 className="text-xl sm:text-2xl font-bold text-[#1C1A1A]">
+                      <h2 className="text-xl sm:text-2xl font-bold text-[#5B0612]">
                         Send an Inquiry
                       </h2>
                       <p className="text-xs sm:text-sm text-[#524B46] mt-1">
@@ -111,7 +88,7 @@ export default function ContactPage() {
                         <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
                           &#10003;
                         </div>
-                        <h3 className="font-bold text-base text-[#1C1A1A]">Inquiry Submitted</h3>
+                        <h3 className="font-bold text-base text-[#5B0612]">Inquiry Submitted</h3>
                         <p className="text-xs text-[#524B46]">
                           Thank you. Your message has been received by the admissions office. We will get in touch with you shortly.
                         </p>

@@ -26,7 +26,7 @@ describe("Integration Tests: Work Package C - Admin Portal Operations", () => {
   let teacher: { id: string; staffIdNumber: string };
   let academicSession: { id: string; name: string };
   let academicTerm: { id: string; name: string };
-  let programme: { id: string; name: string; code: ProgrammeCode };
+  let programme: { id: string; name: string; code: string };
   let schoolClass: { id: string; name: string };
   let student: { id: string; admissionNumber: string };
   let attendanceRecord: { id: string; status: AttendanceStatus };

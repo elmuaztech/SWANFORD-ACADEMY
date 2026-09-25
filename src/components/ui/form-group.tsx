@@ -7,6 +7,7 @@ export interface FormGroupProps {
   label?: string;
   required?: boolean;
   helperText?: string;
+  hint?: string;
   error?: string | unknown;
   children: React.ReactNode;
   className?: string;
@@ -17,10 +18,13 @@ export function FormGroup({
   label,
   required = false,
   helperText,
+  hint,
   error,
   children,
   className = "",
 }: FormGroupProps) {
+  const displayHelper = helperText || hint;
+
   // Translate error to human-readable text if present
   let displayError: string | null = null;
   if (error) {
@@ -32,7 +36,7 @@ export function FormGroup({
     }
   }
 
-  const helperId = id && helperText ? `${id}-helper` : undefined;
+  const helperId = id && displayHelper ? `${id}-helper` : undefined;
   const errorId = id && displayError ? `${id}-error` : undefined;
 
   return (
@@ -45,9 +49,9 @@ export function FormGroup({
 
       <div>{children}</div>
 
-      {helperText && !displayError && (
+      {displayHelper && !displayError && (
         <p id={helperId} className="text-xs text-slate-500 leading-normal">
-          {helperText}
+          {displayHelper}
         </p>
       )}
 

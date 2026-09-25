@@ -95,16 +95,16 @@ export default function InvoicePaymentPage({ params }: { params: Promise<{ id: s
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to connect to payment gateway.");
+        throw new Error(data.error || "Unable to connect to online payment service.");
       }
 
       if (data.authorizationUrl) {
         window.location.href = data.authorizationUrl;
       } else {
-        throw new Error("Missing payment authorization URL.");
+        throw new Error("Missing payment authorization link.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unable to initiate gateway transaction.";
+      const msg = err instanceof Error ? err.message : "Unable to initiate payment.";
       setError(msg);
       setSubmitting(false);
     }
@@ -117,7 +117,7 @@ export default function InvoicePaymentPage({ params }: { params: Promise<{ id: s
         <main className="flex-1 w-full py-16 max-w-xl mx-auto px-4">
           <LoadingState
             title="Securing Invoice Session"
-            description="Connecting to Swanford finance ledger..."
+            description="Connecting to Swanford accounts portal..."
           />
         </main>
       </div>
@@ -156,7 +156,7 @@ export default function InvoicePaymentPage({ params }: { params: Promise<{ id: s
           subtitle={`Tuition & Term Invoicing for ${SCHOOL_PROFILE.name}`}
           badge={
             <Badge variant="brand" size="md">
-              Encrypted Online Gateway
+              Bank-Grade Encrypted Payment
             </Badge>
           }
         />
@@ -187,8 +187,8 @@ export default function InvoicePaymentPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
 
-            <Alert variant="info" title="Official Ledger Direct Settlement">
-              Payments made through this checkout automatically update the school ledger, issue an official digital receipt, and clear outstanding balances.
+            <Alert variant="info" title="Official School Account Settlement">
+              Payments made through this checkout automatically update your child&apos;s student balance, issue an official digital receipt, and clear school fees.
             </Alert>
           </CardContent>
 
@@ -205,7 +205,7 @@ export default function InvoicePaymentPage({ params }: { params: Promise<{ id: s
               onClick={handlePayInvoice}
               disabled={submitting}
             >
-              {submitting ? "Connecting to Gateway..." : `Pay ${formatNaira(balanceKobo)} with Paystack`}
+              {submitting ? "Connecting to Secure Checkout..." : `Pay ${formatNaira(balanceKobo)} Online`}
             </Button>
           </CardFooter>
         </Card>

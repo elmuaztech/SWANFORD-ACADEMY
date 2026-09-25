@@ -2,14 +2,28 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { LoadingState, ErrorState } from "@/components/ui/states";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Badge,
+  Button,
+  LoadingState,
+  ErrorState,
+  EmptyState,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHeaderCell,
+  TableBody,
+  TableCell,
+  TableWrapper,
+} from "@/components";
 import { formatNaira } from "@/lib/money";
 
 interface AdminDashboardData {
+  isSuperAdmin: boolean;
   overview: {
     activeStudents: number;
     guardians: number;
@@ -28,7 +42,7 @@ interface AdminDashboardData {
     totalInvoicedKobo: string;
     totalCollectedKobo: string;
     outstandingKobo: string;
-  };
+  } | null;
   recentApplications: Array<{
     id: string;
     applicationNumber: string;
@@ -53,6 +67,14 @@ interface AdminDashboardData {
       guardian: { firstName: string; lastName: string } | null;
     };
   }>;
+  recentAuditLogs?: Array<{
+    id: string;
+    action: string;
+    entityType: string;
+    entityId: string;
+    createdAt: string;
+    user?: { email: string } | null;
+  }>;
 }
 
 export default function AdminDashboardPage() {
@@ -65,6 +87,10 @@ export default function AdminDashboardPage() {
     setError(null);
     fetch("/api/admin/dashboard")
       .then(async (res) => {
+        if (res.status === 401) {
+          window.location.href = "/auth/login?from=/admin";
+          return;
+        }
         if (!res.ok) {
           const json = await res.json().catch(() => ({}));
           throw new Error(json.error || "Failed to load admin dashboard data.");
@@ -72,8 +98,10 @@ export default function AdminDashboardPage() {
         return res.json();
       })
       .then((json) => {
-        setData(json);
-        setLoading(false);
+        if (json) {
+          setData(json);
+          setLoading(false);
+        }
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Failed to load dashboard.");
@@ -82,22 +110,7 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetch("/api/admin/dashboard")
-      .then(async (res) => {
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error || "Failed to load admin dashboard data.");
-        }
-        return res.json();
-      })
-      .then((json) => {
-        setData(json);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load dashboard.");
-        setLoading(false);
-      });
+    fetchDashboard();
   }, []);
 
   if (loading) {
@@ -109,19 +122,34 @@ export default function AdminDashboardPage() {
   }
 
   if (error || !data) {
+    const isAuthRequired =
+      error?.toLowerCase().includes("authentication") ||
+      error?.toLowerCase().includes("sign in") ||
+      error?.toLowerCase().includes("unauthorized");
+
     return (
-      <div className="py-8">
+      <div className="py-8 max-w-xl mx-auto">
         <ErrorState
-          title="Operational Overview Unavailable"
-          message={error || "An error occurred while retrieving administrative records."}
-          actionLabel="Retry Loading"
-          onAction={fetchDashboard}
+          title={isAuthRequired ? "Administrator Sign-In Required" : "Operational Overview Unavailable"}
+          message={
+            isAuthRequired
+              ? "You must be signed in with an authorized Administrator account to access school operations and student records."
+              : error || "An error occurred while retrieving administrative records."
+          }
+          actionLabel={isAuthRequired ? "Sign In to Admin Portal" : "Retry Loading"}
+          onAction={() => {
+            if (isAuthRequired) {
+              window.location.href = "/auth/login?from=/admin";
+            } else {
+              fetchDashboard();
+            }
+          }}
         />
       </div>
     );
   }
 
-  const { overview, todayAttendance, finance, recentApplications, recentPayments } = data;
+  const { overview, todayAttendance, finance, recentApplications, recentPayments, recentAuditLogs, isSuperAdmin } = data;
   const totalAttendanceRecorded =
     todayAttendance.present + todayAttendance.absent + todayAttendance.late + todayAttendance.excused;
   const attendanceRate =
@@ -132,37 +160,90 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#5B0612] to-[#800020] rounded-2xl p-6 sm:p-8 text-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="bg-gradient-to-r from-[#5B0612] via-[#800020] to-[#4A0E17] rounded-2xl p-6 sm:p-8 text-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold tracking-wide uppercase mb-3">
-            <span>Official Operations Console</span>
+          <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold tracking-wide mb-3">
+            <span className="whitespace-nowrap uppercase">
+              {isSuperAdmin ? "Director & Super Admin Console" : "Operational Admin Console"}
+            </span>
             {overview.activeSession && (
               <>
-                <span>•</span>
-                <span>{overview.activeSession.name} ({overview.activeSession.currentTerm || "Term In Session"})</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="whitespace-nowrap">
+                  {overview.activeSession.name} ({overview.activeSession.currentTerm || "Term In Session"})
+                </span>
               </>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Admin Operations Center</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white !text-white" style={{ color: '#FFFFFF' }}>
+            {isSuperAdmin ? "Swanford Academy Governance" : "Admin Operations Center"}
+          </h1>
           <p className="mt-1 text-sm text-stone-200 max-w-xl">
-            Real-time enrollment, academic sessions, attendance verification, and school revenue ledger.
+            {isSuperAdmin
+              ? "Comprehensive institutional oversight: enrollment, academics, financial revenue ledger, and audit history."
+              : "Real-time school operations: admissions processing, daily attendance roll-call, and community coordination."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
           <Link href="/admin/admissions">
-            <Button variant="secondary" size="md" className="bg-[#FDFBF7] text-[#5B0612] hover:bg-stone-100 font-bold">
+            <Button variant="secondary" size="md" className="bg-[#FAF7F2] text-[#5B0612] hover:bg-stone-100 font-bold">
               Review Admissions ({overview.pendingAdmissions})
             </Button>
           </Link>
           <Link href="/admin/attendance">
-            <Button variant="outline" size="md" className="border-white/40 text-white hover:bg-white/10">
+            <button
+              type="button"
+              className="min-h-[44px] px-4 py-2 rounded-lg border border-white/40 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-semibold text-sm transition-colors duration-150 inline-flex items-center justify-center backdrop-blur-xs select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
               Attendance Records
-            </Button>
+            </button>
           </Link>
+          {isSuperAdmin && (
+            <Link href="/admin/finance">
+              <button
+                type="button"
+                className="min-h-[44px] px-4 py-2 rounded-lg border border-white/40 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-semibold text-sm transition-colors duration-150 inline-flex items-center justify-center backdrop-blur-xs select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                Finance Hub
+              </button>
+            </Link>
+          )}
         </div>
       </div>
 
-      {/* 4 Stat Overview Grid */}
+      {/* System Setup & Zero-Data State Card */}
+      {(!overview.activeSession || overview.activeStudents === 0) && (
+        <div className="p-5 sm:p-6 rounded-2xl bg-[#FAF2F4] border border-[#EADBDA] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#800020] animate-pulse" />
+              <span className="text-xs font-bold text-[#800020] uppercase tracking-wider">
+                System Initial State &bull; Academic Setup Ready
+              </span>
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-[#5B0612] tracking-tight">
+              Welcome to Swanford Academy Console
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-600 max-w-2xl leading-relaxed">
+              The operational database is clean and ready. Establish your academic session calendar and activate admissions to begin registering pupils and receiving applications.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Link href="/admin/academic">
+              <Button variant="primary" size="md" className="bg-[#800020] hover:bg-[#6b001a] text-white font-bold">
+                Create Academic Session
+              </Button>
+            </Link>
+            <Link href="/admin/admissions">
+              <Button variant="outline" size="md">
+                Admissions Centre
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* 4 Stat Overview Grid (Shared across both roles) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card className="border-l-4 border-l-[#5B0612]">
           <CardHeader className="pb-2">
@@ -172,7 +253,7 @@ export default function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-stone-500">Currently enrolled across Primary & Tahfeez</p>
+            <p className="text-xs text-stone-500">Currently enrolled across Nursery, Primary & Tahfeez</p>
           </CardContent>
         </Card>
 
@@ -184,7 +265,7 @@ export default function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-stone-500">Linked to enrolled students</p>
+            <p className="text-xs text-stone-500">Verified primary parents and sponsors</p>
           </CardContent>
         </Card>
 
@@ -196,7 +277,7 @@ export default function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-stone-500">With active class & subject scopes</p>
+            <p className="text-xs text-stone-500">Instructors with active class & subject scopes</p>
           </CardContent>
         </Card>
 
@@ -208,12 +289,12 @@ export default function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-stone-500">Applications awaiting review or payment</p>
+            <p className="text-xs text-stone-500">Applications awaiting operational review</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Attendance & Finance Insights */}
+      {/* MIDDLE SECTION: Attendance + Role-Specific Right Column */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Attendance Breakdown */}
         <Card>
@@ -255,51 +336,105 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Finance Snapshot */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base sm:text-lg font-bold text-stone-900">Term Finance Ledger</CardTitle>
-              <p className="text-xs text-stone-500 mt-0.5">Authoritative invoice and payment reconciliation</p>
-            </div>
-            <Link href="/admin/finance">
-              <Button variant="outline" size="sm">
-                Finance Hub
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
-                <span className="text-xs font-semibold text-stone-600">Total Invoiced</span>
-                <p className="text-base sm:text-lg font-bold text-stone-900 mt-1 truncate">
-                  {formatNaira(BigInt(finance.totalInvoicedKobo))}
-                </p>
+        {/* RIGHT COLUMN: Super Admin gets Finance Ledger; Standard Admin gets Academic Schedule */}
+        {isSuperAdmin && finance ? (
+          /* Super Admin: Term Finance Ledger */
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-base sm:text-lg font-bold text-stone-900">Term Finance Ledger</CardTitle>
+                <p className="text-xs text-stone-500 mt-0.5">Authoritative invoice and collection reconciliation</p>
               </div>
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                <span className="text-xs font-semibold text-emerald-800">Total Collected</span>
-                <p className="text-base sm:text-lg font-bold text-emerald-900 mt-1 truncate">
-                  {formatNaira(BigInt(finance.totalCollectedKobo))}
-                </p>
+              <Link href="/admin/finance">
+                <Button variant="outline" size="sm">
+                  Finance Hub
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
+                  <span className="text-xs font-semibold text-stone-600">Total Invoiced</span>
+                  <p className="text-base sm:text-lg font-bold text-stone-900 mt-1 truncate">
+                    {formatNaira(BigInt(finance.totalInvoicedKobo))}
+                  </p>
+                </div>
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                  <span className="text-xs font-semibold text-emerald-800">Total Collected</span>
+                  <p className="text-base sm:text-lg font-bold text-emerald-900 mt-1 truncate">
+                    {formatNaira(BigInt(finance.totalCollectedKobo))}
+                  </p>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                  <span className="text-xs font-semibold text-amber-800">Outstanding</span>
+                  <p className="text-base sm:text-lg font-bold text-amber-900 mt-1 truncate">
+                    {formatNaira(BigInt(finance.outstandingKobo))}
+                  </p>
+                </div>
               </div>
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
-                <span className="text-xs font-semibold text-amber-800">Outstanding</span>
-                <p className="text-base sm:text-lg font-bold text-amber-900 mt-1 truncate">
-                  {formatNaira(BigInt(finance.outstandingKobo))}
-                </p>
+              <div className="pt-2 flex justify-between items-center text-xs text-stone-500 border-t border-stone-100">
+                <span>Director-only financial oversight</span>
+                <Link href="/admin/finance?tab=payments" className="text-[#5B0612] font-semibold hover:underline">
+                  Reconcile Payments →
+                </Link>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Standard Admin: Daily Academic Operations & Status (Strictly NO finance) */
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-base sm:text-lg font-bold text-stone-900">Academic Status &amp; Schedule</CardTitle>
+                <p className="text-xs text-stone-500 mt-0.5">Active session, terms, and community operations</p>
+              </div>
+              <Link href="/admin/academic">
+                <Button variant="outline" size="sm">
+                  Calendar
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
+                  <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Academic Session</span>
+                  <p className="text-sm font-bold text-stone-900 mt-1">
+                    {overview.activeSession ? overview.activeSession.name : "No active session"}
+                  </p>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    {overview.activeSession?.currentTerm || "Term not configured"}
+                  </p>
+                </div>
+                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
+                  <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Admission Cycle</span>
+                  <p className="text-sm font-bold text-stone-900 mt-1">
+                    {overview.activeCycle ? overview.activeCycle.name : "Admissions Closed"}
+                  </p>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    {overview.pendingAdmissions} pending application{overview.pendingAdmissions === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
 
-            <p className="text-xs text-stone-500">
-              Payments reconciled in Jaiz Bank account: <span className="font-mono font-semibold text-stone-700">0012031162</span>
-            </p>
-          </CardContent>
-        </Card>
+              <div className="pt-2 flex flex-wrap gap-2 text-xs">
+                <Link href="/admin/classes" className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold transition-colors">
+                  Class Rosters →
+                </Link>
+                <Link href="/admin/subjects" className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold transition-colors">
+                  Subjects Directory →
+                </Link>
+                <Link href="/admin/reports" className="px-3 py-1.5 rounded-lg bg-[#FAF2F4] hover:bg-[#F3E2E6] text-[#800020] font-bold transition-colors">
+                  Report Sheet Center →
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* Recent Admissions & Payments Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Admissions */}
+      {/* BOTTOM SECTION: Tables */}
+      <div className={`grid grid-cols-1 ${isSuperAdmin ? "lg:grid-cols-2" : "lg:grid-cols-1 max-w-4xl mx-auto"} gap-6`}>
+        {/* Recent Applications (Shared) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
@@ -312,16 +447,23 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent className="p-0">
             {recentApplications.length === 0 ? (
-              <p className="p-6 text-center text-sm text-stone-500">No applications registered yet.</p>
+              <div className="p-4">
+                <EmptyState
+                  title="No Applications Registered"
+                  description="No pupil admission applications have been submitted through the portal yet."
+                  actionLabel="Admissions Centre"
+                  actionHref="/admin/admissions"
+                />
+              </div>
             ) : (
-              <div className="overflow-x-auto">
+              <TableWrapper>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Applicant</TableHead>
-                      <TableHead>Programme</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
+                      <TableHeaderCell>Applicant</TableHeaderCell>
+                      <TableHeaderCell>Programme</TableHeaderCell>
+                      <TableHeaderCell>Status</TableHeaderCell>
+                      <TableHeaderCell className="text-right">Action</TableHeaderCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -359,67 +501,112 @@ export default function AdminDashboardPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </TableWrapper>
             )}
           </CardContent>
         </Card>
 
-        {/* Recent Payments */}
-        <Card>
+        {/* Super Admin ONLY: Recent Confirmed Payments Table */}
+        {isSuperAdmin && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-base font-bold text-stone-900">Recent Payments</CardTitle>
+                <p className="text-xs text-stone-500">Official credits &amp; receipts</p>
+              </div>
+              <Link href="/admin/finance?tab=payments" className="text-xs text-[#5B0612] font-semibold hover:underline">
+                Ledger →
+              </Link>
+            </CardHeader>
+            <CardContent className="p-0">
+              {recentPayments.length === 0 ? (
+                <div className="p-4">
+                  <EmptyState
+                    title="No Payment Records Confirmed"
+                    description="No school fee or admission payments have been confirmed in the ledger yet."
+                    actionLabel="Finance Ledger"
+                    actionHref="/admin/finance"
+                  />
+                </div>
+              ) : (
+                <TableWrapper>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHeaderCell>Student / Payer</TableHeaderCell>
+                        <TableHeaderCell>Amount</TableHeaderCell>
+                        <TableHeaderCell>Reference</TableHeaderCell>
+                        <TableHeaderCell className="text-right">Receipt</TableHeaderCell>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentPayments.map((pay) => (
+                        <TableRow key={pay.id}>
+                          <TableCell className="font-medium text-stone-900">
+                            <div>
+                              {pay.invoice?.student?.firstName} {pay.invoice?.student?.lastName}
+                            </div>
+                            <span className="text-[11px] text-stone-500">
+                              {pay.invoice?.guardian
+                                ? `Payer: ${pay.invoice.guardian.firstName} ${pay.invoice.guardian.lastName}`
+                                : "Direct Payment"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-bold text-emerald-800 text-xs sm:text-sm">
+                            {formatNaira(BigInt(pay.amountPaidKobo))}
+                          </TableCell>
+                          <TableCell className="text-xs font-mono text-stone-600">
+                            {pay.paymentReference}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-mono text-[#5B0612] font-semibold">
+                            {pay.receiptNumber || "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableWrapper>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Super Admin ONLY: Audit Logs Integrity Panel */}
+      {isSuperAdmin && recentAuditLogs && recentAuditLogs.length > 0 && (
+        <Card className="border border-[#EADBDA]">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
-              <CardTitle className="text-base font-bold text-stone-900">Recent Payments</CardTitle>
-              <p className="text-xs text-stone-500">Official credits & receipts</p>
+              <CardTitle className="text-base font-bold text-stone-900">Recent Security &amp; Audit Trail</CardTitle>
+              <p className="text-xs text-stone-500">Immutable administrative activity log</p>
             </div>
-            <Link href="/admin/finance" className="text-xs text-[#5B0612] font-semibold hover:underline">
-              Ledger →
+            <Link href="/admin/audit" className="text-xs text-[#5B0612] font-semibold hover:underline">
+              Full Audit History →
             </Link>
           </CardHeader>
           <CardContent className="p-0">
-            {recentPayments.length === 0 ? (
-              <p className="p-6 text-center text-sm text-stone-500">No payment records confirmed yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student / Payer</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead className="text-right">Receipt</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentPayments.map((pay) => (
-                      <TableRow key={pay.id}>
-                        <TableCell className="font-medium text-stone-900">
-                          <div>
-                            {pay.invoice?.student?.firstName} {pay.invoice?.student?.lastName}
-                          </div>
-                          <span className="text-[11px] text-stone-500">
-                            {pay.invoice?.guardian
-                              ? `Payer: ${pay.invoice.guardian.firstName} ${pay.invoice.guardian.lastName}`
-                              : "Direct Payment"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-bold text-emerald-800 text-xs sm:text-sm">
-                          {formatNaira(BigInt(pay.amountPaidKobo))}
-                        </TableCell>
-                        <TableCell className="text-xs font-mono text-stone-600">
-                          {pay.paymentReference}
-                        </TableCell>
-                        <TableCell className="text-right text-xs font-mono text-[#5B0612] font-semibold">
-                          {pay.receiptNumber || "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+            <div className="divide-y divide-[#EADBDA]/60">
+              {recentAuditLogs.map((log) => (
+                <div key={log.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-[#FDFCF9]">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="neutral" size="sm">
+                      {log.action}
+                    </Badge>
+                    <span className="text-stone-700 font-medium">
+                      {log.entityType} {log.entityId ? `(${log.entityId.slice(0, 8)}...)` : ""}
+                    </span>
+                  </div>
+                  <div className="text-stone-400 text-[11px] flex items-center gap-2">
+                    <span>{log.user?.email || "System"}</span>
+                    <span>&bull;</span>
+                    <span>{new Date(log.createdAt).toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   );
 }

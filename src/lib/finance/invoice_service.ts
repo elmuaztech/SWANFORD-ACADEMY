@@ -3,6 +3,8 @@ import {
   InvoiceStatus,
   Prisma,
   RoleCode,
+  NotificationChannel,
+  NotificationStatus,
 } from '@prisma/client';
 import { requirePermission, AuthorizationError, getUserRoles } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
@@ -287,6 +289,39 @@ export async function createInvoice(
         tx
       );
     }
+
+    // 10. Administrative In-App Alert for Super Admin & Finance Staff
+    const guardianDisplayName = invoice.guardian
+      ? `${invoice.guardian.firstName} ${invoice.guardian.lastName}`.trim()
+      : 'Guardian';
+    const studentDisplayName = invoice.student
+      ? `${invoice.student.firstName} ${invoice.student.lastName}`.trim()
+      : 'Student';
+
+    await tx.notification.create({
+      data: {
+        idempotencyKey: `ADMIN_NOTIF:INVOICE_ISSUED:${invoice.id}`,
+        recipientUserId: null,
+        recipientEmail: null,
+        channel: NotificationChannel.EMAIL,
+        category: NotificationCategory.FINANCE,
+        templateName: 'ADMIN_FINANCIAL_ALERT',
+        subject: `New Invoice Issued: ${invoice.invoiceNumber} — ₦${(Number(invoice.totalAmountKobo) / 100).toLocaleString()}`,
+        bodyText: `Invoice ${invoice.invoiceNumber} issued for ${studentDisplayName}.\nPayer: ${guardianDisplayName} (${invoice.guardian?.email || 'N/A'})\nAmount: ₦${(Number(invoice.totalAmountKobo) / 100).toLocaleString()}\nDue Date: ${invoice.dueDate.toLocaleDateString('en-GB')}`,
+        status: NotificationStatus.DELIVERED,
+        sentAt: new Date(),
+        metadata: {
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          studentName: studentDisplayName,
+          guardianName: guardianDisplayName,
+          guardianEmail: invoice.guardian?.email,
+          amountKobo: invoice.totalAmountKobo.toString(),
+          status: 'ISSUED',
+          linkUrl: `/admin/finance/invoices/${invoice.id}`,
+        },
+      },
+    });
 
     return invoice;
   };

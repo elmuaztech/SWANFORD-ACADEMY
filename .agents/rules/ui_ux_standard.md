@@ -98,3 +98,8 @@ This is a mandatory engineering standard for Swanford Academy and applies to eve
 ## 12. Quality Gate for Every Frontend Stage
 - Inspect the rendered interface at mobile (360px, 390px, 430px), tablet (768px), and desktop (1280px+).
 - Passing unit tests, typecheck, and build is necessary but NOT sufficient; visual/UX review is mandatory before declaring completion.
+
+## 13. Active Software & Direct Browser Links Rule
+- Always verify that the development server (`npm run dev` on `http://localhost:3000`) is actively running after changes.
+- After every change or update, always provide direct, clickable browser text links in the response (e.g., `http://localhost:3000`, `http://localhost:3000/auth/login`, `http://localhost:3000/admin`, `http://localhost:3000/parent`, `http://localhost:3000/teacher`) so the user can immediately open, preview, and test the software.
+

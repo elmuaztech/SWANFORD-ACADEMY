@@ -58,8 +58,8 @@ export async function GET() {
     const bankMap = new Map(bankConfigs.map((c) => [c.key, c.value]));
 
     const bankDetails = {
-      bankName: bankMap.get('finance.bank_name') || 'Jaiz Bank',
-      accountNumber: bankMap.get('finance.account_number') || '0012031162',
+      bankName: bankMap.get('finance.bank_name') || '',
+      accountNumber: bankMap.get('finance.account_number') || '',
       accountName: bankMap.get('finance.account_name') || 'Swanford Academy',
     };
 

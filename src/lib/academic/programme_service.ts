@@ -1,4 +1,3 @@
-import { ProgrammeCode } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requirePermission, AuthorizationError } from '@/lib/auth/authorization';
@@ -12,11 +11,18 @@ import { PermissionCode } from '@/lib/auth/permissions';
  * - Tahfeez is a first-class Programme, NOT an isolated subsystem.
  * - Programmes support soft-deactivation (isActive = false) for historical readability.
  * - Deletion is blocked if dependent classes or enrollments exist.
+ * - Programme codes are fully dynamic and database-driven (e.g. NURSERY, PRIMARY, TAHFEEZ, SECONDARY).
  */
 
 export const CreateProgrammeSchema = z.object({
-  code: z.nativeEnum(ProgrammeCode),
-  name: z.string().min(2),
+  code: z
+    .string()
+    .trim()
+    .min(2, 'Code must be at least 2 characters')
+    .max(30, 'Code cannot exceed 30 characters')
+    .regex(/^[A-Za-z0-9_]+$/, 'Code can only contain letters, numbers, and underscores')
+    .transform((val) => val.toUpperCase()),
+  name: z.string().trim().min(2, 'Name must be at least 2 characters'),
   isMainAcademic: z.boolean().default(true),
   description: z.string().optional(),
   displayOrder: z.number().int().default(0),

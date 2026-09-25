@@ -37,7 +37,16 @@ export class AuthorizationError extends Error {
 export function assertAccountActive(user: {
   status: UserStatus;
   lockedUntil?: Date | null;
+  mustChangePassword?: boolean;
 }): void {
+  if (user.mustChangePassword) {
+    throw new AuthorizationError(
+      'You must change your initial password before accessing portal features.',
+      403,
+      'PASSWORD_CHANGE_REQUIRED'
+    );
+  }
+
   if (user.status === UserStatus.DEACTIVATED) {
     throw new AuthorizationError(
       'Account has been administratively deactivated.',

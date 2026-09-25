@@ -40,15 +40,17 @@ describe('Unit Tests: Canonical Permission Catalog & System Role Mappings', () =
     expect(adminPerms).toContain(PermissionCode.STUDENT_VIEW);
     expect(adminPerms).toContain(PermissionCode.STUDENT_CREATE);
     expect(adminPerms).toContain(PermissionCode.ACADEMIC_SESSION_MANAGE);
-    expect(adminPerms).toContain(PermissionCode.ADMISSION_APPLICATION_APPROVE);
-    expect(adminPerms).toContain(PermissionCode.AUDIT_LOG_VIEW);
-
-    // Admin must NOT have user/role security permissions (least privilege)
+    expect(adminPerms).toContain(PermissionCode.ADMISSION_APPLICATION_REVIEW);
+    // Admin must NOT have admission approval, audit logs, or user/role security permissions (least privilege)
+    expect(adminPerms).not.toContain(PermissionCode.ADMISSION_APPLICATION_APPROVE);
+    expect(adminPerms).not.toContain(PermissionCode.AUDIT_LOG_VIEW);
     expect(adminPerms).not.toContain(PermissionCode.USER_MANAGE);
     expect(adminPerms).not.toContain(PermissionCode.ROLE_MANAGE);
     expect(adminPerms).not.toContain(PermissionCode.SYSTEM_CONFIG_MANAGE);
 
-    // Admin must NOT have ledger alteration permissions
+    // Admin must NOT have ledger alteration or finance permissions
+    expect(adminPerms).not.toContain(PermissionCode.FINANCE_INVOICE_VIEW);
+    expect(adminPerms).not.toContain(PermissionCode.FINANCE_PAYMENT_VIEW);
     expect(adminPerms).not.toContain(PermissionCode.FINANCE_INVOICE_MANAGE);
     expect(adminPerms).not.toContain(PermissionCode.FINANCE_PAYMENT_RECONCILE);
     expect(adminPerms).not.toContain(PermissionCode.FINANCE_EXPENSE_MANAGE);

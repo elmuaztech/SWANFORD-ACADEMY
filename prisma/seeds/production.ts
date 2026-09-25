@@ -251,6 +251,26 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
     });
   }
 
+  // 7.1 Canonical Expense Categories (Operational chart of accounts)
+  const defaultExpenseCategories = [
+    { code: 'SALARIES', name: 'Staff Salaries & Allowances', description: 'Teaching and administrative staff payroll' },
+    { code: 'STATIONERY', name: 'Books, Stationery & Office Supplies', description: 'Academic exercise books, textbooks, and administrative paper supplies' },
+    { code: 'FACILITIES', name: 'Campus Facilities & Maintenance', description: 'Building repairs, painting, plumbing, and electrical upkeep' },
+    { code: 'UTILITIES', name: 'Electricity, Water & Diesel Fuel', description: 'Power grid bills, generator diesel fuel, and municipal water' },
+    { code: 'ICT', name: 'Technology & Internet Subscriptions', description: 'Software licensing, internet bandwidth, and computer lab hardware' },
+    { code: 'ACADEMIC_MATERIALS', name: 'Instructional & Teaching Materials', description: 'Classroom teaching aids, science kits, and Tahfeez materials' },
+    { code: 'UNIFORMS', name: 'Uniforms & Apparel Procurement', description: 'School uniform fabrication, sportswear, and hijabs/caps' },
+    { code: 'ADMINISTRATIVE', name: 'General Administrative Operations', description: 'Regulatory levies, bank charges, and office logistics' },
+  ];
+
+  for (const cat of defaultExpenseCategories) {
+    await prisma.expenseCategory.upsert({
+      where: { code: cat.code },
+      update: { name: cat.name, description: cat.description },
+      create: cat,
+    });
+  }
+
   // 8. Standard Reference Grading Scales & Bands
   const primaryProgId = programmesMap.get(ProgrammeCode.PRIMARY)!;
   const tahfeezProgId = programmesMap.get(ProgrammeCode.TAHFEEZ)!;
@@ -345,35 +365,203 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
     },
   });
 
-  // 8. Super Admin Initial User Account
-  const superAdminEmail = process.env.INITIAL_SUPER_ADMIN_EMAIL || "superadmin@swanfordacademy.edu.ng";
-  const superAdminPasswordHash = "$2a$12$e8Yk1H6qGqG.g1lq3YpE.e8Oq1q6y6kGqG.g1lq3YpE.e8Oq1q6y6"; // standard Argon2/bcrypt placeholder
+  // 8. Core Operational Accounts with Bcrypt-Hashed Password 'Swanford@2026!'
+  const defaultPasswordHash = "$2b$12$YIJd0KsaGr1z1xI/7h72kOiTrOK5prHS2ROO.XeGHJdug8gh.LoTG";
 
+  // Ensure canonical phone numbers are available without unique constraint violations
+  const canonicalPhones = [
+    { email: "superadmin@swanfordacademy.edu.ng", phone: "+2348030004455" },
+    { email: "admin@swanfordacademy.edu.ng", phone: "+2348030003344" },
+    { email: "accountant@swanfordacademy.edu.ng", phone: "+2348030005566" },
+    { email: "teacher@swanfordacademy.edu.ng", phone: "+2348030002233" },
+    { email: "parent@swanfordacademy.edu.ng", phone: "+2348030001122" },
+  ];
+  for (const item of canonicalPhones) {
+    await prisma.user.updateMany({
+      where: {
+        phoneNumber: item.phone,
+        email: { not: item.email },
+      },
+      data: { phoneNumber: null },
+    });
+  }
+
+  await prisma.guardian.updateMany({
+    where: {
+      phonePrimary: "+2348030001122",
+      email: { not: "parent@swanfordacademy.edu.ng" },
+    },
+    data: { phonePrimary: null },
+  });
+
+  // 8.1 Super Admin User
+  const superAdminEmail = process.env.INITIAL_SUPER_ADMIN_EMAIL || "superadmin@swanfordacademy.edu.ng";
   const superAdminUser = await prisma.user.upsert({
     where: { email: superAdminEmail },
-    update: {},
+    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
     create: {
+      id: "bbf45459-0ffa-419a-b0f9-56d6bfdf50f3",
       email: superAdminEmail,
-      passwordHash: superAdminPasswordHash,
+      phoneNumber: "+2348030004455",
+      passwordHash: defaultPasswordHash,
       status: "ACTIVE",
       emailVerifiedAt: new Date(),
     },
   });
 
   const superAdminRoleId = rolesMap.get(RoleCode.SUPER_ADMIN)!;
+  const adminRoleId = rolesMap.get(RoleCode.ADMIN)!;
+  const accountantRoleId = rolesMap.get(RoleCode.ACCOUNTANT)!;
+  const teacherRoleId = rolesMap.get(RoleCode.TEACHER)!;
+  const parentRoleId = rolesMap.get(RoleCode.PARENT)!;
+
   await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: superAdminUser.id,
-        roleId: superAdminRoleId,
-      },
-    },
+    where: { userId_roleId: { userId: superAdminUser.id, roleId: superAdminRoleId } },
     update: {},
+    create: { userId: superAdminUser.id, roleId: superAdminRoleId },
+  });
+
+  // 8.2 School Admin User
+  const adminUser = await prisma.user.upsert({
+    where: { email: "admin@swanfordacademy.edu.ng" },
+    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
     create: {
-      userId: superAdminUser.id,
-      roleId: superAdminRoleId,
+      id: "00000000-0000-0000-0001-000000000002",
+      email: "admin@swanfordacademy.edu.ng",
+      phoneNumber: "+2348030003344",
+      passwordHash: defaultPasswordHash,
+      status: "ACTIVE",
+      emailVerifiedAt: new Date(),
     },
   });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: adminUser.id, roleId: adminRoleId } },
+    update: {},
+    create: { userId: adminUser.id, roleId: adminRoleId },
+  });
+
+  // 8.3 Accountant User
+  const accountantUser = await prisma.user.upsert({
+    where: { email: "accountant@swanfordacademy.edu.ng" },
+    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
+    create: {
+      id: "00000000-0000-0000-0001-000000000003",
+      email: "accountant@swanfordacademy.edu.ng",
+      phoneNumber: "+2348030005566",
+      passwordHash: defaultPasswordHash,
+      status: "ACTIVE",
+      emailVerifiedAt: new Date(),
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: accountantUser.id, roleId: accountantRoleId } },
+    update: {},
+    create: { userId: accountantUser.id, roleId: accountantRoleId },
+  });
+
+  // 8.4 Teacher User & Teacher Profile
+  const teacherUser = await prisma.user.upsert({
+    where: { email: "teacher@swanfordacademy.edu.ng" },
+    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
+    create: {
+      id: "00000000-0000-0000-0001-000000000004",
+      email: "teacher@swanfordacademy.edu.ng",
+      phoneNumber: "+2348030002233",
+      passwordHash: defaultPasswordHash,
+      status: "ACTIVE",
+      emailVerifiedAt: new Date(),
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: teacherUser.id, roleId: teacherRoleId } },
+    update: {},
+    create: { userId: teacherUser.id, roleId: teacherRoleId },
+  });
+
+  await prisma.teacher.upsert({
+    where: { userId: teacherUser.id },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0002-000000000004",
+      userId: teacherUser.id,
+      staffIdNumber: "STAFF/2026/001",
+      firstName: "Ibrahim",
+      lastName: "Malam",
+      qualification: "B.Ed. Islamic Studies & Primary Education",
+      status: "ACTIVE",
+    },
+  });
+
+  // 8.5 Parent User & Guardian Profile
+  const parentUser = await prisma.user.upsert({
+    where: { email: "parent@swanfordacademy.edu.ng" },
+    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
+    create: {
+      id: "00000000-0000-0000-0001-000000000005",
+      email: "parent@swanfordacademy.edu.ng",
+      phoneNumber: "+2348030001122",
+      passwordHash: defaultPasswordHash,
+      status: "ACTIVE",
+      emailVerifiedAt: new Date(),
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: parentUser.id, roleId: parentRoleId } },
+    update: {},
+    create: { userId: parentUser.id, roleId: parentRoleId },
+  });
+
+  const canonicalGuardian = await prisma.guardian.upsert({
+    where: { email: "parent@swanfordacademy.edu.ng" },
+    update: { userId: parentUser.id },
+    create: {
+      id: "00000000-0000-0000-0002-000000000005",
+      userId: parentUser.id,
+      title: "Alhaji",
+      firstName: "Muhammad",
+      lastName: "Sani",
+      email: "parent@swanfordacademy.edu.ng",
+      phonePrimary: "+2348030001122",
+      residentialAddress: "14 Ahmadu Bello Way, Dutse, Jigawa State",
+      isVerified: true,
+      verifiedAt: new Date(),
+    },
+  });
+
+  // Link demonstration children if available in database so parent dashboard renders fully
+  const existingWards = await prisma.student.findMany({
+    where: {
+      OR: [
+        { lastName: "Sani" },
+        { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } },
+      ],
+    },
+    take: 2,
+  });
+
+  for (const ward of existingWards) {
+    const relId = `00000000-0000-0000-0003-${ward.id.slice(24)}`;
+    await prisma.guardianStudentRelationship.upsert({
+      where: { id: relId },
+      update: {
+        guardianId: canonicalGuardian.id,
+        studentId: ward.id,
+      },
+      create: {
+        id: relId,
+        guardianId: canonicalGuardian.id,
+        studentId: ward.id,
+        relationshipType: "FATHER",
+        isPrimaryContact: true,
+        canPickup: true,
+        receivesInvoices: true,
+      },
+    });
+  }
 
   console.log("✔ Production Foundation Seed Completed Successfully.");
 }

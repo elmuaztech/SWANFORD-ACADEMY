@@ -39,7 +39,7 @@ export function LoadingState({
       aria-live="polite"
       className={`p-8 sm:p-12 bg-white rounded-xl border border-slate-200/80 flex flex-col items-center justify-center text-center ${className}`}
     >
-      <div className="w-10 h-10 text-emerald-600 animate-spin mb-3">
+      <div className="w-10 h-10 text-[#800020] animate-spin mb-3">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path
@@ -49,7 +49,7 @@ export function LoadingState({
           />
         </svg>
       </div>
-      <h4 className="text-sm sm:text-base font-semibold text-slate-800 tracking-tight">{displayTitle}</h4>
+      <h4 className="text-sm sm:text-base font-semibold text-[#5B0612] tracking-tight">{displayTitle}</h4>
       <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm">{description}</p>
     </div>
   );
@@ -63,23 +63,29 @@ export function EmptyState({
   description = "There are currently no items matching your criteria in the academy records.",
   icon,
   actionLabel,
+  actionHref,
   onAction,
   secondaryActionLabel,
+  secondaryActionHref,
   onSecondaryAction,
+  actions,
   className = "",
 }: {
   title?: string;
   description?: string;
   icon?: React.ReactNode;
   actionLabel?: string;
+  actionHref?: string;
   onAction?: () => void;
   secondaryActionLabel?: string;
+  secondaryActionHref?: string;
   onSecondaryAction?: () => void;
+  actions?: React.ReactNode;
   className?: string;
 }) {
   return (
-    <div className={`p-8 sm:p-12 bg-white rounded-xl border border-slate-200/90 text-center flex flex-col items-center justify-center ${className}`}>
-      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3.5">
+    <div className={`p-8 sm:p-12 bg-white rounded-xl border border-[#EADBDA] text-center flex flex-col items-center justify-center ${className}`}>
+      <div className="w-12 h-12 rounded-full bg-[#FAF2F4] flex items-center justify-center text-[#800020] mb-3.5">
         {icon || (
           <svg className="w-6 h-6 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="1.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -87,20 +93,38 @@ export function EmptyState({
         )}
       </div>
 
-      <h4 className="text-base sm:text-lg font-semibold text-slate-900 tracking-tight">{title}</h4>
+      <h4 className="text-base sm:text-lg font-semibold text-[#5B0612] tracking-tight">{title}</h4>
       <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-md leading-relaxed">{description}</p>
 
-      {(actionLabel || secondaryActionLabel) && (
+      {actions ? (
+        <div className="mt-5">{actions}</div>
+      ) : (actionLabel || secondaryActionLabel) && (
         <div className="mt-5 flex flex-col sm:flex-row items-center gap-2.5">
-          {actionLabel && onAction && (
-            <Button variant="primary" size="md" onClick={onAction}>
-              {actionLabel}
-            </Button>
+          {actionLabel && (
+            actionHref ? (
+              <a href={actionHref}>
+                <Button variant="primary" size="md">
+                  {actionLabel}
+                </Button>
+              </a>
+            ) : onAction ? (
+              <Button variant="primary" size="md" onClick={onAction}>
+                {actionLabel}
+              </Button>
+            ) : null
           )}
-          {secondaryActionLabel && onSecondaryAction && (
-            <Button variant="outline" size="md" onClick={onSecondaryAction}>
-              {secondaryActionLabel}
-            </Button>
+          {secondaryActionLabel && (
+            secondaryActionHref ? (
+              <a href={secondaryActionHref}>
+                <Button variant="outline" size="md">
+                  {secondaryActionLabel}
+                </Button>
+              </a>
+            ) : onSecondaryAction ? (
+              <Button variant="outline" size="md" onClick={onSecondaryAction}>
+                {secondaryActionLabel}
+              </Button>
+            ) : null
           )}
         </div>
       )}

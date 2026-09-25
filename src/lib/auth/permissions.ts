@@ -376,8 +376,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<RoleCode, PermissionCodeType[]> = {
   [RoleCode.SUPER_ADMIN]: Object.values(PermissionCode),
 
   [RoleCode.ADMIN]: [
-    // System & Audit
-    PermissionCode.AUDIT_LOG_VIEW,
     // People (All operations except security roles)
     PermissionCode.STUDENT_VIEW,
     PermissionCode.STUDENT_CREATE,
@@ -390,30 +388,25 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<RoleCode, PermissionCodeType[]> = {
     PermissionCode.GUARDIAN_EDIT,
     PermissionCode.GUARDIAN_RELATIONSHIP_MANAGE,
     PermissionCode.TEACHER_MANAGE,
-    // Academic (Full management)
+    // Academic (Full operational management)
     PermissionCode.ACADEMIC_SESSION_MANAGE,
     PermissionCode.PROGRAMME_MANAGE,
     PermissionCode.CLASS_MANAGE,
     PermissionCode.SUBJECT_MANAGE,
     PermissionCode.ENROLLMENT_MANAGE,
-    // Admissions (Full management)
+    // Admissions (Review & coordination only; Approval strictly reserved for SUPER_ADMIN)
     PermissionCode.ADMISSION_CYCLE_MANAGE,
     PermissionCode.ADMISSION_APPLICATION_VIEW,
     PermissionCode.ADMISSION_APPLICATION_REVIEW,
-    PermissionCode.ADMISSION_APPLICATION_APPROVE,
-    // Finance (View-only for coordination, no ledger alteration)
-    PermissionCode.FINANCE_INVOICE_VIEW,
-    PermissionCode.FINANCE_PAYMENT_VIEW,
-    PermissionCode.FINANCE_REPORT_VIEW,
     // Attendance (Broad oversight)
     PermissionCode.ATTENDANCE_VIEW,
     PermissionCode.ATTENDANCE_RECORD,
-    // Assessment (Broad oversight & publishing)
+    // Assessment (Broad oversight, review & publishing where authorized)
     PermissionCode.ASSESSMENT_VIEW,
     PermissionCode.ASSESSMENT_ENTER,
     PermissionCode.RESULT_PUBLISH,
     PermissionCode.REPORT_GENERATE,
-    // Communication
+    // Communication & Messaging
     PermissionCode.COMMUNICATION_ANNOUNCE,
     PermissionCode.NOTIFICATION_VIEW,
     PermissionCode.NOTIFICATION_RETRY,

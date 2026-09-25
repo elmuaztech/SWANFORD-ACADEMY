@@ -2,16 +2,30 @@ import {
   RoleCode,
   UserStatus,
   StudentStatus,
+  TeacherStatus,
   AttendanceStatus,
   ApplicationStatus,
   InvoiceStatus,
+  VerificationTokenType,
+  NotificationCategory,
+  NotificationChannel,
   Prisma,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { SafeUser } from '@/lib/auth/service';
+import { SafeUser, sanitizeUser } from '@/lib/auth/service';
 import { requirePermission, AuthorizationError, getUserRoles } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
 import { normalizeAttendanceDate } from '@/lib/attendance/attendance_service';
+import { createUnactivatedPasswordSentinel, hashPassword } from '@/lib/auth/password';
+import { generateSecureToken } from '@/lib/auth/tokens';
+import { enqueueNotification } from '@/lib/notifications/outbox';
+import { processPendingNotifications } from '@/lib/notifications/worker';
+import {
+  renderWelcomeNewUserEmail,
+  renderAdminPasswordResetEmail,
+  renderEmailChangedNotification,
+  renderAccountActivationEmail,
+} from '@/lib/notifications/templates/catalog';
 
 export class NotFoundError extends Error {
   statusCode = 404;
@@ -39,6 +53,7 @@ export class NotFoundError extends Error {
 export async function getAdminDashboardMetrics(actor: SafeUser) {
   await requirePermission(actor, PermissionCode.STUDENT_VIEW);
 
+  const isSuperAdmin = Boolean(actor.roles?.includes(RoleCode.SUPER_ADMIN));
   const now = new Date();
   const { date: todayDate } = normalizeAttendanceDate(now);
 
@@ -79,16 +94,18 @@ export async function getAdminDashboardMetrics(actor: SafeUser) {
       where: { date: todayDate },
       _count: { _all: true },
     }),
-    // Active term finance aggregates
-    prisma.invoice.aggregate({
-      _sum: {
-        totalAmountKobo: true,
-        amountPaidKobo: true,
-      },
-      where: {
-        status: { notIn: [InvoiceStatus.CANCELLED] },
-      },
-    }),
+    // Active term finance aggregates (Super Admin exclusively)
+    isSuperAdmin
+      ? prisma.invoice.aggregate({
+          _sum: {
+            totalAmountKobo: true,
+            amountPaidKobo: true,
+          },
+          where: {
+            status: { notIn: [InvoiceStatus.CANCELLED] },
+          },
+        })
+      : Promise.resolve(null),
     // Recent admissions
     prisma.application.findMany({
       take: 5,
@@ -109,41 +126,45 @@ export async function getAdminDashboardMetrics(actor: SafeUser) {
         },
       },
     }),
-    // Recent payments
-    prisma.payment.findMany({
-      take: 5,
-      where: { status: 'CONFIRMED' },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        paymentReference: true,
-        amountKobo: true,
-        paymentMethod: true,
-        paidAt: true,
-        receipt: {
-          select: { receiptNumber: true },
-        },
-        invoice: {
+    // Recent payments (Super Admin exclusively)
+    isSuperAdmin
+      ? prisma.payment.findMany({
+          take: 5,
+          where: { status: 'CONFIRMED' },
+          orderBy: { createdAt: 'desc' },
           select: {
-            student: { select: { firstName: true, lastName: true, admissionNumber: true } },
-            guardian: { select: { firstName: true, lastName: true } },
+            id: true,
+            paymentReference: true,
+            amountKobo: true,
+            paymentMethod: true,
+            paidAt: true,
+            receipt: {
+              select: { receiptNumber: true },
+            },
+            invoice: {
+              select: {
+                student: { select: { firstName: true, lastName: true, admissionNumber: true } },
+                guardian: { select: { firstName: true, lastName: true } },
+              },
+            },
           },
-        },
-      },
-    }),
-    // Recent operational audit logs
-    prisma.auditLog.findMany({
-      take: 6,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        action: true,
-        entityType: true,
-        entityId: true,
-        createdAt: true,
-        user: { select: { email: true } },
-      },
-    }),
+        })
+      : Promise.resolve([]),
+    // Recent operational audit logs (Super Admin exclusively)
+    isSuperAdmin
+      ? prisma.auditLog.findMany({
+          take: 6,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            action: true,
+            entityType: true,
+            entityId: true,
+            createdAt: true,
+            user: { select: { email: true } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   // Format attendance breakdown
@@ -164,12 +185,13 @@ export async function getAdminDashboardMetrics(actor: SafeUser) {
     else if (group.status === AttendanceStatus.EXCUSED) attendanceBreakdown.excused = count;
   }
 
-  const totalInvoicedKobo = financeAggregates._sum.totalAmountKobo || BigInt(0);
-  const totalCollectedKobo = financeAggregates._sum.amountPaidKobo || BigInt(0);
+  const totalInvoicedKobo = isSuperAdmin && financeAggregates?._sum?.totalAmountKobo ? financeAggregates._sum.totalAmountKobo : BigInt(0);
+  const totalCollectedKobo = isSuperAdmin && financeAggregates?._sum?.amountPaidKobo ? financeAggregates._sum.amountPaidKobo : BigInt(0);
   const outstandingKobo =
     totalInvoicedKobo > totalCollectedKobo ? totalInvoicedKobo - totalCollectedKobo : BigInt(0);
 
   return {
+    isSuperAdmin,
     overview: {
       activeStudents: activeStudentsCount,
       guardians: guardiansCount,
@@ -191,18 +213,22 @@ export async function getAdminDashboardMetrics(actor: SafeUser) {
       pendingApplications: pendingApplicationsCount,
     },
     todayAttendance: attendanceBreakdown,
-    finance: {
-      totalInvoicedKobo: totalInvoicedKobo.toString(),
-      totalCollectedKobo: totalCollectedKobo.toString(),
-      outstandingKobo: outstandingKobo.toString(),
-    },
+    finance: isSuperAdmin
+      ? {
+          totalInvoicedKobo: totalInvoicedKobo.toString(),
+          totalCollectedKobo: totalCollectedKobo.toString(),
+          outstandingKobo: outstandingKobo.toString(),
+        }
+      : null,
     recentApplications,
-    recentPayments: recentPayments.map((p) => ({
-      ...p,
-      amountPaidKobo: p.amountKobo,
-      receiptNumber: p.receipt?.receiptNumber || null,
-    })),
-    recentAuditLogs,
+    recentPayments: isSuperAdmin
+      ? recentPayments.map((p) => ({
+          ...p,
+          amountPaidKobo: p.amountKobo,
+          receiptNumber: p.receipt?.receiptNumber || null,
+        }))
+      : [],
+    recentAuditLogs: isSuperAdmin ? recentAuditLogs : [],
   };
 }
 
@@ -320,6 +346,8 @@ export async function listAdminUsers(
     where.OR = [
       { email: { contains: term, mode: 'insensitive' } },
       { phoneNumber: { contains: term } },
+      { firstName: { contains: term, mode: 'insensitive' } },
+      { lastName: { contains: term, mode: 'insensitive' } },
       { guardianProfile: { firstName: { contains: term, mode: 'insensitive' } } },
       { guardianProfile: { lastName: { contains: term, mode: 'insensitive' } } },
       { teacherProfile: { firstName: { contains: term, mode: 'insensitive' } } },
@@ -336,6 +364,9 @@ export async function listAdminUsers(
         email: true,
         phoneNumber: true,
         status: true,
+        firstName: true,
+        lastName: true,
+        mustChangePassword: true,
         emailVerifiedAt: true,
         failedLoginAttempts: true,
         lockedUntil: true,
@@ -360,7 +391,14 @@ export async function listAdminUsers(
     }),
   ]);
 
-  return { total, limit, offset, users };
+  const mappedUsers = users.map((u) => ({
+    ...u,
+    roles: u.userRoles || [],
+    teacher: u.teacherProfile ? { firstName: u.teacherProfile.firstName, lastName: u.teacherProfile.lastName, staffId: u.teacherProfile.staffIdNumber } : null,
+    guardian: u.guardianProfile ? { firstName: u.guardianProfile.firstName, lastName: u.guardianProfile.lastName } : null,
+  }));
+
+  return { total, limit, offset, users: mappedUsers };
 }
 
 export async function getAdminUserDetails(actor: SafeUser, userId: string) {
@@ -373,6 +411,9 @@ export async function getAdminUserDetails(actor: SafeUser, userId: string) {
       email: true,
       phoneNumber: true,
       status: true,
+      firstName: true,
+      lastName: true,
+      mustChangePassword: true,
       emailVerifiedAt: true,
       failedLoginAttempts: true,
       lockedUntil: true,
@@ -413,7 +454,13 @@ export async function getAdminUserDetails(actor: SafeUser, userId: string) {
       },
       sessions: {
         where: { revokedAt: null, expiresAt: { gt: new Date() } },
-        select: { id: true, createdAt: true, expiresAt: true, userAgent: true },
+        select: { id: true, createdAt: true, expiresAt: true, userAgent: true, ipAddress: true },
+        orderBy: { createdAt: 'desc' },
+      },
+      auditLogs: {
+        take: 25,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, action: true, createdAt: true, newValues: true },
       },
     },
   });
@@ -422,7 +469,12 @@ export async function getAdminUserDetails(actor: SafeUser, userId: string) {
     throw new AuthorizationError('User account not found.', 404, 'USER_NOT_FOUND');
   }
 
-  return user;
+  return {
+    ...user,
+    roles: user.userRoles || [],
+    sessions: user.sessions || [],
+    auditLogs: user.auditLogs || [],
+  };
 }
 
 export async function updateUserAccountStatus(
@@ -566,6 +618,745 @@ export async function assignUserRoles(
 
     return rolesToAssign;
   });
+}
+
+/**
+ * Creates a new user account administratively.
+ * Invariant: Administrators never view or assign plaintext passwords.
+ * The account is provisioned with an unmatchable sentinel hash and PENDING_VERIFICATION status.
+ * A 24-hour single-use activation token is generated and delivered to the user's email.
+ */
+export async function createAdminUser(
+  actor: SafeUser,
+  input: {
+    email: string;
+    phoneNumber?: string;
+    roles?: RoleCode[];
+    roleCode?: RoleCode;
+    firstName?: string;
+    lastName?: string;
+    status?: UserStatus;
+  },
+  ipAddress?: string
+) {
+  await requirePermission(actor, PermissionCode.USER_MANAGE);
+
+  // 1. Mandatory Full Name Validation
+  const firstName = input.firstName?.trim();
+  const lastName = input.lastName?.trim();
+  if (!firstName || !lastName) {
+    throw new Error('Full Name (both First Name and Last Name) is required.');
+  }
+
+  // 2. Mandatory Email Validation & Normalization
+  if (!input.email || typeof input.email !== 'string' || !input.email.trim()) {
+    throw new Error('Email address is mandatory.');
+  }
+  const normalizedEmail = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
+
+  // 3. System-Wide Email Uniqueness Check
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: normalizedEmail,
+        mode: 'insensitive',
+      },
+    },
+  });
+  if (existingUser) {
+    throw new Error('This email address is already registered to another user.');
+  }
+
+  // 4. Mandatory Phone Number Validation & Uniqueness
+  if (!input.phoneNumber || typeof input.phoneNumber !== 'string' || !input.phoneNumber.trim()) {
+    throw new Error('Phone number is mandatory.');
+  }
+  const normalizedPhone = input.phoneNumber.trim();
+  const digitsOnly = normalizedPhone.replace(/[\s\-\(\)\+]/g, '');
+  if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+    throw new Error('Please enter a valid phone number (11 digits).');
+  }
+
+  const existingPhone = await prisma.user.findFirst({
+    where: { phoneNumber: normalizedPhone },
+  });
+  if (existingPhone) {
+    throw new Error('This phone number is already registered to another user.');
+  }
+
+  // 5. Mandatory Role Selection & Anti-Privilege Escalation
+  const resolvedRoles: RoleCode[] =
+    input.roles && Array.isArray(input.roles) && input.roles.length > 0
+      ? input.roles
+      : (input as any).roleCode
+        ? [(input as any).roleCode]
+        : [];
+
+  if (resolvedRoles.length === 0) {
+    throw new Error('At least one assigned role is required.');
+  }
+
+  // Anti-privilege escalation & controlled bootstrap:
+  // Prohibit creating Super Admin accounts through standard provisioning interface
+  if (resolvedRoles.includes(RoleCode.SUPER_ADMIN)) {
+    throw new AuthorizationError(
+      'Access denied: Creation of Super Admin accounts through the standard user creation interface is prohibited. Elevated root-level accounts cannot be created via standard provisioning.',
+      403,
+      'SUPER_ADMIN_CREATION_PROHIBITED'
+    );
+  }
+
+  const isActiveStatus = input.status === UserStatus.ACTIVE;
+  const accountStatus = input.status || UserStatus.PENDING_VERIFICATION;
+
+  let tempPassword: string | undefined = undefined;
+  let initialPasswordHash: string;
+
+  if (isActiveStatus) {
+    const crypto = await import('crypto');
+    tempPassword = `SA@${crypto.randomBytes(4).toString('hex').toUpperCase()}!26`;
+    initialPasswordHash = await hashPassword(tempPassword);
+  } else {
+    initialPasswordHash = createUnactivatedPasswordSentinel();
+  }
+
+  const rolesToAssign = await prisma.role.findMany({
+    where: { code: { in: resolvedRoles } },
+  });
+
+  const newUser = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email: normalizedEmail,
+        phoneNumber: normalizedPhone,
+        firstName,
+        lastName,
+        passwordHash: initialPasswordHash,
+        status: accountStatus,
+        mustChangePassword: isActiveStatus,
+        userRoles: {
+          create: rolesToAssign.map((r) => ({ roleId: r.id })),
+        },
+      },
+      include: {
+        userRoles: { include: { role: true } },
+      },
+    });
+
+    // Auto-create linked operational profile if appropriate
+    if (resolvedRoles.includes(RoleCode.TEACHER)) {
+      const teacherCount = await tx.teacher.count();
+      const staffIdNumber = `SA-TEA-${String(teacherCount + 1).padStart(4, '0')}`;
+      await tx.teacher.create({
+        data: {
+          userId: user.id,
+          staffIdNumber,
+          firstName,
+          lastName,
+          status: TeacherStatus.ACTIVE,
+        },
+      });
+    }
+
+    if (resolvedRoles.includes(RoleCode.PARENT)) {
+      await tx.guardian.create({
+        data: {
+          userId: user.id,
+          firstName,
+          lastName,
+          email: normalizedEmail,
+          phonePrimary: normalizedPhone,
+          isVerified: true,
+        },
+      });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'USER_CREATED_BY_ADMIN',
+        entityType: 'User',
+        entityId: user.id,
+        ipAddress,
+        newValues: {
+          email: normalizedEmail,
+          phoneNumber: normalizedPhone,
+          firstName,
+          lastName,
+          roles: input.roles,
+          status: accountStatus,
+          mustChangePassword: isActiveStatus,
+        },
+      },
+    });
+
+    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    const primaryRole = rolesToAssign[0]?.name || 'User';
+    const recipientName = `${firstName} ${lastName}`.trim();
+
+    if (isActiveStatus && tempPassword) {
+      const loginUrl = `${appUrl}/auth/login`;
+      const rendered = renderWelcomeNewUserEmail({
+        recipientName,
+        roleName: primaryRole,
+        email: normalizedEmail,
+        temporaryPassword: tempPassword,
+        loginUrl,
+      });
+
+      const notifResult = await enqueueNotification(
+        {
+          idempotencyKey: `SECURITY:USER_WELCOME:${user.id}:${Date.now()}`,
+          recipientUserId: user.id,
+          recipientEmail: normalizedEmail,
+          channel: NotificationChannel.EMAIL,
+          category: NotificationCategory.SECURITY,
+          templateName: 'WELCOME_NEW_USER',
+          subject: rendered.subject,
+          bodyText: rendered.text,
+          htmlBody: rendered.html,
+          metadata: { tempPasswordGenerated: true, roleName: primaryRole },
+        },
+        tx
+      );
+
+      if (notifResult.notificationId) {
+        processPendingNotifications({ targetNotificationId: notifResult.notificationId }).catch(() => { });
+      }
+    } else {
+      // PENDING_VERIFICATION: create activation token and send activation link
+      const { rawToken, tokenHash } = generateSecureToken();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      await tx.emailVerification.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          email: normalizedEmail,
+          tokenType: VerificationTokenType.ACCOUNT_ACTIVATION,
+          expiresAt,
+        },
+      });
+
+      const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+      const rendered = renderAccountActivationEmail({
+        recipientName,
+        activationUrl,
+        expiresInHours: 72,
+        roleName: primaryRole,
+      });
+
+      const notifResult = await enqueueNotification(
+        {
+          idempotencyKey: `SECURITY:ACCOUNT_ACTIVATION:${user.id}:${tokenHash}`,
+          recipientUserId: user.id,
+          recipientEmail: normalizedEmail,
+          channel: NotificationChannel.EMAIL,
+          category: NotificationCategory.SECURITY,
+          templateName: 'ACCOUNT_ACTIVATION',
+          subject: rendered.subject,
+          bodyText: rendered.text,
+          htmlBody: rendered.html,
+          metadata: { tokenHash, expiresAt: expiresAt.toISOString() },
+        },
+        tx
+      );
+
+      if (notifResult.notificationId) {
+        processPendingNotifications({ targetNotificationId: notifResult.notificationId }).catch(() => { });
+      }
+    }
+
+    return user;
+  });
+
+  const safe = sanitizeUser(newUser);
+  return {
+    ...safe,
+    user: safe,
+    temporaryPassword: tempPassword,
+  };
+}
+
+/**
+ * Administratively initiates a password reset for a user account.
+ * Generates a 24-hour single-use token, invalidates prior sessions, and dispatches reset email.
+ * Administrators never see, set, or know the user's password.
+ */
+export async function adminInitiatePasswordReset(
+  actor: SafeUser,
+  targetUserId: string,
+  ipAddress?: string
+) {
+  await requirePermission(actor, PermissionCode.USER_MANAGE);
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    include: {
+      userRoles: { include: { role: true } },
+      guardianProfile: true,
+      teacherProfile: true,
+    },
+  });
+
+  if (!targetUser) {
+    throw new AuthorizationError('User account not found.', 404, 'USER_NOT_FOUND');
+  }
+
+  if (targetUser.status === UserStatus.DEACTIVATED) {
+    throw new Error('Cannot initiate a password reset for a deactivated user account.');
+  }
+
+  // Anti-privilege escalation
+  const targetRoles = targetUser.userRoles.map((ur) => ur.role.code);
+  const actorRoles = await getUserRoles(actor.id);
+  if (targetRoles.includes(RoleCode.SUPER_ADMIN) && !actorRoles.includes(RoleCode.SUPER_ADMIN)) {
+    throw new AuthorizationError(
+      'Access denied: Only existing Super Admins can initiate password resets for a Super Admin.',
+      403,
+      'SUPER_ADMIN_PROTECTED'
+    );
+  }
+
+  const { rawToken, tokenHash } = generateSecureToken();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Invalidate any prior active reset records
+    await tx.passwordReset.updateMany({
+      where: { userId: targetUserId, usedAt: null },
+      data: { usedAt: now },
+    });
+
+    // 2. Persist new 24-hour reset token hash
+    await tx.passwordReset.create({
+      data: {
+        userId: targetUserId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    // 3. Revoke all active sessions for target user
+    await tx.session.updateMany({
+      where: { userId: targetUserId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+
+    // 4. Audit trail
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'ADMIN_INITIATED_PASSWORD_RESET',
+        entityType: 'User',
+        entityId: targetUserId,
+        ipAddress,
+      },
+    });
+
+    // 5. Render and enqueue notification
+    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    const resetUrl = `${appUrl}/auth/reset-password?token=${rawToken}`;
+    const recipientName = targetUser.guardianProfile
+      ? `${targetUser.guardianProfile.firstName} ${targetUser.guardianProfile.lastName}`.trim()
+      : targetUser.teacherProfile
+        ? `${targetUser.teacherProfile.firstName} ${targetUser.teacherProfile.lastName}`.trim()
+        : targetUser.email.split('@')[0];
+
+    const rendered = renderAdminPasswordResetEmail({
+      recipientName,
+      resetUrl,
+      expiresInHours: 24,
+    });
+
+    const notifResult = await enqueueNotification(
+      {
+        idempotencyKey: `SECURITY:ADMIN_PW_RESET:${targetUserId}:${tokenHash}`,
+        recipientUserId: targetUserId,
+        recipientEmail: targetUser.email,
+        channel: NotificationChannel.EMAIL,
+        category: NotificationCategory.SECURITY,
+        templateName: 'ADMIN_PASSWORD_RESET',
+        subject: rendered.subject,
+        bodyText: rendered.text,
+        htmlBody: rendered.html,
+        metadata: { tokenHash, resetUrl },
+      },
+      tx
+    );
+
+    if (notifResult.notificationId) {
+      processPendingNotifications({ targetNotificationId: notifResult.notificationId }).catch(() => { });
+    }
+  });
+
+  return {
+    success: true,
+    message: 'Administrative password reset instructions have been dispatched to the user’s registered email.',
+  };
+}
+
+/**
+ * Administratively changes a user's registered email address for account recovery.
+ * Security requirements:
+ * 1. Explicit identity verification confirmation by the administrator.
+ * 2. Non-empty administrative justification logged to immutable audit trail.
+ * 3. Security alert dispatched to the old email address when possible.
+ * 4. Verification token dispatched to the new email address to confirm ownership.
+ * 5. Immediate revocation of all active sessions.
+ */
+export async function adminChangeUserEmail(
+  actor: SafeUser,
+  targetUserId: string,
+  input: {
+    newEmail: string;
+    reason: string;
+    identityVerified: boolean;
+  },
+  ipAddress?: string
+) {
+  await requirePermission(actor, PermissionCode.USER_MANAGE);
+
+  if (!input.identityVerified) {
+    throw new Error('Identity verification required: You must confirm the account holder identity before modifying their registered email.');
+  }
+
+  const cleanReason = input.reason?.trim() || '';
+  if (cleanReason.length < 5) {
+    throw new Error('Please provide an administrative reason (minimum 5 characters) for the email change.');
+  }
+
+  const normalizedNewEmail = input.newEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedNewEmail)) {
+    throw new Error('Please enter a valid new email address.');
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    include: {
+      userRoles: { include: { role: true } },
+      guardianProfile: true,
+      teacherProfile: true,
+    },
+  });
+
+  if (!targetUser) {
+    throw new AuthorizationError('User account not found.', 404, 'USER_NOT_FOUND');
+  }
+
+  if (targetUser.status === UserStatus.DEACTIVATED) {
+    throw new Error('Cannot change email for a deactivated account.');
+  }
+
+  if (normalizedNewEmail === targetUser.email.toLowerCase()) {
+    throw new Error('New email address must be different from current email address.');
+  }
+
+  // Anti-privilege escalation
+  const targetRoles = targetUser.userRoles.map((ur) => ur.role.code);
+  const actorRoles = await getUserRoles(actor.id);
+  if (targetRoles.includes(RoleCode.SUPER_ADMIN) && !actorRoles.includes(RoleCode.SUPER_ADMIN)) {
+    throw new AuthorizationError(
+      'Access denied: Only existing Super Admins can alter email credentials for a Super Admin.',
+      403,
+      'SUPER_ADMIN_PROTECTED'
+    );
+  }
+
+  const emailInUse = await prisma.user.findUnique({
+    where: { email: normalizedNewEmail },
+  });
+  if (emailInUse) {
+    throw new Error('The specified new email address is already registered to another user.');
+  }
+
+  const oldEmail = targetUser.email;
+  const { rawToken, tokenHash } = generateSecureToken();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Update user email and mark unverified until new email confirmation
+    await tx.user.update({
+      where: { id: targetUserId },
+      data: {
+        email: normalizedNewEmail,
+        emailVerifiedAt: null,
+      },
+    });
+
+    // 2. Invalidate prior active email verifications
+    await tx.emailVerification.updateMany({
+      where: { userId: targetUserId, usedAt: null },
+      data: { usedAt: now },
+    });
+
+    // 3. Create verification token for the new email address
+    await tx.emailVerification.create({
+      data: {
+        userId: targetUserId,
+        tokenHash,
+        email: normalizedNewEmail,
+        tokenType: VerificationTokenType.EMAIL_VERIFICATION,
+        expiresAt,
+      },
+    });
+
+    // 4. Revoke active sessions
+    await tx.session.updateMany({
+      where: { userId: targetUserId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+
+    // 5. Immutable Audit Log
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'ADMIN_CHANGED_USER_EMAIL',
+        entityType: 'User',
+        entityId: targetUserId,
+        ipAddress,
+        oldValues: { email: oldEmail },
+        newValues: {
+          email: normalizedNewEmail,
+          reason: cleanReason,
+          identityVerified: true,
+        },
+      },
+    });
+
+    const recipientName = targetUser.guardianProfile
+      ? `${targetUser.guardianProfile.firstName} ${targetUser.guardianProfile.lastName}`.trim()
+      : targetUser.teacherProfile
+        ? `${targetUser.teacherProfile.firstName} ${targetUser.teacherProfile.lastName}`.trim()
+        : targetUser.email.split('@')[0];
+
+    // 6. Security notification to OLD email (when possible)
+    const oldAlert = renderEmailChangedNotification({
+      recipientName,
+      oldEmail,
+      newEmail: normalizedNewEmail,
+      isNewEmailNotice: false,
+    });
+    const oldNotif = await enqueueNotification(
+      {
+        idempotencyKey: `SECURITY:EMAIL_CHANGE_OLD:${targetUserId}:${Date.now()}`,
+        recipientUserId: targetUserId,
+        recipientEmail: oldEmail,
+        channel: NotificationChannel.EMAIL,
+        category: NotificationCategory.SECURITY,
+        templateName: 'EMAIL_CHANGED_ALERT',
+        subject: oldAlert.subject,
+        bodyText: oldAlert.text,
+        htmlBody: oldAlert.html,
+        metadata: { oldEmail, newEmail: normalizedNewEmail },
+      },
+      tx
+    );
+
+    // 7. Verification email to NEW email
+    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    const verificationUrl = `${appUrl}/api/auth/verify-email?token=${rawToken}`;
+    const newNotice = renderEmailChangedNotification({
+      recipientName,
+      oldEmail,
+      newEmail: normalizedNewEmail,
+      isNewEmailNotice: true,
+      verificationUrl,
+    });
+    const newNotif = await enqueueNotification(
+      {
+        idempotencyKey: `SECURITY:EMAIL_VERIFY_NEW:${targetUserId}:${tokenHash}`,
+        recipientUserId: targetUserId,
+        recipientEmail: normalizedNewEmail,
+        channel: NotificationChannel.EMAIL,
+        category: NotificationCategory.SECURITY,
+        templateName: 'EMAIL_VERIFICATION',
+        subject: newNotice.subject,
+        bodyText: newNotice.text,
+        htmlBody: newNotice.html,
+        metadata: { tokenHash, verificationUrl },
+      },
+      tx
+    );
+
+    if (oldNotif.notificationId) {
+      processPendingNotifications({ targetNotificationId: oldNotif.notificationId }).catch(() => { });
+    }
+    if (newNotif.notificationId) {
+      processPendingNotifications({ targetNotificationId: newNotif.notificationId }).catch(() => { });
+    }
+  });
+
+  return {
+    success: true,
+    oldEmail,
+    newEmail: normalizedNewEmail,
+    message: 'User email updated. Security alert dispatched to previous address and verification link sent to new address.',
+  };
+}
+
+/**
+ * Performs emergency account recovery actions (e.g. unlock locked account, resend activation).
+ */
+export async function adminEmergencyAccountRecovery(
+  actor: SafeUser,
+  targetUserId: string,
+  input: {
+    reason: string;
+    unlockAccount?: boolean;
+    sendNewActivationLink?: boolean;
+  },
+  ipAddress?: string
+) {
+  await requirePermission(actor, PermissionCode.USER_MANAGE);
+
+  const cleanReason = input.reason?.trim() || '';
+  if (cleanReason.length < 5) {
+    throw new Error('Please specify an administrative justification for this recovery action.');
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    include: {
+      userRoles: { include: { role: true } },
+      guardianProfile: true,
+      teacherProfile: true,
+    },
+  });
+
+  if (!targetUser) {
+    throw new AuthorizationError('User account not found.', 404, 'USER_NOT_FOUND');
+  }
+
+  // Anti-privilege escalation
+  const targetRoles = targetUser.userRoles.map((ur) => ur.role.code);
+  const actorRoles = await getUserRoles(actor.id);
+  if (targetRoles.includes(RoleCode.SUPER_ADMIN) && !actorRoles.includes(RoleCode.SUPER_ADMIN)) {
+    throw new AuthorizationError(
+      'Access denied: Only existing Super Admins can execute recovery on a Super Admin account.',
+      403,
+      'SUPER_ADMIN_PROTECTED'
+    );
+  }
+
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    if (input.unlockAccount) {
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
+    }
+
+    if (input.sendNewActivationLink) {
+      const { rawToken, tokenHash } = generateSecureToken();
+      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+      await tx.emailVerification.updateMany({
+        where: { userId: targetUserId, usedAt: null },
+        data: { usedAt: now },
+      });
+
+      await tx.emailVerification.create({
+        data: {
+          userId: targetUserId,
+          tokenHash,
+          email: targetUser.email,
+          tokenType: VerificationTokenType.ACCOUNT_ACTIVATION,
+          expiresAt,
+        },
+      });
+
+      const appUrl = process.env.APP_URL || 'http://localhost:3000';
+      const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+      const primaryRole = targetRoles[0] || 'Member';
+      const recipientName = targetUser.guardianProfile
+        ? `${targetUser.guardianProfile.firstName} ${targetUser.guardianProfile.lastName}`.trim()
+        : targetUser.teacherProfile
+          ? `${targetUser.teacherProfile.firstName} ${targetUser.teacherProfile.lastName}`.trim()
+          : targetUser.email.split('@')[0];
+
+      const rendered = renderWelcomeNewUserEmail({
+        recipientName,
+        roleName: primaryRole,
+        email: targetUser.email,
+        activationUrl,
+        expiresInHours: 24,
+      });
+
+      const notif = await enqueueNotification(
+        {
+          idempotencyKey: `SECURITY:EMERGENCY_ACTIVATION:${targetUserId}:${tokenHash}`,
+          recipientUserId: targetUserId,
+          recipientEmail: targetUser.email,
+          channel: NotificationChannel.EMAIL,
+          category: NotificationCategory.SECURITY,
+          templateName: 'WELCOME_NEW_USER',
+          subject: rendered.subject,
+          bodyText: rendered.text,
+          htmlBody: rendered.html,
+          metadata: { tokenHash, activationUrl },
+        },
+        tx
+      );
+
+      if (notif.notificationId) {
+        processPendingNotifications({ targetNotificationId: notif.notificationId }).catch(() => { });
+      }
+    }
+
+    // Revoke sessions
+    await tx.session.updateMany({
+      where: { userId: targetUserId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+
+    // Audit trail
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'ADMIN_EMERGENCY_ACCOUNT_RECOVERY',
+        entityType: 'User',
+        entityId: targetUserId,
+        ipAddress,
+        newValues: {
+          reason: cleanReason,
+          unlockAccount: !!input.unlockAccount,
+          sendNewActivationLink: !!input.sendNewActivationLink,
+        },
+      },
+    });
+  });
+
+  return {
+    success: true,
+    message: 'Emergency recovery action completed successfully.',
+  };
+}
+
+/**
+ * Resends user activation link with administrative audit logging.
+ */
+export async function resendUserActivation(
+  actor: SafeUser,
+  targetUserId: string,
+  ipAddress?: string
+) {
+  return adminEmergencyAccountRecovery(
+    actor,
+    targetUserId,
+    { reason: 'Administrative activation link dispatch requested', sendNewActivationLink: true },
+    ipAddress
+  );
 }
 
 // ==========================================
@@ -744,6 +1535,224 @@ export async function removeTeacherScope(actor: SafeUser, scopeId: string) {
   });
 
   return existing;
+}
+
+/**
+ * Creates an authoritative Teacher profile, provisioning or linking the corresponding User account,
+ * assigning the TEACHER role, generating an activation token, and dispatching a welcome email.
+ */
+export async function createAdminTeacher(
+  actor: SafeUser,
+  input: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phonePrimary?: string;
+    staffIdNumber?: string;
+    qualification?: string;
+    linkExistingUserId?: string;
+    scopes?: Array<{
+      programmeId: string;
+      schoolClassId?: string | null;
+      subjectId?: string | null;
+      isClassTeacher?: boolean;
+    }>;
+  },
+  ipAddress?: string
+) {
+  await requirePermission(actor, PermissionCode.TEACHER_MANAGE);
+
+  const normalizedEmail = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new Error('Please provide a valid email address.');
+  }
+
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+  if (!firstName || !lastName) {
+    throw new Error('Teacher first name and last name are required.');
+  }
+
+  if (!input.phonePrimary || !input.phonePrimary.trim()) {
+    throw new Error('Phone number is mandatory.');
+  }
+
+  // 1. Determine staff ID
+  let staffId = input.staffIdNumber?.trim();
+  if (!staffId) {
+    const currentYear = new Date().getFullYear();
+    const count = await prisma.teacher.count();
+    staffId = `STF-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+  }
+
+  const existingStaffId = await prisma.teacher.findUnique({
+    where: { staffIdNumber: staffId },
+  });
+  if (existingStaffId) {
+    throw new Error(`Staff ID ${staffId} is already assigned to another educator.`);
+  }
+
+  // 2. Resolve User Account
+  const teacherRole = await prisma.role.findUnique({
+    where: { code: RoleCode.TEACHER },
+  });
+  if (!teacherRole) {
+    throw new Error('TEACHER role definition missing in system.');
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    let targetUserId = input.linkExistingUserId;
+
+    if (targetUserId) {
+      const existingUser = await tx.user.findUnique({
+        where: { id: targetUserId },
+        include: { teacherProfile: true, userRoles: true },
+      });
+      if (!existingUser) {
+        throw new Error('Specified user account does not exist.');
+      }
+      if (existingUser.teacherProfile) {
+        throw new Error('This user account is already linked to another teacher profile.');
+      }
+      const hasTeacherRole = existingUser.userRoles.some((ur) => ur.roleId === teacherRole.id);
+      if (!hasTeacherRole) {
+        await tx.userRole.create({
+          data: {
+            userId: targetUserId,
+            roleId: teacherRole.id,
+          },
+        });
+      }
+    } else {
+      const existingUser = await tx.user.findUnique({
+        where: { email: normalizedEmail },
+        include: { teacherProfile: true, userRoles: true },
+      });
+
+      if (existingUser) {
+        throw new Error('This email address is already registered.');
+      } else {
+        const sentinelHash = createUnactivatedPasswordSentinel();
+        const { rawToken, tokenHash } = generateSecureToken();
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+        const createdUser = await tx.user.create({
+          data: {
+            email: normalizedEmail,
+            phoneNumber: input.phonePrimary?.trim() || null,
+            passwordHash: sentinelHash,
+            status: UserStatus.PENDING_VERIFICATION,
+            userRoles: {
+              create: [{ roleId: teacherRole.id }],
+            },
+            emailVerifications: {
+              create: {
+                tokenHash,
+                email: normalizedEmail,
+                tokenType: VerificationTokenType.ACCOUNT_ACTIVATION,
+                expiresAt,
+              },
+            },
+          },
+        });
+
+        targetUserId = createdUser.id;
+
+        const appUrl = process.env.APP_URL || 'http://localhost:3000';
+        const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+        const recipientName = `${firstName} ${lastName}`.trim();
+
+        const rendered = renderWelcomeNewUserEmail({
+          recipientName,
+          roleName: 'Teacher',
+          email: normalizedEmail,
+          activationUrl,
+          expiresInHours: 24,
+        });
+
+        const notifResult = await enqueueNotification(
+          {
+            idempotencyKey: `SECURITY:USER_ACTIVATION:${createdUser.id}:${tokenHash}`,
+            recipientUserId: createdUser.id,
+            recipientEmail: normalizedEmail,
+            channel: NotificationChannel.EMAIL,
+            category: NotificationCategory.SECURITY,
+            templateName: 'WELCOME_NEW_USER',
+            subject: rendered.subject,
+            bodyText: rendered.text,
+            htmlBody: rendered.html,
+            metadata: { tokenHash, activationUrl },
+          },
+          tx
+        );
+
+        if (notifResult.notificationId) {
+          processPendingNotifications({ targetNotificationId: notifResult.notificationId }).catch(() => { });
+        }
+      }
+    }
+
+    // 3. Create Teacher Profile
+    const teacher = await tx.teacher.create({
+      data: {
+        userId: targetUserId,
+        staffIdNumber: staffId,
+        firstName,
+        lastName,
+        qualification: input.qualification?.trim() || null,
+        status: TeacherStatus.ACTIVE,
+      },
+    });
+
+    // 4. Assign initial scopes if provided
+    if (input.scopes && input.scopes.length > 0) {
+      let activeSession = await tx.academicSession.findFirst({
+        where: { isCurrent: true },
+      });
+      if (!activeSession) {
+        activeSession = await tx.academicSession.findFirst({
+          orderBy: { startDate: 'desc' },
+        });
+      }
+      if (activeSession) {
+        for (const scope of input.scopes) {
+          if (scope.programmeId) {
+            await tx.teacherScope.create({
+              data: {
+                teacherId: teacher.id,
+                academicSessionId: activeSession.id,
+                programmeId: scope.programmeId,
+                schoolClassId: scope.schoolClassId || null,
+                subjectId: scope.subjectId || null,
+                isFormTeacher: Boolean(scope.isClassTeacher),
+              },
+            });
+          }
+        }
+      }
+    }
+
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'TEACHER_CREATED',
+        entityType: 'Teacher',
+        entityId: teacher.id,
+        ipAddress,
+        newValues: {
+          staffId,
+          name: `${firstName} ${lastName}`,
+          email: normalizedEmail,
+          userId: targetUserId,
+        },
+      },
+    });
+
+    return teacher;
+  });
+
+  return getAdminTeacherDetails(actor, result.id);
 }
 
 // ==========================================

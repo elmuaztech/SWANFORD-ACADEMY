@@ -47,7 +47,7 @@ export function MobileNav({
       role="dialog"
       aria-modal="true"
       aria-label="Mobile Navigation"
-      className="fixed inset-0 z-50 md:hidden"
+      className="fixed inset-0 z-50 lg:hidden"
     >
       {/* Backdrop */}
       <div
@@ -60,20 +60,29 @@ export function MobileNav({
       <div className="fixed inset-y-0 right-0 w-full max-w-xs bg-white shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
         {/* Drawer Header */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center font-bold text-sm">
-              S
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+              <img
+                src="/images/swanford-logo.jpg"
+                alt={`${SCHOOL_PROFILE.name} Crest`}
+                className="w-full h-full object-contain"
+              />
             </div>
-            <span className="text-sm font-bold text-slate-900 truncate max-w-[170px]">
-              {SCHOOL_PROFILE.name}
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-base font-extrabold text-[#5B0612] tracking-tight leading-tight truncate font-sans">
+                {SCHOOL_PROFILE.name}
+              </span>
+              <span className="text-[10px] text-[#800020] font-bold tracking-wider uppercase leading-tight mt-0.5 font-sans">
+                NURSERY, PRIMARY &amp; TAHFEEZ
+              </span>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={onClose}
             aria-label="Close navigation"
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
               <path
@@ -109,7 +118,7 @@ export function MobileNav({
                 aria-current={isActive ? "page" : undefined}
                 className={`flex items-center px-4 py-3 rounded-lg text-sm font-semibold transition-colors duration-150 min-h-[48px] select-none ${
                   isActive
-                    ? "bg-emerald-50 text-emerald-800 font-bold border-l-4 border-emerald-700"
+                    ? "bg-[#FAF2F4] text-[#800020] font-bold border-l-4 border-[#800020]"
                     : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
@@ -118,6 +127,21 @@ export function MobileNav({
             );
           })}
         </nav>
+
+        {/* Quick Mobile Action Buttons */}
+        {!userRole && (
+          <div className="p-3 border-t border-slate-100 bg-stone-50/50">
+            <Link
+              href="/auth/login"
+              onClick={onClose}
+              className="flex items-center justify-center gap-1.5 w-full min-h-[48px] px-4 py-3 rounded-xl text-sm font-bold text-white bg-[#800020] hover:bg-[#5B0612] active:bg-[#4A050F] shadow-xs font-sans whitespace-nowrap transition-colors"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              <span>Portal Login</span>
+              <span aria-hidden="true">&rarr;</span>
+            </Link>
+          </div>
+        )}
 
         {/* Drawer Footer */}
         <div className="p-4 border-t border-slate-100 text-center text-xs text-slate-400">

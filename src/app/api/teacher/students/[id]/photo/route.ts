@@ -10,6 +10,10 @@ import {
 } from '@/lib/media/media_service';
 import { ImageValidationError } from '@/lib/media/image_processor';
 
+export const dynamic = 'force-dynamic';
+
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+
 /**
  * Swanford Academy — Teacher Scoped Student Profile Photo Update
  * Master Specification Reference: Section 9 (Teacher Student Photo Update)
@@ -21,7 +25,7 @@ import { ImageValidationError } from '@/lib/media/image_processor';
  * 4. TeacherScope check (session, programme, class, active enrollment)
  * 5. Replaces photo and cleans up orphaned media
  */
-export async function PUT(
+async function handlePhotoUpload(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -69,6 +73,13 @@ export async function PUT(
         return NextResponse.json({ error: 'Photo file is required.' }, { status: 400 });
       }
 
+      if (file.size > MAX_FILE_BYTES) {
+        return NextResponse.json(
+          { error: 'File size exceeds maximum permitted limit of 5 MB.' },
+          { status: 413 }
+        );
+      }
+
       if (!programmeId) {
         return NextResponse.json(
           { error: 'programmeId is required to verify TeacherScope.' },
@@ -90,7 +101,7 @@ export async function PUT(
       });
       newAssetId = asset.id;
     } else {
-      const body = await request.json();
+      const body = await request.json().catch(() => ({}));
       newAssetId = body.assetId;
       programmeId = body.programmeId;
       schoolClassId = body.schoolClassId;
@@ -133,9 +144,24 @@ export async function PUT(
       );
     }
 
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred while updating the student photo.';
     return NextResponse.json(
-      { error: 'An unexpected error occurred while updating the student photo.' },
+      { error: message },
       { status: 500 }
     );
   }
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return handlePhotoUpload(request, context);
+}
+
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return handlePhotoUpload(request, context);
 }

@@ -16,7 +16,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ options, isError = false, placeholder, className = "", children, disabled, ...props }, ref) => {
     const errorClasses = isError
       ? "border-rose-400 focus-visible:ring-rose-500 text-rose-900"
-      : "border-slate-300 focus-visible:ring-emerald-600 text-slate-900";
+      : "border-[#EADBDA] focus-visible:ring-[#800020] focus:border-[#800020] text-slate-900";
 
     return (
       <div className="relative w-full">

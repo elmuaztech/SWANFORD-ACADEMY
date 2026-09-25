@@ -16,14 +16,7 @@ async function main() {
   // 1. Always seed clean production architectural foundation
   await seedProductionFoundation(prisma);
 
-  // 2. Conditionally seed developer demonstration mocks ONLY if explicitly requested and NOT in production
-  if (!isProduction && shouldSeedMocks) {
-    await seedDevelopmentMocks(prisma);
-  } else if (isProduction) {
-    console.log("🔒 Production Mode Verified: Zero mock students, parents, invoices, or revenue seeded.");
-  } else {
-    console.log("ℹ Clean Dev Baseline: Mock records skipped (run with --mocks or SEED_MOCKS=true to include).");
-  }
+  console.log("🔒 Verified: Zero mock students, parents, invoices, or records seeded. Mock creation permanently disabled.");
 }
 
 main()

@@ -180,7 +180,7 @@ export default function ChildFinancePage() {
           <Link href={`/parent/children/${childId}`} className="inline-flex items-center text-sm text-[#800020] hover:underline font-medium mb-2">
             ← Back to Child Profile
           </Link>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Finance & Fees</h1>
+          <h1 className="text-2xl font-bold text-[#5B0612] tracking-tight">Finance & Fees</h1>
           <p className="text-sm text-stone-600">
             Billing history and invoices for <span className="font-semibold text-stone-900">{data.child.name}</span> ({data.child.admissionNumber})
           </p>
@@ -217,7 +217,7 @@ export default function ChildFinancePage() {
 
       {/* Invoices List */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-stone-900">Invoices & Statements</h2>
+        <h2 className="text-lg font-semibold text-[#5B0612]">Invoices & Statements</h2>
 
         {data.invoices.length === 0 ? (
           <Card className="bg-white border-stone-200">
@@ -255,7 +255,7 @@ export default function ChildFinancePage() {
                         onClick={() => handlePayOnline(inv.id)}
                         disabled={payingInvoiceId === inv.id}
                       >
-                        {payingInvoiceId === inv.id ? "Connecting..." : "Pay with Paystack"}
+                        {payingInvoiceId === inv.id ? "Connecting..." : "Proceed to Online Payment"}
                       </Button>
                     )}
                   </div>

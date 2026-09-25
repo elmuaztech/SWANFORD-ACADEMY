@@ -28,11 +28,13 @@ describe("Unit Tests: Work Package C - Admin & Super Admin Authorization Invaria
       expect(adminPerms).toContain(PermissionCode.GUARDIAN_VIEW);
       expect(adminPerms).toContain(PermissionCode.TEACHER_MANAGE);
       expect(adminPerms).toContain(PermissionCode.ADMISSION_APPLICATION_REVIEW);
-      expect(adminPerms).toContain(PermissionCode.ADMISSION_APPLICATION_APPROVE);
       expect(adminPerms).toContain(PermissionCode.ATTENDANCE_VIEW);
-      expect(adminPerms).toContain(PermissionCode.AUDIT_LOG_VIEW);
 
-      // Governance permissions STRICTLY FORBIDDEN to Admin
+      // Governance, Audit, User Security & Finance permissions STRICTLY FORBIDDEN to Admin
+      expect(adminPerms).not.toContain(PermissionCode.AUDIT_LOG_VIEW);
+      expect(adminPerms).not.toContain(PermissionCode.FINANCE_INVOICE_VIEW);
+      expect(adminPerms).not.toContain(PermissionCode.FINANCE_PAYMENT_VIEW);
+      expect(adminPerms).not.toContain(PermissionCode.ADMISSION_APPLICATION_APPROVE);
       expect(adminPerms).not.toContain(PermissionCode.SYSTEM_CONFIG_MANAGE);
       expect(adminPerms).not.toContain(PermissionCode.USER_MANAGE);
       expect(adminPerms).not.toContain(PermissionCode.ROLE_MANAGE);

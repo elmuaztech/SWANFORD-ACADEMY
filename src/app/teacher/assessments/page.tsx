@@ -126,7 +126,7 @@ export default function TeacherAssessmentsPage() {
               <CardContent className="p-5 space-y-3.5">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="text-base font-bold text-stone-900 line-clamp-1">{ass.title}</h3>
+                    <h3 className="text-base font-bold text-[#5B0612] line-clamp-1">{ass.title}</h3>
                     <p className="text-xs text-stone-500 font-medium mt-0.5">
                       {ass.schoolClass.name} {ass.schoolClass.arm ? `(${ass.schoolClass.arm})` : ""} · {ass.programme.name}
                     </p>

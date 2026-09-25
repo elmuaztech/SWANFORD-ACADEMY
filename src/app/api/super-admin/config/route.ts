@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/request_auth';
 import { requirePermission, AuthorizationError } from '@/lib/auth/authorization';
 import { PermissionCode, PERMISSION_DEFINITIONS, SYSTEM_ROLE_PERMISSIONS } from '@/lib/auth/permissions';
-import { SCHOOL_PROFILE } from '@/lib/constants';
-import { LAGOS_TIMEZONE } from '@/lib/config/timezone';
+import { getSchoolProfile } from '@/lib/academic/school_profile';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     await requirePermission(actor, PermissionCode.SYSTEM_CONFIG_MANAGE);
 
-    const [sessions, feeStructures, programmes] = await Promise.all([
+    const [sessions, feeStructures, programmes, schoolProfile] = await Promise.all([
       prisma.academicSession.findMany({
         include: { terms: true },
         orderBy: { startDate: 'desc' },
@@ -30,6 +29,7 @@ export async function GET(request: NextRequest) {
         include: { classes: true },
         orderBy: { name: 'asc' },
       }),
+      getSchoolProfile(),
     ]);
 
     const serializedFeeStructures = feeStructures.map((fs) => ({
@@ -42,16 +42,20 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       schoolProfile: {
-        ...SCHOOL_PROFILE,
-        location: 'PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE',
-        motto: 'Illuminating the Path to Success.',
+        name: schoolProfile.name,
+        subtitle: schoolProfile.subtitle || 'Nursery, Primary & Tahfeez School',
+        location: schoolProfile.address,
+        motto: schoolProfile.motto,
+        phone: schoolProfile.phonePrimary,
+        phonePrimary: schoolProfile.phonePrimary,
+        email: schoolProfile.email,
+        website: schoolProfile.website,
         bankAccount: {
-          bank: 'Jaiz Bank',
-          accountName: 'Swanford Academy',
-          accountNumber: '0012031162',
+          bank: schoolProfile.bankName || 'Stanbic IBTC Bank',
+          accountName: schoolProfile.bankAccountName || 'Swanford Academy Ltd',
+          accountNumber: schoolProfile.bankAccountNumber || '0034567890',
         },
       },
-      timezone: LAGOS_TIMEZONE,
       academicSessions: sessions,
       feeStructures: serializedFeeStructures,
       programmes,

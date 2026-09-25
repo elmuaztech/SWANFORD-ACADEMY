@@ -36,6 +36,8 @@ export default function PublicAdmissionPage() {
   const [cycles, setCycles] = useState<AdmissionCycleOption[]>([]);
   const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);
   const [formFeeKobo, setFormFeeKobo] = useState<string>('500000');
+  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [activeSessionName, setActiveSessionName] = useState<string>('');
   const [loadingOptions, setLoadingOptions] = useState(true);
 
   // Form State
@@ -73,6 +75,8 @@ export default function PublicAdmissionPage() {
           const data = await res.json();
           setCycles(data.cycles || []);
           setProgrammes(data.programmes || []);
+          setIsOpen(data.isOpen ?? (data.cycles && data.cycles.length > 0));
+          setActiveSessionName(data.activeSessionName || '');
           if (data.formFeeKobo) setFormFeeKobo(data.formFeeKobo);
           if (data.cycles?.[0]?.id) {
             setFormData((prev) => ({ ...prev, admissionCycleId: data.cycles[0].id }));
@@ -200,17 +204,17 @@ export default function PublicAdmissionPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFFFFF] text-[#1C1A1A]">
+    <div className="min-h-screen flex flex-col bg-[#FFFFFF] text-[#1C1A1A] w-full max-w-full overflow-x-hidden">
       <Navbar currentPath="/admissions" />
 
-      <main className="flex-1 py-10 sm:py-16">
+      <main className="flex-1 py-10 sm:py-16 w-full max-w-full overflow-x-hidden">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Top Title */}
           <div className="text-center mb-8 sm:mb-10 space-y-2">
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
               Online Admissions Portal
             </div>
-            <h1 className="text-2xl sm:text-4xl font-bold text-[#1C1A1A] tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-bold text-[#5B0612] tracking-tight">
               Application for Admission
             </h1>
             <p className="text-xs sm:text-sm text-[#524B46] max-w-lg mx-auto">
@@ -227,7 +231,7 @@ export default function PublicAdmissionPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-bold text-[#1C1A1A]">Application Submitted Successfully!</h2>
+                  <h2 className="text-2xl font-bold text-[#5B0612]">Application Submitted Successfully!</h2>
                   <p className="text-sm text-[#524B46]">
                     Your admission application has been registered with the Swanford Academy Admissions Office.
                   </p>
@@ -277,10 +281,48 @@ export default function PublicAdmissionPage() {
                 <LoadingState message="Loading admission options and academic cycles..." />
               </CardContent>
             </Card>
-          ) : (
-            /* WIZARD CARD */
+          ) : !isOpen || cycles.length === 0 ? (
+            /* CLOSED ADMISSIONS STATE */
             <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
-              <CardContent className="p-6 sm:p-10 space-y-8">
+              <CardContent className="p-8 sm:p-12 text-center space-y-6">
+                <div className="w-16 h-16 bg-[#FDF2F4] text-[#800020] rounded-full flex items-center justify-center mx-auto shadow-inner">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <div className="space-y-2 max-w-md mx-auto">
+                  <Badge variant="neutral" size="md">Admissions Closed</Badge>
+                  <h2 className="text-xl sm:text-2xl font-bold text-[#5B0612] mt-2 font-sans">
+                    Admissions for {activeSessionName || 'the Academic Session'} are currently closed.
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#524B46] leading-relaxed font-sans">
+                    Online application submissions are not currently being accepted. Prospective parents may contact the school admissions office for information regarding upcoming enrollment sessions or scheduled campus visits.
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link href="/contact" className="w-full sm:w-auto">
+                    <Button variant="primary" size="md" className="w-full sm:w-auto bg-[#800020] hover:bg-[#5B0612] text-white font-sans">
+                      Contact Admissions Office &rarr;
+                    </Button>
+                  </Link>
+                  <Link href="/admissions/status" className="w-full sm:w-auto">
+                    <Button variant="outline" size="md" className="w-full sm:w-auto border-[#EADBDA] font-sans">
+                      Track Existing Application
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            /* WIZARD CARD WITH ACTIVE SESSION BANNER */
+            <>
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 mb-6 font-sans">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                <span>Admissions for {activeSessionName} are now open.</span>
+              </div>
+
+              <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
+                <CardContent className="p-6 sm:p-10 space-y-8">
                 {/* Step Indicator */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs font-semibold text-[#524B46]">
@@ -311,7 +353,7 @@ export default function PublicAdmissionPage() {
                 {step === 1 && (
                   <div className="space-y-5">
                     <div>
-                      <h2 className="text-xl font-bold text-[#1C1A1A]">Parent / Guardian Details</h2>
+                      <h2 className="text-xl font-bold text-[#5B0612]">Parent / Guardian Details</h2>
                       <p className="text-xs text-[#524B46] mt-0.5">
                         Please provide active contact information for application updates.
                       </p>
@@ -385,7 +427,7 @@ export default function PublicAdmissionPage() {
                 {step === 2 && (
                   <div className="space-y-5">
                     <div>
-                      <h2 className="text-xl font-bold text-[#1C1A1A]">Child Information</h2>
+                      <h2 className="text-xl font-bold text-[#5B0612]">Child Information</h2>
                       <p className="text-xs text-[#524B46] mt-0.5">
                         Enter the applicant child&apos;s legal name and date of birth.
                       </p>
@@ -454,7 +496,7 @@ export default function PublicAdmissionPage() {
                 {step === 3 && (
                   <div className="space-y-5">
                     <div>
-                      <h2 className="text-xl font-bold text-[#1C1A1A]">Programme Selection</h2>
+                      <h2 className="text-xl font-bold text-[#5B0612]">Programme Selection</h2>
                       <p className="text-xs text-[#524B46] mt-0.5">
                         Select one or more programmes (e.g. Primary Education combined with Tahfeez).
                       </p>
@@ -531,7 +573,7 @@ export default function PublicAdmissionPage() {
                 {step === 4 && (
                   <div className="space-y-5">
                     <div>
-                      <h2 className="text-xl font-bold text-[#1C1A1A]">Child Profile Photo</h2>
+                      <h2 className="text-xl font-bold text-[#5B0612]">Child Profile Photo</h2>
                       <p className="text-xs text-[#524B46] mt-0.5">
                         Upload a clear portrait photo of the child for admission identification.
                       </p>
@@ -559,7 +601,7 @@ export default function PublicAdmissionPage() {
                 {step === 5 && (
                   <div className="space-y-6">
                     <div>
-                      <h2 className="text-xl font-bold text-[#1C1A1A]">Review Application Summary</h2>
+                      <h2 className="text-xl font-bold text-[#5B0612]">Review Application Summary</h2>
                       <p className="text-xs text-[#524B46] mt-0.5">
                         Please confirm the information below before final submission.
                       </p>
@@ -667,7 +709,8 @@ export default function PublicAdmissionPage() {
                 </div>
               </CardContent>
             </Card>
-          )}
+          </>
+        )}
         </div>
       </main>
 

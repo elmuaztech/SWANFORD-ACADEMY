@@ -10,14 +10,18 @@ export function PublicFooter() {
           {/* Brand & Motto */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#5B0612] text-[#FDFBF7] flex items-center justify-center font-bold text-lg border border-[#EADBDA]/20 shrink-0">
-                S
+              <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center bg-white rounded-xl p-1 shadow-xs border border-white/20">
+                <img
+                  src="/images/swanford-logo.jpg"
+                  alt={`${SCHOOL_PROFILE.name} Crest`}
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
-                <span className="text-base font-bold text-[#FDFBF7] block leading-tight">
+                <span className="text-base font-bold text-[#FDFBF7] block leading-tight font-display">
                   {SCHOOL_PROFILE.name}
                 </span>
-                <span className="text-xs text-[#C2B8B2] block">
+                <span className="text-xs text-[#C2B8B2] block font-display">
                   {SCHOOL_PROFILE.subtitle}
                 </span>
               </div>
@@ -58,6 +62,11 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/gallery" className="hover:text-[#FDFBF7] transition-colors">
+                  School Gallery
+                </Link>
+              </li>
+              <li>
                 <Link href="/fees" className="hover:text-[#FDFBF7] transition-colors">
                   Fee Schedule
                 </Link>
@@ -92,13 +101,13 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/teacher" className="hover:text-[#FDFBF7] transition-colors">
+                <Link href="/teacher" className="hover:text-white transition-colors">
                   Teacher Portal
                 </Link>
               </li>
               <li>
-                <Link href="/admin" className="hover:text-[#FDFBF7] transition-colors">
-                  Staff & Admin Portal
+                <Link href="/admin" className="hover:text-white transition-colors">
+                  Admin Portal
                 </Link>
               </li>
             </ul>
@@ -106,37 +115,39 @@ export function PublicFooter() {
 
           {/* School Location & Official Bank Details */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-[#FDFBF7] uppercase tracking-wider mb-4">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
               School Information
             </h3>
-            <div className="text-xs sm:text-sm text-[#C2B8B2] space-y-1.5 leading-relaxed">
-              <p className="font-medium text-[#FDFBF7]">{SCHOOL_PROFILE.name}</p>
+            <div className="text-xs sm:text-sm text-stone-300 space-y-1.5 leading-relaxed">
+              <p className="font-semibold text-white">{SCHOOL_PROFILE.name}</p>
               <p>{SCHOOL_PROFILE.address}</p>
-              <p className="pt-1 text-[#A89F99]">{SCHOOL_PROFILE.contactPerson}</p>
+              <p className="pt-1 text-stone-300">{SCHOOL_PROFILE.contactPerson}</p>
             </div>
-            <div className="pt-3 border-t border-[#383330] text-xs text-[#C2B8B2]">
-              <p className="font-semibold text-[#FDFBF7] mb-1">Official Bank Account:</p>
-              <p>Jaiz Bank — <span className="font-mono text-[#FDFBF7]">0012031162</span></p>
-              <p className="text-[11px] text-[#A89F99]">Account Name: Swanford Academy</p>
+            <div className="pt-3 border-t border-stone-800 text-xs text-stone-300 space-y-1">
+              <p className="font-semibold text-white">Online Fee Payments:</p>
+              <p className="text-xs text-stone-300 flex items-center gap-1.5">
+                <span className="text-emerald-400">🔒</span> Secure Online Payment
+              </p>
+              <p className="text-[11px] text-stone-400">Debit Cards &bull; Bank Transfer &bull; Instant Receipt</p>
             </div>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 mt-8 border-t border-[#383330] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#A89F99]">
-          <p>
+        {/* Bottom Bar with high contrast and explicit branding */}
+        <div className="pt-8 mt-8 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-300">
+          <p className="text-stone-300">
             &copy; {new Date().getFullYear()} {SCHOOL_PROFILE.name}. All rights reserved.
           </p>
-          <div className="flex items-center gap-6">
-            <Link href="/about" className="hover:text-[#FDFBF7] transition-colors">
-              Values & Philosophy
-            </Link>
-            <Link href="/fees" className="hover:text-[#FDFBF7] transition-colors">
-              Fee Information
-            </Link>
-            <Link href="/contact" className="hover:text-[#FDFBF7] transition-colors">
-              Location
-            </Link>
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 text-center sm:text-right text-xs">
+            <span className="text-white">
+              Powered by: <strong className="text-white font-bold">Elmuaz Technologies LTD</strong>
+            </span>
+            <span className="text-white">
+              Email:{" "}
+              <a href="mailto:info@elmuaztech.com.ng" className="text-white hover:text-amber-300 underline font-semibold">
+                info@elmuaztech.com.ng
+              </a>
+            </span>
           </div>
         </div>
       </div>

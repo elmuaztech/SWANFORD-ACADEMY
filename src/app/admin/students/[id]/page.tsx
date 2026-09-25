@@ -3,15 +3,29 @@
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
-import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
-import { LoadingState, ErrorState } from "@/components/ui/states";
-import { Avatar } from "@/components/ui/avatar";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Badge,
+  Button,
+  Modal,
+  Textarea,
+  Select,
+  LoadingState,
+  ErrorState,
+  Avatar,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHeaderCell,
+  TableBody,
+  TableCell,
+  TableWrapper,
+  PageHeader,
+  Alert,
+} from "@/components";
 import { StudentStatus } from "@prisma/client";
 
 interface StudentDetail {
@@ -71,6 +85,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Status Change Modal State
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -101,31 +117,17 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   };
 
   useEffect(() => {
-    fetch(`/api/admin/students/${studentId}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error || "Failed to load student details.");
-        }
-        return res.json();
-      })
-      .then((json) => {
-        setStudent(json);
-        setNewStatus(json.status);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load student.");
-        setLoading(false);
-      });
+    fetchStudent();
   }, [studentId]);
 
   const handleStatusChange = async () => {
     if (!statusReason.trim()) {
-      alert("Please provide an administrative reason for this status change.");
+      setActionError("Please provide a reason for the enrollment status modification.");
       return;
     }
     setStatusSubmitting(true);
+    setActionError(null);
+    setActionSuccess(null);
     try {
       const res = await fetch(`/api/admin/students/${studentId}/status`, {
         method: "PATCH",
@@ -136,9 +138,10 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       if (!res.ok) throw new Error(json.error || "Failed to update status.");
       setShowStatusModal(false);
       setStatusReason("");
+      setActionSuccess(`Enrollment status updated to ${newStatus}.`);
       await fetchStudent();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Status update failed.");
+      setActionError(err instanceof Error ? err.message : "Status update failed.");
     } finally {
       setStatusSubmitting(false);
     }
@@ -167,22 +170,15 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-stone-500 mb-1">
-            <Link href="/admin/students" className="hover:underline">
-              ← Students Directory
-            </Link>
-            <span>/</span>
-            <span className="font-mono">{student.admissionNumber}</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">
-            {student.firstName} {student.middleName ? `${student.middleName} ` : ""}{student.lastName}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title={`${student.firstName} ${student.middleName ? `${student.middleName} ` : ""}${student.lastName}`}
+        description={`Admission #${student.admissionNumber} • Primary Class: ${student.primaryClass?.name || "Unassigned"}`}
+        breadcrumbs={[
+          { label: "Dashboard", href: "/admin" },
+          { label: "Students", href: "/admin/students" },
+          { label: student.admissionNumber },
+        ]}
+        actions={
           <Button
             variant="outline"
             size="md"
@@ -191,13 +187,25 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           >
             Manage Enrollment Status
           </Button>
-        </div>
-      </div>
+        }
+      />
+
+      {actionSuccess && (
+        <Alert variant="success" onClose={() => setActionSuccess(null)}>
+          {actionSuccess}
+        </Alert>
+      )}
+
+      {actionError && (
+        <Alert variant="danger" onClose={() => setActionError(null)}>
+          {actionError}
+        </Alert>
+      )}
 
       {/* Overview Card & Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column: Student Bio Card */}
-        <Card className="md:col-span-1">
+        <Card className="md:col-span-1 border border-[#EADBDA]/80">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-3">
               <Avatar
@@ -209,7 +217,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             <CardTitle className="text-lg font-bold text-stone-900">
               {student.firstName} {student.lastName}
             </CardTitle>
-            <span className="text-xs font-mono font-bold text-[#5B0612]">{student.admissionNumber}</span>
+            <span className="text-xs font-mono font-bold text-[#800020]">{student.admissionNumber}</span>
           </CardHeader>
           <CardContent className="space-y-3 pt-2 text-xs">
             <div className="flex justify-between py-1.5 border-b border-stone-100">
@@ -251,7 +259,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         {/* Right Column: Guardians & Enrollments */}
         <div className="md:col-span-2 space-y-6">
           {/* Linked Guardians */}
-          <Card>
+          <Card className="border border-[#EADBDA]/80">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold text-stone-900">Linked Guardians</CardTitle>
             </CardHeader>
@@ -283,7 +291,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                         )}
                       </div>
                       <Link href={`/admin/guardians/${g.guardian.id}`}>
-                        <Button variant="ghost" size="sm" className="text-[#5B0612] font-semibold">
+                        <Button variant="ghost" size="sm" className="text-[#800020] font-semibold">
                           View Guardian →
                         </Button>
                       </Link>
@@ -295,7 +303,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           </Card>
 
           {/* Programme Enrollments */}
-          <Card>
+          <Card className="border border-[#EADBDA]/80">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold text-stone-900">Programme Enrollments</CardTitle>
             </CardHeader>
@@ -322,7 +330,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Attendance History */}
-      <Card>
+      <Card className="border border-[#EADBDA]/80">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base font-bold text-stone-900">Recent Attendance Records</CardTitle>
@@ -338,14 +346,14 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           {student.attendanceRecords.length === 0 ? (
             <p className="p-6 text-center text-sm text-stone-500">No attendance entries recorded yet.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <TableWrapper>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Remarks</TableHead>
+                    <TableHeaderCell>Date</TableHeaderCell>
+                    <TableHeaderCell>Class</TableHeaderCell>
+                    <TableHeaderCell>Status</TableHeaderCell>
+                    <TableHeaderCell>Remarks</TableHeaderCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -374,7 +382,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </TableWrapper>
           )}
         </CardContent>
       </Card>
@@ -423,7 +431,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               variant="primary"
               disabled={statusSubmitting || !statusReason.trim()}
               onClick={handleStatusChange}
-              className="bg-[#5B0612] text-white font-bold"
+              className="font-bold"
             >
               {statusSubmitting ? "Updating..." : "Confirm Status Change"}
             </Button>

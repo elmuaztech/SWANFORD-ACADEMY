@@ -124,7 +124,7 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
                       />
                       <div>
                         <span className="text-xs font-mono text-[#800020] font-semibold">{student.admissionNumber}</span>
-                        <h4 className="text-base font-bold text-stone-900 leading-snug">
+                        <h4 className="text-base font-bold text-[#5B0612] leading-snug">
                           {student.lastName}, {student.firstName} {student.otherNames || ""}
                         </h4>
                       </div>

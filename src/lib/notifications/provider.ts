@@ -1,7 +1,8 @@
 import { getEnv } from '@/lib/env';
 import { SendEmailOptions, SendEmailResult } from './types';
-import * as net from 'net';
-import * as tls from 'tls';
+import nodemailer from 'nodemailer';
+import path from 'path';
+import fs from 'fs';
 
 export interface EmailProvider {
   sendEmail(options: SendEmailOptions): Promise<SendEmailResult>;
@@ -81,141 +82,115 @@ export class MockEmailProvider implements EmailProvider {
 }
 
 /**
- * Standard Production/Staging Native Node.js SMTP Provider
- * Does not require external packages. Enforces strict 10s socket timeout.
+ * Production/Staging Nodemailer SMTP Provider
+ *
+ * Implements supported attachments configuration for the inline logo:
+ * - filename: swanford-logo.jpg
+ * - path: verified local buffer or path
+ * - cid: swanford-logo
+ * - contentType: image/jpeg
+ * - contentDisposition: inline
+ *
+ * Employs standard multipart/related with text/plain and text/html alternatives.
+ * Preserves strict timeout, credential redaction, and idempotency headers.
  */
 export class SmtpEmailProvider implements EmailProvider {
   async sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
     const env = getEnv();
     const host = env.SMTP_HOST || 'localhost';
-    const port = env.SMTP_PORT || 587;
-    const isTls = port === 465;
-    const fromAddress = env.SMTP_FROM || 'Swanford Academy <notifications@swanford.edu.ng>';
+    const port = Number(env.SMTP_PORT) || 587;
+    const isTls = env.SMTP_SECURE === 'true' || port === 465;
+    const fromAddress =
+      env.SMTP_FROM ||
+      (env.SMTP_FROM_NAME && env.SMTP_FROM_EMAIL
+        ? `${env.SMTP_FROM_NAME} <${env.SMTP_FROM_EMAIL}>`
+        : env.SMTP_FROM_EMAIL || 'Swanford Academy <notifications@swanford.edu.ng>');
     const user = env.SMTP_USER;
-    const pass = env.SMTP_PASS;
+    const rawPass = env.SMTP_PASSWORD || env.SMTP_PASS || '';
+    const pass = rawPass.replace(/\s+/g, '');
+    const timeoutMs = env.SMTP_CONNECTION_TIMEOUT || 10000;
 
-    return new Promise((resolve) => {
-      let socket: net.Socket | tls.TLSSocket;
-      let buffer = '';
-      let stage = 0;
-      let resolved = false;
-
-      const finish = (result: SendEmailResult) => {
-        if (!resolved) {
-          resolved = true;
-          try {
-            socket.destroy();
-          } catch {
-            // ignore cleanup errors
-          }
-          resolve(result);
-        }
+    if (
+      !host ||
+      host.includes('placeholder') ||
+      !user ||
+      user.includes('placeholder') ||
+      user === 'YOUR_GMAIL_ADDRESS' ||
+      !pass ||
+      pass.trim() === ''
+    ) {
+      return {
+        success: false,
+        retryable: true,
+        error: 'SMTP credentials not configured. Status: NOT VERIFIED — CREDENTIALS REQUIRED',
       };
+    }
 
-      try {
-        if (isTls) {
-          socket = tls.connect({ host, port, minVersion: 'TLSv1.2', timeout: 10000 });
-        } else {
-          socket = net.createConnection({ host, port, timeout: 10000 });
-        }
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Connection failed';
-        return finish({ success: false, retryable: true, error: errorMsg });
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: isTls,
+        auth: {
+          user,
+          pass,
+        },
+        connectionTimeout: timeoutMs,
+        greetingTimeout: timeoutMs,
+        socketTimeout: timeoutMs,
+      });
+
+      // Prepare Nodemailer supported attachments configuration for inline logo
+      const attachments: Array<{
+        filename: string;
+        path: string;
+        cid: string;
+        contentType: string;
+        contentDisposition: 'inline';
+      }> = [];
+
+      const logoPath = path.join(process.cwd(), 'public', 'images', 'swanford-logo.jpg');
+      if (fs.existsSync(logoPath)) {
+        attachments.push({
+          filename: 'swanford-logo.jpg',
+          path: logoPath,
+          cid: 'swanford-logo',
+          contentType: 'image/jpeg',
+          contentDisposition: 'inline',
+        });
       }
 
-      socket.setTimeout(10000);
-      socket.setEncoding('utf8');
+      const mailOptions = {
+        from: fromAddress,
+        to: options.to,
+        subject: options.subject,
+        text: options.bodyText || options.text || '',
+        html: options.htmlBody || options.html || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
+        headers: options.idempotencyKey
+          ? { 'X-Entity-Ref-ID': options.idempotencyKey }
+          : undefined,
+      };
 
-      socket.on('timeout', () => {
-        finish({ success: false, retryable: true, error: 'SMTP connection timed out after 10000ms' });
-      });
+      const info = await transporter.sendMail(mailOptions);
 
-      socket.on('error', (err: Error) => {
-        const msg = err.message || 'SMTP Socket error';
-        const sanitized = msg.replace(/password|auth|secret/gi, '[REDACTED]');
-        const isTransient = /timeout|econnreset|econnrefused|etimedout/i.test(msg);
-        finish({ success: false, retryable: isTransient, error: sanitized });
-      });
+      return {
+        success: true,
+        messageId: info.messageId,
+        providerMessageId: info.messageId,
+        accepted: true,
+      };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'SMTP dispatch failed';
+      const sanitized = errorMsg.replace(/password|auth|secret|key/gi, '[REDACTED]');
+      const isTransient = /timeout|econnreset|econnrefused|etimedout|4\d\d/i.test(errorMsg);
 
-      socket.on('data', (data: string) => {
-        buffer += data;
-        const lines = buffer.split('\r\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line || line.length < 3) continue;
-          const code = parseInt(line.substring(0, 3), 10);
-          const isMultiline = line[3] === '-';
-          if (isMultiline) continue;
-
-          if (code >= 400 && code < 500) {
-            return finish({ success: false, retryable: true, error: `SMTP transient rejection: ${code} ${line}` });
-          }
-          if (code >= 500) {
-            return finish({ success: false, retryable: false, error: `SMTP permanent rejection: ${code} ${line}` });
-          }
-
-          // State machine
-          if (stage === 0 && code === 220) {
-            stage = 1;
-            socket.write(`EHLO swanford.edu.ng\r\n`);
-          } else if (stage === 1 && code === 250) {
-            if (user && pass) {
-              stage = 2;
-              socket.write(`AUTH LOGIN\r\n`);
-            } else {
-              stage = 5;
-              const cleanFrom = fromAddress.match(/<([^>]+)>/)?.[1] || fromAddress;
-              socket.write(`MAIL FROM:<${cleanFrom}>\r\n`);
-            }
-          } else if (stage === 2 && code === 334) {
-            stage = 3;
-            socket.write(`${Buffer.from(user || '').toString('base64')}\r\n`);
-          } else if (stage === 3 && code === 334) {
-            stage = 4;
-            socket.write(`${Buffer.from(pass || '').toString('base64')}\r\n`);
-          } else if (stage === 4 && code === 235) {
-            stage = 5;
-            const cleanFrom = fromAddress.match(/<([^>]+)>/)?.[1] || fromAddress;
-            socket.write(`MAIL FROM:<${cleanFrom}>\r\n`);
-          } else if (stage === 5 && code === 250) {
-            stage = 6;
-            const cleanTo = options.to.match(/<([^>]+)>/)?.[1] || options.to;
-            socket.write(`RCPT TO:<${cleanTo}>\r\n`);
-          } else if (stage === 6 && code === 250) {
-            stage = 7;
-            socket.write(`DATA\r\n`);
-          } else if (stage === 7 && code === 354) {
-            stage = 8;
-            const msgId = `<${Date.now()}.${Math.random().toString(36).substring(2)}@swanford.edu.ng>`;
-            const headers = [
-              `From: ${fromAddress}`,
-              `To: ${options.to}`,
-              `Subject: ${options.subject}`,
-              `Message-ID: ${msgId}`,
-              `Date: ${new Date().toUTCString()}`,
-              `MIME-Version: 1.0`,
-              options.htmlBody
-                ? `Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: 8bit`
-                : `Content-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit`,
-              options.idempotencyKey ? `X-Entity-Ref-ID: ${options.idempotencyKey}` : '',
-            ].filter(Boolean).join('\r\n');
-
-            const body = options.htmlBody || options.bodyText || '';
-            const escapedBody = body.replace(/\r?\n\./g, '\r\n..');
-            socket.write(`${headers}\r\n\r\n${escapedBody}\r\n.\r\n`);
-          } else if (stage === 8 && code === 250) {
-            stage = 9;
-            socket.write(`QUIT\r\n`);
-            finish({
-              success: true,
-              messageId: `smtp-${Date.now()}`,
-              accepted: true,
-            });
-          }
-        }
-      });
-    });
+      return {
+        success: false,
+        retryable: isTransient,
+        error: sanitized,
+      };
+    }
   }
 }
 
@@ -230,6 +205,10 @@ export function getEmailProvider(): EmailProvider {
   if (env.NOTIFICATION_PROVIDER === 'smtp') {
     return new SmtpEmailProvider();
   }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'NOTIFICATION_PROVIDER must be set to "smtp" in production with verified SMTP credentials. Mock provider is prohibited.'
+    );
+  }
   return globalMockEmailProvider;
 }
-

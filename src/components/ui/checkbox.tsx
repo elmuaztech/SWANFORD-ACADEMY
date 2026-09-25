@@ -19,8 +19,8 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             type="checkbox"
             disabled={disabled}
             aria-invalid={isError}
-            className={`w-4 h-4 rounded border-slate-300 text-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
-              isError ? "border-rose-400" : "border-slate-300"
+            className={`w-4 h-4 rounded border-[#EADBDA] text-[#800020] focus-visible:ring-2 focus-visible:ring-[#800020] focus-visible:ring-offset-1 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+              isError ? "border-rose-400" : "border-[#EADBDA]"
             }`}
             {...props}
           />

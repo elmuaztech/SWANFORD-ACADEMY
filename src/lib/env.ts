@@ -49,12 +49,47 @@ export const envSchema = z.object({
     .enum(["mock", "smtp", "termii"])
     .default("mock"),
 
-  // Optional SMTP Configuration
+  // Optional SMTP Configuration & Standard Aliases
   SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.string().transform(Number).optional(),
+  SMTP_PORT: z
+    .preprocess((val) => (val !== undefined && val !== "" ? Number(val) : undefined), z.number().optional()),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  SMTP_FROM_EMAIL: z.string().optional(),
+  SMTP_FROM_NAME: z.string().optional(),
+  SMTP_SECURE: z.string().optional(),
+  SMTP_CONNECTION_TIMEOUT: z
+    .preprocess((val) => (val !== undefined && val !== "" ? Number(val) : undefined), z.number().optional()),
+  SMTP_RETRY_LIMIT: z
+    .preprocess((val) => (val !== undefined && val !== "" ? Number(val) : undefined), z.number().optional()),
+}).superRefine((data, ctx) => {
+  if (data.NOTIFICATION_PROVIDER === "smtp") {
+    if (!data.SMTP_HOST || data.SMTP_HOST.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SMTP_HOST"],
+        message: "SMTP_HOST is required when NOTIFICATION_PROVIDER=smtp",
+      });
+    }
+    const hasPass = Boolean(
+      (data.SMTP_PASS && data.SMTP_PASS.trim() !== "") ||
+      (data.SMTP_PASSWORD && data.SMTP_PASSWORD.trim() !== "")
+    );
+    const isPlaceholderUser =
+      !data.SMTP_USER ||
+      data.SMTP_USER.trim() === "" ||
+      data.SMTP_USER === "YOUR_GMAIL_ADDRESS" ||
+      data.SMTP_USER.includes("placeholder");
+    if (!isPlaceholderUser && !hasPass) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SMTP_PASSWORD"],
+        message: "SMTP_PASSWORD is required when SMTP_USER is set",
+      });
+    }
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -77,7 +77,7 @@ export function Modal({
         {/* Header */}
         <div className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
           <div>
-            <h3 id="modal-title" className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+            <h3 id="modal-title" className="text-base sm:text-lg font-bold text-[#5B0612] tracking-tight">
               {title}
             </h3>
             {description && (
@@ -90,7 +90,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
               <path

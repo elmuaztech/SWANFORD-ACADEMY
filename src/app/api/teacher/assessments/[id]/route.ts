@@ -116,6 +116,16 @@ export async function GET(
       };
     });
 
+    const latestReview = await prisma.assessmentReviewLog.findFirst({
+      where: { assessmentId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        actorUser: {
+          select: { firstName: true, lastName: true },
+        },
+      },
+    });
+
     return NextResponse.json({
       assessment: {
         id: assessment.id,
@@ -131,6 +141,16 @@ export async function GET(
         session: assessment.academicSession,
         term: assessment.academicTerm,
         createdAt: assessment.createdAt,
+        latestReview: latestReview
+          ? {
+              comment: latestReview.comment,
+              action: latestReview.action,
+              reviewerName: latestReview.actorUser
+                ? `${latestReview.actorUser.firstName} ${latestReview.actorUser.lastName}`.trim()
+                : "Administrator",
+              createdAt: latestReview.createdAt,
+            }
+          : null,
       },
       roster,
     });

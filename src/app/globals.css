@@ -1,20 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Montserrat:ital,wght@0,400..900;1,400..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #fdfcf9;
-  --foreground: #1c1917;
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --background: #FAF7F2;
+  --foreground: #1C1A1A;
+  --font-inter: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-montserrat: 'Montserrat', 'Inter', sans-serif;
+  --font-playfair: 'Playfair Display', Georgia, serif;
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-montserrat);
+  --font-heading: var(--font-montserrat);
+  --font-motto: var(--font-playfair);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
   /* Swanford Academy Brand Tokens */
-  --maroon-deep: #4a0e17;
+  --maroon-deep: #5B0612;
   --maroon-primary: #800020;
-  --maroon-hover: #9b1b30;
-  --maroon-soft: #fdf2f4;
-  --cream-canvas: #fdfcf9;
-  --cream-card: #ffffff;
-  --cream-section: #faf7f2;
-  --cream-border: #efe9df;
+  --maroon-hover: #6B001A;
+  --maroon-soft: #FAF2F4;
+  --gold-accent: #D4AF37;
+  --gold-hover: #B89628;
+  --gold-soft: #FCF8ED;
+  --navy: #0F2942;
+  --navy-soft: #F0F4F8;
+  --cream-canvas: #FAF7F2;
+  --cream-card: #FFFFFF;
+  --cream-section: #FAF7F2;
+  --cream-border: #EADBDA;
+  --cream-border-light: #EFE9DF;
 
   /* Touch target standard */
   --min-touch-target: 44px;
@@ -24,13 +37,28 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
   --font-mono: var(--font-mono);
+  --color-maroon-deep: var(--maroon-deep);
+  --color-maroon-primary: var(--maroon-primary);
+  --color-maroon-hover: var(--maroon-hover);
+  --color-maroon-soft: var(--maroon-soft);
+  --color-gold-accent: var(--gold-accent);
+  --color-gold-hover: var(--gold-hover);
+  --color-gold-soft: var(--gold-soft);
+  --color-navy: var(--navy);
+  --color-cream-canvas: var(--cream-canvas);
+  --color-cream-card: var(--cream-card);
+  --color-cream-border: var(--cream-border);
 }
 
 html {
   -webkit-text-size-adjust: 100%;
   text-rendering: optimizeLegibility;
   scroll-behavior: smooth;
+  overflow-x: hidden !important;
+  max-width: 100% !important;
+  width: 100%;
 }
 
 body {
@@ -38,7 +66,148 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: hidden !important;
+  max-width: 100% !important;
+  width: 100%;
+  position: relative;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Typography font-family styling */
+h1, h2, h3, h4, h5, h6,
+[role="heading"],
+.font-display,
+.font-heading,
+.brand-title,
+.card-title {
+  font-family: var(--font-sans);
+  letter-spacing: -0.015em;
+}
+
+/* Institutional Swanford Deep Maroon for headings, titles, and brand elements on light backgrounds */
+h1, h2, h3, h4, h5, h6,
+[role="heading"],
+.brand-title,
+.card-title {
+  color: #5B0612;
+}
+
+/* Ensure all titles and headings on light backgrounds adopt institutional maroon instead of black/stone/slate */
+h1:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not(.hero-school-title):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+h2:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+h3:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+h4:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+h5:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+h6:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+[role="heading"]:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]) {
+  color: #5B0612 !important;
+}
+
+/* Explicit rule ensuring white text on hero elements stays white */
+.hero-school-title,
+[class*="hero-school-title"],
+h1.text-white,
+h1[class*="text-white"],
+h1[class*="text-[#FFFFFF]"],
+h1[class*="text-[#ffffff]"] {
+  color: #FFFFFF !important;
+}
+
+/* ALL buttons and links with primary or maroon backgrounds MUST have white text */
+button[class*="bg-[#800020]"],
+button[class*="bg-[#5B0612]"],
+button[class*="bg-[#6B001A]"],
+button[class*="bg-[#6b001a]"],
+button[class*="bg-[#4A050F]"],
+button[class*="bg-[#3B030A]"],
+a[class*="bg-[#800020]"],
+a[class*="bg-[#5B0612]"],
+a[class*="bg-[#6B001A]"],
+a[class*="bg-[#6b001a]"],
+a[class*="bg-[#4A050F]"],
+a[class*="bg-[#3B030A]"],
+button:is([class*="bg-[#800020]"], [class*="bg-[#5B0612]"], [class*="bg-[#6b001a]"]),
+a:is([class*="bg-[#800020]"], [class*="bg-[#5B0612]"], [class*="bg-[#6b001a]"]) {
+  color: #FFFFFF !important;
+}
+
+/* Maroon cards, sections, banners, callouts MUST have crisp white or cream text */
+[class*="bg-[#5B0612]"],
+[class*="bg-[#800020]"],
+[class*="bg-[#3B030A]"],
+[class*="bg-[#45050E]"],
+[class*="bg-[#2F0208]"],
+[class*="bg-[#42040D]"],
+[class*="bg-[#4A0E17]"],
+[class*="from-[#5B0612]"],
+[class*="from-[#800020]"],
+[class*="from-[#4A0E17]"] {
+  color: #FAF7F2;
+}
+
+[class*="bg-[#5B0612]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="bg-[#800020]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="bg-[#3B030A]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="bg-[#45050E]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="bg-[#2F0208]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="bg-[#42040D]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="bg-[#4A0E17]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="from-[#5B0612]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="from-[#800020]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
+[class*="from-[#4A0E17]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong) {
+  color: #FFFFFF !important;
+}
+
+/* Preserving high-contrast gold text on maroon cards */
+[class*="bg-[#5B0612]"] [class*="text-[#D4AF37]"],
+[class*="bg-[#800020]"] [class*="text-[#D4AF37]"],
+[class*="bg-[#3B030A]"] [class*="text-[#D4AF37]"],
+[class*="bg-[#45050E]"] [class*="text-[#D4AF37]"],
+[class*="bg-[#5B0612]"] [class*="text-[#F3D884]"],
+[class*="bg-[#800020]"] [class*="text-[#F3D884]"],
+[class*="bg-[#3B030A]"] [class*="text-[#F3D884]"],
+[class*="bg-[#45050E]"] [class*="text-[#F3D884]"],
+[class*="bg-[#5B0612]"] [class*="text-[#F5D061]"],
+[class*="bg-[#800020]"] [class*="text-[#F5D061]"],
+[class*="bg-[#3B030A]"] [class*="text-[#F5D061]"],
+[class*="bg-[#45050E]"] [class*="text-[#F5D061]"] {
+  color: #D4AF37 !important;
+}
+
+/* Preserve high-contrast white text for headings in dark hero, banner, or footer contexts */
+footer h1, footer h2, footer h3, footer h4, footer h5, footer h6,
+footer [role="heading"],
+footer .brand-title,
+footer .card-title,
+[class*="bg-[#1C1A1A]"] h1, [class*="bg-[#1C1A1A]"] h2, [class*="bg-[#1C1A1A]"] h3, [class*="bg-[#1C1A1A]"] h4,
+section[class*="bg-[#5B0612]"] h1, section[class*="bg-[#5B0612]"] h2, section[class*="bg-[#5B0612]"] h3, section[class*="bg-[#5B0612]"] h4,
+section[class*="bg-[#3B030A]"] h1, section[class*="bg-[#3B030A]"] h2, section[class*="bg-[#3B030A]"] h3, section[class*="bg-[#3B030A]"] h4,
+[class*="bg-[#5B0612]"] h1, [class*="bg-[#5B0612]"] h2, [class*="bg-[#5B0612]"] h3, [class*="bg-[#5B0612]"] h4,
+[class*="bg-[#3B030A]"] h1, [class*="bg-[#3B030A]"] h2, [class*="bg-[#3B030A]"] h3, [class*="bg-[#3B030A]"] h4,
+[class*="bg-[#2F0208]"] h1, [class*="bg-[#2F0208]"] h2, [class*="bg-[#2F0208]"] h3, [class*="bg-[#2F0208]"] h4,
+[class*="bg-[#800020]"] h1, [class*="bg-[#800020]"] h2, [class*="bg-[#800020]"] h3, [class*="bg-[#800020]"] h4,
+[class*="bg-[#4A0E17]"] h1, [class*="bg-[#4A0E17]"] h2, [class*="bg-[#4A0E17]"] h3, [class*="bg-[#4A0E17]"] h4,
+[class*="from-[#5B0612]"] h1, [class*="from-[#5B0612]"] h2, [class*="from-[#5B0612]"] h3, [class*="from-[#5B0612]"] h4,
+[class*="from-[#800020]"] h1, [class*="from-[#800020]"] h2, [class*="from-[#800020]"] h3, [class*="from-[#800020]"] h4,
+[class*="from-[#4A0E17]"] h1, [class*="from-[#4A0E17]"] h2, [class*="from-[#4A0E17]"] h3, [class*="from-[#4A0E17]"] h4,
+[class*="bg-stone-900"] h1, [class*="bg-stone-900"] h2, [class*="bg-stone-900"] h3, [class*="bg-stone-900"] h4,
+[class*="bg-stone-950"] h1, [class*="bg-stone-950"] h2, [class*="bg-stone-950"] h3, [class*="bg-stone-950"] h4 {
+  color: #FFFFFF !important;
+}
+
+/* Card & Content Adaptive Responsiveness (Requirement 23) */
+.card, [class*="Card"] {
+  min-width: 0;
+  word-wrap: break-word;
+}
+
+.stat-label, .card-label {
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.35;
 }
 
 /* Touch targets for mobile */
@@ -72,4 +241,158 @@ body {
 }
 .table-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Elegant Curved Images and Borders */
+.curved-image {
+  border-radius: 1.5rem;
+  border: 4px solid #ffffff;
+  box-shadow: 0 10px 25px -5px rgba(91, 6, 18, 0.08), 0 8px 10px -6px rgba(91, 6, 18, 0.04);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.curved-image:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 30px -10px rgba(91, 6, 18, 0.12), 0 10px 15px -5px rgba(91, 6, 18, 0.06);
+}
+
+.card-curved {
+  border-radius: 1.25rem;
+  border: 1px solid #EADBDA;
+  transition: all 0.25s ease-in-out;
+}
+.card-curved:hover {
+  border-color: #800020;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px -6px rgba(128, 0, 32, 0.08);
+}
+
+/* Animations & Motion */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out both;
+}
+
+.animate-float {
+  animation: floatGentle 4s ease-in-out infinite;
+}
+
+.font-heading {
+  font-family: var(--font-heading), sans-serif;
+}
+
+.font-motto {
+  font-family: var(--font-motto), Georgia, serif;
+}
+
+@keyframes welcomePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(245, 208, 97, 0);
+  }
+  50% {
+    transform: scale(1.025);
+    box-shadow: 0 0 12px 2px rgba(245, 208, 97, 0.25);
+  }
+}
+
+.animate-welcome-pulse {
+  animation: welcomePulse 3.5s ease-in-out infinite;
+}
+
+@keyframes whatsappFloat {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-7px) scale(1.04);
+  }
+}
+
+.animate-whatsapp-float {
+  animation: whatsappFloat 3s ease-in-out infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+  will-change: transform;
+}
+
+.marquee-container:hover .animate-marquee,
+.marquee-container:focus-within .animate-marquee {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Thoroughly eradicate Next.js dev indicator badge and portals */
+nextjs-portal,
+div[data-nextjs-toast-wrapper],
+div[data-nextjs-portal],
+#next-badge,
+[data-next-badge],
+.__next-dev-tools,
+[data-nextjs-dev-tools-button],
+div:has(> [data-nextjs-dev-tools-button]),
+button[aria-label="Open Next.js Dev Tools"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -99999px !important;
+  top: -99999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  z-index: -99999 !important;
 }

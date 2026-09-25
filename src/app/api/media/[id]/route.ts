@@ -19,9 +19,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    if (!id) {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || id === 'undefined' || id === 'null' || !UUID_REGEX.test(id)) {
       return NextResponse.json(
-        { error: 'Media asset ID is required.' },
+        { error: 'Valid media asset UUID is required.' },
         { status: 400 }
       );
     }

@@ -2,8 +2,19 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requirePermission, AuthorizationError } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
-import { Prisma } from '@prisma/client';
+import {
+  Prisma,
+  RoleCode,
+  UserStatus,
+  VerificationTokenType,
+  NotificationCategory,
+  NotificationChannel,
+} from '@prisma/client';
 import { SafeUser } from '@/lib/auth/service';
+import { createUnactivatedPasswordSentinel } from '@/lib/auth/password';
+import { generateSecureToken } from '@/lib/auth/tokens';
+import { enqueueNotification } from '@/lib/notifications/outbox';
+import { renderWelcomeNewUserEmail } from '@/lib/notifications/templates/catalog';
 import { matchExistingGuardian } from './guardian_matching';
 
 /**
@@ -196,6 +207,15 @@ export async function getGuardianById(
   const guardian = await prisma.guardian.findUnique({
     where: { id: guardianId },
     include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          status: true,
+          createdAt: true,
+          lastLoginAt: true,
+        },
+      },
       relationships: {
         include: {
           student: {
@@ -209,6 +229,13 @@ export async function getGuardianById(
               gender: true,
               dateOfBirth: true,
               currentStatus: true,
+              programmeEnrollments: {
+                where: { enrollmentStatus: 'ACTIVE' },
+                include: {
+                  programme: { select: { id: true, name: true, code: true } },
+                  schoolClass: { select: { id: true, name: true, arm: true } },
+                },
+              },
             },
           },
         },
@@ -355,3 +382,212 @@ export async function listGuardians(
     guardians,
   };
 }
+
+export interface GuardianProvisionResult {
+  success: boolean;
+  message: string;
+  user?: any;
+  result?: any;
+}
+
+/**
+ * Provisions a genuine portal User account for a Guardian, assigns PARENT role,
+ * creates a single-use activation token, and dispatches a welcome email.
+ */
+export async function provisionGuardianUserAccount(
+  actor: SafeUser,
+  guardianId: string,
+  ipAddress?: string
+): Promise<GuardianProvisionResult> {
+  await requirePermission(actor, PermissionCode.USER_MANAGE);
+
+  const guardian = await prisma.guardian.findUnique({
+    where: { id: guardianId },
+    include: { user: true },
+  });
+
+  if (!guardian) {
+    throw new AuthorizationError('Guardian not found.', 404, 'GUARDIAN_NOT_FOUND');
+  }
+
+  if (!guardian.email) {
+    throw new AuthorizationError(
+      'Cannot provision portal account: Guardian has no registered email address. Please edit guardian profile to add a valid email address first.',
+      400,
+      'EMAIL_REQUIRED'
+    );
+  }
+
+  const normalizedEmail = guardian.email.trim().toLowerCase();
+
+  // If guardian already has a user account linked:
+  if (guardian.userId && guardian.user) {
+    if (guardian.user.status === UserStatus.PENDING_VERIFICATION) {
+      return resendGuardianActivation(actor, guardianId, ipAddress);
+    }
+    return {
+      success: true,
+      message: 'Portal account is already active for this guardian.',
+      user: guardian.user,
+    };
+  }
+
+  // Find PARENT role
+  const parentRole = await prisma.role.findUnique({
+    where: { code: RoleCode.PARENT },
+  });
+  if (!parentRole) {
+    throw new AuthorizationError('PARENT role not defined in system.', 500, 'ROLE_MISSING');
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Check if user with this email already exists
+    const user = await tx.user.findUnique({
+      where: { email: normalizedEmail },
+      include: { userRoles: true },
+    });
+
+    if (user) {
+      // Link guardian to user
+      const hasParentRole = user.userRoles.some((ur) => ur.roleId === parentRole.id);
+      if (!hasParentRole) {
+        await tx.userRole.create({
+          data: {
+            userId: user.id,
+            roleId: parentRole.id,
+          },
+        });
+      }
+      await tx.guardian.update({
+        where: { id: guardianId },
+        data: { userId: user.id },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'GUARDIAN_USER_LINK',
+          entityType: 'guardian',
+          entityId: guardianId,
+          newValues: { linkedUserId: user.id },
+          ipAddress: ipAddress || null,
+        },
+      });
+
+      return { user, wasCreated: false };
+    }
+
+    // Otherwise create new user with unactivated sentinel hash
+    const sentinelHash = createUnactivatedPasswordSentinel();
+    const { rawToken, tokenHash } = generateSecureToken();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const createdUser = await tx.user.create({
+      data: {
+        email: normalizedEmail,
+        phoneNumber: guardian.phonePrimary || null,
+        passwordHash: sentinelHash,
+        status: UserStatus.PENDING_VERIFICATION,
+        userRoles: {
+          create: [{ roleId: parentRole.id }],
+        },
+        emailVerifications: {
+          create: {
+            tokenHash,
+            email: normalizedEmail,
+            tokenType: VerificationTokenType.ACCOUNT_ACTIVATION,
+            expiresAt,
+          },
+        },
+      },
+    });
+
+    // Link guardian
+    await tx.guardian.update({
+      where: { id: guardianId },
+      data: { userId: createdUser.id },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'GUARDIAN_PORTAL_ACCOUNT_PROVISIONED',
+        entityType: 'guardian',
+        entityId: guardianId,
+        newValues: { userId: createdUser.id, email: normalizedEmail },
+        ipAddress: ipAddress || null,
+      },
+    });
+
+    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+    const recipientName = `${guardian.firstName} ${guardian.lastName}`.trim();
+
+    const rendered = renderWelcomeNewUserEmail({
+      recipientName,
+      roleName: 'Parent / Guardian',
+      email: normalizedEmail,
+      activationUrl,
+      expiresInHours: 24,
+    });
+
+    await enqueueNotification(
+      {
+        idempotencyKey: `SECURITY:GUARDIAN_ACTIVATION:${createdUser.id}:${tokenHash}`,
+        recipientUserId: createdUser.id,
+        recipientEmail: normalizedEmail,
+        channel: NotificationChannel.EMAIL,
+        category: NotificationCategory.SECURITY,
+        templateName: 'WELCOME_NEW_USER',
+        subject: rendered.subject,
+        htmlBody: rendered.html,
+        bodyText: rendered.text,
+      },
+      tx
+    );
+
+    return { user: createdUser, wasCreated: true };
+  });
+
+  return {
+    success: true,
+    message: result.wasCreated
+      ? 'Portal account provisioned successfully and welcome activation email dispatched.'
+      : 'Existing user account linked to guardian with PARENT role granted.',
+    user: result.user,
+  };
+}
+
+/**
+ * Resends the activation email for a guardian whose account is pending verification.
+ */
+export async function resendGuardianActivation(
+  actor: SafeUser,
+  guardianId: string,
+  ipAddress?: string
+): Promise<GuardianProvisionResult> {
+  await requirePermission(actor, PermissionCode.USER_MANAGE);
+
+  const guardian = await prisma.guardian.findUnique({
+    where: { id: guardianId },
+    include: { user: true },
+  });
+
+  if (!guardian) {
+    throw new AuthorizationError('Guardian not found.', 404, 'GUARDIAN_NOT_FOUND');
+  }
+
+  if (!guardian.userId || !guardian.user) {
+    return provisionGuardianUserAccount(actor, guardianId, ipAddress);
+  }
+
+  const { resendUserActivation } = await import('@/lib/admin/admin_service');
+  const result = await resendUserActivation(actor, guardian.userId, ipAddress);
+  return {
+    success: true,
+    message: 'Activation email resent successfully.',
+    result,
+  };
+}
+

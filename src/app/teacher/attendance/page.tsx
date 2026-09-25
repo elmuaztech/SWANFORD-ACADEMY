@@ -202,7 +202,7 @@ function TeacherAttendanceContent() {
     <div className="space-y-6">
       <PageHeader
         title="Daily Attendance Register"
-        subtitle="Mark official daily attendance. Timezone: Africa/Lagos (WAT)."
+        subtitle="Mark official daily attendance for your assigned class."
         breadcrumbs={[
           { label: "Teacher Portal", href: "/teacher" },
           { label: "Attendance" },
@@ -243,7 +243,7 @@ function TeacherAttendanceContent() {
 
             <div>
               <label htmlFor="attendance-date" className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                Attendance Date (WAT)
+                Attendance Date
               </label>
               <input
                 id="attendance-date"
@@ -291,7 +291,7 @@ function TeacherAttendanceContent() {
                         <span className="text-xs font-mono text-[#800020] font-semibold">
                           {item.student.admissionNumber}
                         </span>
-                        <h4 className="text-base font-bold text-stone-900">
+                        <h4 className="text-base font-bold text-[#5B0612]">
                           {idx + 1}. {item.student.lastName}, {item.student.firstName}
                         </h4>
                       </div>

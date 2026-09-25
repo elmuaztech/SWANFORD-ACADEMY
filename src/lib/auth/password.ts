@@ -6,13 +6,13 @@ import crypto from 'crypto';
  *
  * Requirements:
  * - bcryptjs implementation with work factor = 12 rounds
- * - Min 8 chars, max 72 chars (bcrypt constraint)
+ * - Min 6 chars, max 72 chars (bcrypt constraint)
  * - Sentinel generator for unactivated accounts (never matches any password, 0ms compute)
  * - Zero plaintext password retention
  */
 
 const BCRYPT_SALT_ROUNDS = 12;
-const MIN_PASSWORD_LENGTH = 8;
+const MIN_PASSWORD_LENGTH = 6;
 const MAX_PASSWORD_LENGTH = 72;
 
 export interface PasswordValidationResult {

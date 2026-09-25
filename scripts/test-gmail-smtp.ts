@@ -1,0 +1,119 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import { getEmailProvider } from '../src/lib/notifications/provider';
+
+// Load .env explicitly
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+async function verifyAndTest() {
+  console.log('====================================================');
+  console.log('SWANFORD ACADEMY — SECURE GMAIL SMTP VERIFICATION');
+  console.log('====================================================');
+
+  const provider = process.env.NOTIFICATION_PROVIDER;
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT;
+  const secure = process.env.SMTP_SECURE;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
+  const fromName = process.env.SMTP_FROM_NAME;
+  const fromEmail = process.env.SMTP_FROM_EMAIL;
+
+  const isUserConfigured = Boolean(user && user.trim() !== '' && user !== 'YOUR_GMAIL_ADDRESS' && !user.includes('placeholder'));
+  const isPassConfigured = Boolean(pass && pass.trim() !== '');
+  const isFromConfigured = Boolean(fromEmail && fromEmail.trim() !== '' && fromEmail !== 'YOUR_GMAIL_ADDRESS' && !fromEmail.includes('placeholder'));
+
+  console.log('Configuration Inspection:');
+  console.log(` - NOTIFICATION_PROVIDER : ${provider} ${provider === 'smtp' ? '✔' : '❌ (must be "smtp")'}`);
+  console.log(` - SMTP_HOST            : ${host} ${host === 'smtp.gmail.com' ? '✔' : '❌'}`);
+  console.log(` - SMTP_PORT            : ${port} ${port === '587' || port === '465' ? '✔' : '❌'}`);
+  console.log(` - SMTP_SECURE          : ${secure}`);
+  console.log(` - SMTP_FROM_NAME       : ${fromName}`);
+  console.log(` - SMTP_USER            : ${isUserConfigured ? user : '[NOT SET / PLACEHOLDER]'}`);
+  console.log(` - SMTP_FROM_EMAIL      : ${isFromConfigured ? fromEmail : '[NOT SET / PLACEHOLDER]'}`);
+  console.log(` - SMTP_PASSWORD        : ${isPassConfigured ? `[CONFIGURED: length ${pass!.length} chars]` : '[EMPTY / NOT CONFIGURED]'}`);
+
+  if (!isUserConfigured || !isPassConfigured) {
+    console.log('\n❌ CONFIGURATION INCOMPLETE:');
+    if (!isUserConfigured) {
+      console.log('   * SMTP_USER is still empty or set to placeholder "YOUR_GMAIL_ADDRESS".');
+    }
+    if (!isPassConfigured) {
+      console.log('   * SMTP_PASSWORD is empty. Please enter your 16-character Google App Password in .env.');
+    }
+    console.log('\nAborting safe delivery test until configuration is complete.');
+    process.exit(0);
+  }
+
+  console.log('\n✔ Configuration is COMPLETE. Proceeding to safe live delivery test...');
+  console.log(`Target Recipient: ${fromEmail || user}`);
+
+  const emailProvider = getEmailProvider();
+  const testSubject = `Swanford Academy — System Verification Email (${new Date().toLocaleDateString('en-GB')})`;
+  const testHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #EADBDA; border-radius: 8px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h2 style="color: #800020; margin: 0;">Swanford Academy</h2>
+        <p style="color: #666; margin: 4px 0 0 0; font-size: 14px;">Nursery, Primary &amp; Tahfeez — Dutse, Jigawa State</p>
+      </div>
+      <div style="background-color: #FDFBF7; padding: 16px; border-radius: 6px; border-left: 4px solid #800020; margin-bottom: 20px;">
+        <h3 style="color: #2D3748; margin: 0 0 8px 0;">SMTP Delivery Test Verified</h3>
+        <p style="color: #4A5568; margin: 0; font-size: 14px; line-height: 1.5;">
+          This is an official verification email confirming that the Gmail SMTP integration for Swanford Academy is functioning correctly.
+        </p>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #4A5568; margin-bottom: 20px;">
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; width: 140px;">Delivery Provider:</td>
+          <td style="padding: 6px 0;">Google Gmail SMTP (smtp.gmail.com:587)</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold;">Sender:</td>
+          <td style="padding: 6px 0;">${fromName} &lt;${fromEmail || user}&gt;</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold;">Recipient:</td>
+          <td style="padding: 6px 0;">${fromEmail || user}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold;">Timestamp:</td>
+          <td style="padding: 6px 0;">${new Date().toISOString()}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold;">Security:</td>
+          <td style="padding: 6px 0;">STARTTLS with Google App Password</td>
+        </tr>
+      </table>
+      <p style="color: #718096; font-size: 12px; margin: 0; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 16px;">
+        Swanford Academy Management System &bull; Confidential &bull; Generated by Verification Suite
+      </p>
+    </div>
+  `;
+
+  try {
+    const result = await emailProvider.sendEmail({
+      to: fromEmail || user!,
+      subject: testSubject,
+      htmlBody: testHtml,
+      bodyText: `Swanford Academy — System Verification Email. This is an official verification email confirming that the Gmail SMTP integration for Swanford Academy is functioning correctly.`,
+    });
+
+    console.log('\n====================================================');
+    if (result.success) {
+      console.log('🎉 LIVE EMAIL DELIVERY SUCCESSFUL!');
+      console.log(` - Status      : DELIVERED (SUCCESS)`);
+      console.log(` - Message ID  : ${result.messageId || 'Generated by Gmail'}`);
+      console.log(` - Recipient   : ${fromEmail || user}`);
+      console.log('Please check your Gmail inbox to confirm receipt.');
+    } else {
+      console.log('❌ EMAIL DELIVERY FAILED:');
+      console.log(` - Error       : ${result.error}`);
+      console.log(` - Retryable   : ${result.retryable}`);
+    }
+    console.log('====================================================');
+  } catch (err: any) {
+    console.error('\n❌ Unexpected error during delivery test:', err.message);
+  }
+}
+
+verifyAndTest().catch(console.error);

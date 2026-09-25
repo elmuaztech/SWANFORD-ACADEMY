@@ -142,6 +142,24 @@ export async function assertTeacherScope(
 ) {
   const userId = typeof userOrId === 'string' ? userOrId : userOrId.id;
 
+  // Swanford Academy Requirement 13: Super Admin / Admin has full administrative oversight across all classes
+  const adminRole = await prisma.userRole.findFirst({
+    where: {
+      userId,
+      role: { code: { in: ['SUPER_ADMIN', 'ADMIN'] } },
+    },
+  });
+
+  if (adminRole) {
+    return {
+      id: 'admin-oversight-scope',
+      programmeId: requirement.programmeId,
+      schoolClassId: requirement.schoolClassId || null,
+      subjectId: requirement.subjectId || null,
+      academicSessionId: requirement.academicSessionId || null,
+    } as any;
+  }
+
   const teacher = await prisma.teacher.findUnique({
     where: { userId },
     include: {

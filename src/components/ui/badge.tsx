@@ -15,7 +15,7 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variantStyles = {
-    brand: "bg-emerald-50 text-emerald-800 border-emerald-200/80",
+    brand: "bg-[#FAF2F4] text-[#800020] border-[#EADBDA]",
     success: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
     warning: "bg-amber-50 text-amber-800 border-amber-200/80",
     danger: "bg-rose-50 text-rose-800 border-rose-200/80",
@@ -24,7 +24,7 @@ export function Badge({
   }[variant];
 
   const dotStyles = {
-    brand: "bg-emerald-600",
+    brand: "bg-[#800020]",
     success: "bg-emerald-600",
     warning: "bg-amber-500",
     danger: "bg-rose-600",

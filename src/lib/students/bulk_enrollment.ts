@@ -8,6 +8,7 @@ import {
   VerificationTokenType,
   ImportBatchStatus,
   ImportRowStatus,
+  RoleCode,
 } from '@prisma/client';
 import { reserveAdmissionNumberBlock } from './admission_number';
 import { createUnactivatedPasswordSentinel } from '@/lib/auth/password';
@@ -286,8 +287,12 @@ export async function executeBulkStudentEnrollment(
           });
         }
 
-        // Step F: Parent Account Lifecycle (if email provided and user does not exist)
-        if (normalizedEmail && !guardianUserId) {
+        // Step F: Parent Account Lifecycle (email is mandatory)
+        if (normalizedEmail) {
+          const parentRole = await tx.role.findUnique({
+            where: { code: RoleCode.PARENT },
+          });
+
           // Check if a User already exists with this email
           let user = await tx.user.findUnique({ where: { email: normalizedEmail } });
           if (!user) {
@@ -295,8 +300,15 @@ export async function executeBulkStudentEnrollment(
             user = await tx.user.create({
               data: {
                 email: normalizedEmail,
+                phoneNumber: row.guardianPhone?.trim() || null,
+                firstName: row.guardianFirstName.trim(),
+                lastName: row.guardianLastName.trim(),
                 passwordHash: sentinelPassword,
                 status: UserStatus.PENDING_VERIFICATION,
+                mustChangePassword: true,
+                userRoles: parentRole ? {
+                  create: [{ roleId: parentRole.id }],
+                } : undefined,
               },
             });
 
@@ -343,6 +355,24 @@ export async function executeBulkStudentEnrollment(
               },
               tx
             );
+          } else {
+            // User already exists: ensure guardian is linked and PARENT role is assigned
+            if (!guardianUserId) {
+              await tx.guardian.update({
+                where: { id: guardianId },
+                data: { userId: user.id },
+              });
+            }
+            if (parentRole) {
+              const existingUserRole = await tx.userRole.findFirst({
+                where: { userId: user.id, roleId: parentRole.id },
+              });
+              if (!existingUserRole) {
+                await tx.userRole.create({
+                  data: { userId: user.id, roleId: parentRole.id },
+                });
+              }
+            }
           }
         }
 

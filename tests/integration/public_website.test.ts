@@ -15,10 +15,40 @@ describe('Integration Tests: Work Package D — Public Website & Admissions Expe
   let tahfeezProgId: string;
 
   beforeAll(async () => {
-    // 1. Ensure active admission cycle exists
-    const cycle = await prisma.admissionCycle.findFirst({
-      where: { status: 'OPEN' },
+    // 1. Ensure current session has an OPEN admission cycle
+    let currentSession = await prisma.academicSession.findFirst({
+      where: { isCurrent: true },
     });
+    if (!currentSession) {
+      currentSession = await prisma.academicSession.findFirst({
+        where: { name: '2026/2027' },
+      });
+      if (currentSession) {
+        await prisma.academicSession.update({
+          where: { id: currentSession.id },
+          data: { isCurrent: true },
+        });
+      }
+    }
+    if (!currentSession) throw new Error('No current academic session found.');
+
+    let cycle = await prisma.admissionCycle.findFirst({
+      where: {
+        academicSessionId: currentSession.id,
+        status: 'OPEN',
+      },
+    });
+    if (!cycle) {
+      const existingCycle = await prisma.admissionCycle.findFirst({
+        where: { academicSessionId: currentSession.id },
+      });
+      if (existingCycle) {
+        cycle = await prisma.admissionCycle.update({
+          where: { id: existingCycle.id },
+          data: { status: 'OPEN' },
+        });
+      }
+    }
     if (!cycle) throw new Error('No open admission cycle found in test environment.');
     openCycleId = cycle.id;
 
@@ -177,8 +207,8 @@ describe('Integration Tests: Work Package D — Public Website & Admissions Expe
       expect(statusData.success).toBe(true);
       expect(statusData.applicationNumber).toBe(appNumber);
       expect(statusData.applicantName).toBe('Mustapha');
-      expect(statusData.statusLabel).toBe('Draft Application');
-      expect(statusData.paymentStatusLabel).toBe('Payment Pending');
+      expect(statusData.statusLabel).toBe('Application Submitted');
+      expect(statusData.paymentStatusLabel).toBe('Payment Pending Verification');
 
       // Security check: no private guardian contact details or internal IDs leaked
       expect(statusData.id).toBeUndefined();
@@ -313,7 +343,7 @@ describe('Integration Tests: Work Package D — Public Website & Admissions Expe
 
       const sessionData = await sessionRes.json();
       expect(sessionData.token).toBeDefined();
-      expect(sessionData.expectedAmountKobo).toBe('500000'); // Authoritative ₦5,000 form fee from SystemConfig
+      expect(sessionData.expectedAmountKobo).toBe(submitData.totalAmountKobo); // Authoritative amount from application in DB
       expect(sessionData.payerEmail).toBe(`pay.test.${uniqueSuffix}@swanford.test`);
     });
   });

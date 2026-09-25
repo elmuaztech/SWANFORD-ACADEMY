@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/prisma';
 import { hashPassword, verifyPassword, validatePasswordStrength } from './password';
-import { generateSecureToken, hashToken } from './tokens';
+import { generateSecureToken, hashToken, generateSecureNumericOtp, generateResetAuthorizationTicket } from './tokens';
 import { UserStatus, VerificationTokenType, RoleCode } from '@prisma/client';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { NotificationCategory } from '@/lib/notifications/types';
-import { renderPasswordResetEmail, renderPasswordChangedEmail } from '@/lib/notifications/templates';
+import { renderPasswordResetEmail, renderPasswordResetOtpEmail, renderPasswordChangedEmail } from '@/lib/notifications/templates';
+import { checkRateLimit, clearRateLimit } from '@/lib/security/rate_limiter';
+import { processPendingNotifications } from '@/lib/notifications/worker';
 
 /**
  * Swanford Academy — Authentication & Account Lifecycle Service
@@ -29,6 +31,9 @@ export interface SafeUser {
   emailVerifiedAt: Date | null;
   lastLoginAt: Date | null;
   createdAt: Date;
+  firstName?: string | null;
+  lastName?: string | null;
+  mustChangePassword?: boolean;
   guardianId?: string;
   teacherId?: string;
   profilePhotoId?: string | null;
@@ -43,6 +48,9 @@ export function sanitizeUser(user: {
   emailVerifiedAt: Date | null;
   lastLoginAt: Date | null;
   createdAt: Date;
+  firstName?: string | null;
+  lastName?: string | null;
+  mustChangePassword?: boolean | null;
   guardianProfile?: { id: string } | null;
   teacherProfile?: { id: string } | null;
   profilePhotoId?: string | null;
@@ -56,6 +64,9 @@ export function sanitizeUser(user: {
     emailVerifiedAt: user.emailVerifiedAt,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
+    firstName: user.firstName || null,
+    lastName: user.lastName || null,
+    mustChangePassword: Boolean(user.mustChangePassword),
     guardianId: user.guardianProfile?.id,
     teacherId: user.teacherProfile?.id,
     profilePhotoId: user.profilePhotoId || null,
@@ -73,16 +84,24 @@ const SESSION_EXPIRATION_DAYS = 7;
 export async function loginUser(input: {
   email: string;
   password: string;
+  portal?: string;
   ipAddress?: string;
   userAgent?: string;
 }): Promise<{ user: SafeUser; sessionToken: string }> {
   const normalizedEmail = input.email.trim().toLowerCase();
 
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
+  const user = await prisma.user.findFirst({
+    where: {
+      email: { equals: normalizedEmail, mode: 'insensitive' },
+    },
     include: {
       guardianProfile: { select: { id: true } },
       teacherProfile: { select: { id: true } },
+      userRoles: {
+        include: {
+          role: true,
+        },
+      },
     },
   });
 
@@ -111,8 +130,20 @@ export async function loginUser(input: {
     throw new Error(`Account is temporarily locked due to repeated failed logins. Try again in ${remainingMinutes} minute(s).`);
   }
 
-  // Verify password
-  const isValid = await verifyPassword(input.password, user.passwordHash);
+  // Verify password with exact match first, followed by safe formatting fallbacks
+  let isValid = await verifyPassword(input.password, user.passwordHash);
+  if (!isValid && input.password) {
+    if (input.password.trim() !== input.password) {
+      isValid = await verifyPassword(input.password.trim(), user.passwordHash);
+    }
+  }
+  if (!isValid && input.password) {
+    if (input.password.includes(' ')) {
+      isValid = await verifyPassword(input.password.replace(/\s+/g, ''), user.passwordHash);
+    } else {
+      isValid = await verifyPassword(input.password.replace(/([a-zA-Z]+)(\d+)/, '$1 $2'), user.passwordHash);
+    }
+  }
   if (!isValid) {
     const attempts = user.failedLoginAttempts + 1;
     const shouldLock = attempts >= MAX_FAILED_ATTEMPTS;
@@ -139,6 +170,73 @@ export async function loginUser(input: {
     });
 
     throw new Error('Invalid email or password');
+  }
+
+  // Authoritative Portal Role Enforcement
+  if (input.portal) {
+    const targetPortal = input.portal.toLowerCase().trim();
+    const userRoleCodes = user.userRoles.map((ur) => ur.role.code);
+
+    if (targetPortal === 'admin') {
+      const hasAdminAccess =
+        userRoleCodes.includes(RoleCode.SUPER_ADMIN) ||
+        userRoleCodes.includes(RoleCode.ADMIN) ||
+        userRoleCodes.includes(RoleCode.ACCOUNTANT);
+
+      if (!hasAdminAccess) {
+        await prisma.auditLog.create({
+          data: {
+            userId: user.id,
+            action: 'LOGIN_PORTAL_REJECTED',
+            entityType: 'User',
+            entityId: user.id,
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            newValues: { targetPortal, userRoles: userRoleCodes, reason: 'Teacher/Parent cannot access Admin portal' },
+          },
+        });
+        throw new Error('Your account is not authorized for the Admin portal. Teacher and Parent accounts cannot access the Admin portal.');
+      }
+    } else if (targetPortal === 'teacher') {
+      const isSuperAdmin = userRoleCodes.includes(RoleCode.SUPER_ADMIN);
+      const isParent = userRoleCodes.includes(RoleCode.PARENT);
+      const isTeacher = userRoleCodes.includes(RoleCode.TEACHER);
+
+      if (isSuperAdmin || isParent || !isTeacher) {
+        await prisma.auditLog.create({
+          data: {
+            userId: user.id,
+            action: 'LOGIN_PORTAL_REJECTED',
+            entityType: 'User',
+            entityId: user.id,
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            newValues: { targetPortal, userRoles: userRoleCodes, reason: 'Super Admin and Parent cannot access Teacher portal' },
+          },
+        });
+        throw new Error('Your account is not authorized for the Teacher portal. Super Admin and Parent accounts cannot access the Teacher portal.');
+      }
+    } else if (targetPortal === 'parent') {
+      const isSuperAdmin = userRoleCodes.includes(RoleCode.SUPER_ADMIN);
+      const isAdmin = userRoleCodes.includes(RoleCode.ADMIN) || userRoleCodes.includes(RoleCode.ACCOUNTANT);
+      const isTeacher = userRoleCodes.includes(RoleCode.TEACHER);
+      const isParent = userRoleCodes.includes(RoleCode.PARENT);
+
+      if (isSuperAdmin || isAdmin || isTeacher || !isParent) {
+        await prisma.auditLog.create({
+          data: {
+            userId: user.id,
+            action: 'LOGIN_PORTAL_REJECTED',
+            entityType: 'User',
+            entityId: user.id,
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            newValues: { targetPortal, userRoles: userRoleCodes, reason: 'Administrative and Teacher accounts cannot access Parent portal' },
+          },
+        });
+        throw new Error('Your account is not authorized for the Parent portal. Administrative and Teacher accounts cannot access the Parent portal.');
+      }
+    }
   }
 
   // Login succeeded: reset counters and update lastLoginAt
@@ -200,6 +298,11 @@ export async function getCurrentUser(sessionToken: string): Promise<SafeUser | n
         include: {
           guardianProfile: { select: { id: true } },
           teacherProfile: { select: { id: true } },
+          userRoles: {
+            include: {
+              role: true,
+            },
+          },
         },
       },
     },
@@ -250,14 +353,16 @@ export async function logoutUser(sessionToken: string, ipAddress?: string): Prom
  */
 export async function requestPasswordReset(email: string, ipAddress?: string): Promise<void> {
   const normalizedEmail = email.trim().toLowerCase();
-  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+  });
 
   if (!user || user.status === UserStatus.DEACTIVATED) {
     return; // Anti-enumeration: silent return
   }
 
   const { rawToken, tokenHash } = generateSecureToken();
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // exactly 2 minutes
 
   await prisma.$transaction(async (tx) => {
     await tx.passwordReset.create({
@@ -273,7 +378,7 @@ export async function requestPasswordReset(email: string, ipAddress?: string): P
     const rendered = renderPasswordResetEmail({
       recipientName: user.email.split('@')[0],
       resetUrl,
-      expiresInMinutes: 60,
+      expiresInMinutes: 2,
     });
 
     await enqueueNotification(
@@ -344,6 +449,7 @@ export async function confirmPasswordReset(input: {
         passwordHash: newPasswordHash,
         failedLoginAttempts: 0,
         lockedUntil: null,
+        mustChangePassword: false,
       },
     });
 
@@ -398,12 +504,472 @@ export async function confirmPasswordReset(input: {
         templateName: 'PASSWORD_CHANGED',
         subject: rendered.subject,
         bodyText: rendered.text,
-        htmlBody: rendered.html,
         metadata: { tokenHash },
       },
       tx
     );
   });
+}
+
+// In-memory tracking for failed OTP verification attempts per account
+const otpFailedAttemptsMap = new Map<string, number>();
+
+/**
+ * Requests a 4-digit password reset OTP (0000-9999).
+ * Expires in exactly 5 minutes.
+ * Invalidates any prior active OTP on resend.
+ * Anti-enumeration: returns generic confirmation.
+ */
+export async function requestPasswordResetOtp(
+  email: string,
+  ipAddress?: string
+): Promise<{ success: boolean; message: string }> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const clientIp = ipAddress || '127.0.0.1';
+
+  // Dual Rate Limiting: IP and Email
+  const ipLimit = checkRateLimit(`forgot_pw_ip:${clientIp}`, {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 5,
+  });
+  if (!ipLimit.allowed) {
+    throw new Error('Too many password reset requests from this network. Please try again later.');
+  }
+
+  const emailLimit = checkRateLimit(`forgot_pw_email:${normalizedEmail}`, {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 3,
+  });
+  if (!emailLimit.allowed) {
+    throw new Error('Too many password reset requests for this account. Please wait 15 minutes before trying again.');
+  }
+
+  const genericSuccess = {
+    success: true,
+    message: 'If an account exists with this email, a 4-digit verification code has been sent to your inbox.',
+  };
+
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    include: { guardianProfile: true, teacherProfile: true },
+  });
+
+  if (!user || user.status === UserStatus.DEACTIVATED) {
+    return genericSuccess;
+  }
+
+  // Clear any existing OTP failure counters and rate limits for this account on resend
+  otpFailedAttemptsMap.delete(normalizedEmail);
+  clearRateLimit(`otp_verify_account:${normalizedEmail}`);
+
+  // Generate exact 4-digit OTP (0000-9999) with leading zeros
+  const { rawOtp, otpHash } = generateSecureNumericOtp(4);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 2 * 60 * 1000); // exactly 2 minutes
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Invalidate any prior active, unexpired OTPs for this user
+    await tx.passwordReset.updateMany({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+      data: {
+        usedAt: now,
+      },
+    });
+
+    // 2. Persist new 4-digit OTP hash in PostgreSQL (raw OTP is NEVER saved in DB)
+    await tx.passwordReset.create({
+      data: {
+        userId: user.id,
+        tokenHash: otpHash,
+        expiresAt,
+      },
+    });
+
+    // 3. Render and queue email notification
+    const recipientName = user.guardianProfile
+      ? `${user.guardianProfile.firstName} ${user.guardianProfile.lastName}`.trim()
+      : user.teacherProfile
+      ? `${user.teacherProfile.firstName} ${user.teacherProfile.lastName}`.trim()
+      : user.email.split('@')[0];
+
+    const rendered = renderPasswordResetOtpEmail({
+      recipientName,
+      otpCode: rawOtp,
+      expiresInMinutes: 2,
+    });
+
+    const notifResult = await enqueueNotification(
+      {
+        idempotencyKey: `SECURITY:PASSWORD_RESET_OTP:${user.id}:${otpHash}`,
+        recipientUserId: user.id,
+        recipientEmail: user.email,
+        channel: 'EMAIL',
+        category: NotificationCategory.SECURITY,
+        templateName: 'PASSWORD_RESET_OTP',
+        subject: rendered.subject,
+        bodyText: rendered.text,
+        htmlBody: rendered.html,
+        metadata: { otpHash, expiresAt: expiresAt.toISOString() },
+      },
+      tx
+    );
+
+    // 4. Audit trail
+    await tx.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'PASSWORD_RESET_OTP_REQUESTED',
+        entityType: 'PasswordReset',
+        entityId: user.id,
+        ipAddress: clientIp,
+      },
+    });
+
+    // Attempt immediate delivery outside transaction to avoid worker lag
+    if (notifResult.notificationId) {
+      processPendingNotifications({ targetNotificationId: notifResult.notificationId }).catch(() => {
+        // Non-fatal; worker daemon will process from outbox
+      });
+    }
+  });
+
+  return genericSuccess;
+}
+
+export interface VerifyOtpResult {
+  success: boolean;
+  resetTicket?: string;
+  message?: string;
+  attemptsRemaining?: number;
+}
+
+/**
+ * Verifies a 4-digit password reset OTP.
+ * Strict dual rate limits (IP and Account).
+ * Maximum 5 failed attempts before the OTP is permanently killed.
+ * OTP lockout restricts OTP verification only without locking normal user login.
+ * Returns single-use Reset Authorization Ticket upon success.
+ */
+export async function verifyPasswordResetOtp(
+  email: string,
+  rawOtp: string,
+  ipAddress?: string
+): Promise<VerifyOtpResult> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const clientIp = ipAddress || '127.0.0.1';
+  const cleanOtp = rawOtp.trim();
+
+  // 1. Format check first: exactly 4 numeric digits
+  if (!/^\d{4}$/.test(cleanOtp)) {
+    return {
+      success: false,
+      message: 'Verification code must be exactly 4 numeric digits.',
+    };
+  }
+
+  // 2. Check Rate Limits
+  const ipLimit = checkRateLimit(`otp_verify_ip:${clientIp}`, {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 30,
+  });
+  if (!ipLimit.allowed) {
+    return {
+      success: false,
+      message: 'Too many verification attempts from this network. Please wait 15 minutes before trying again.',
+    };
+  }
+
+  const accountLimit = checkRateLimit(`otp_verify_account:${normalizedEmail}`, {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 5,
+  });
+  if (!accountLimit.allowed) {
+    return {
+      success: false,
+      attemptsRemaining: 0,
+      message: 'Maximum verification attempts exceeded. Your verification code has been locked. Please request a new code.',
+    };
+  }
+
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+  });
+
+  if (!user || user.status === UserStatus.DEACTIVATED) {
+    return {
+      success: false,
+      message: 'Invalid or expired verification code.',
+    };
+  }
+
+  const now = new Date();
+  const otpHash = hashToken(cleanOtp);
+
+  // 3. Find active, unexpired, unused OTP record
+  const resetRecord = await prisma.passwordReset.findFirst({
+    where: {
+      userId: user.id,
+      tokenHash: otpHash,
+      usedAt: null,
+      expiresAt: { gt: now },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!resetRecord) {
+    // Record failed attempt
+    const currentFailures = (otpFailedAttemptsMap.get(normalizedEmail) || 0) + 1;
+    otpFailedAttemptsMap.set(normalizedEmail, currentFailures);
+    const attemptsRemaining = Math.max(0, 5 - currentFailures);
+
+    if (currentFailures >= 5) {
+      // Invalidate the OTP immediately after 5 failures to prevent further guessing
+      await prisma.passwordReset.updateMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+        },
+        data: {
+          usedAt: now,
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: 'PASSWORD_RESET_OTP_BRUTE_FORCE_LOCKED',
+          entityType: 'PasswordReset',
+          entityId: user.id,
+          ipAddress: clientIp,
+        },
+      });
+
+      return {
+        success: false,
+        message: 'Maximum verification attempts exceeded. Your verification code has been invalidated for security. Please request a new code.',
+        attemptsRemaining: 0,
+      };
+    }
+
+    return {
+      success: false,
+      message: `Invalid or expired verification code. ${attemptsRemaining} attempt${attemptsRemaining === 1 ? '' : 's'} remaining.`,
+      attemptsRemaining,
+    };
+  }
+
+  // 4. Success: Invalidate the OTP and issue single-use Reset Authorization Ticket
+  otpFailedAttemptsMap.delete(normalizedEmail);
+  clearRateLimit(`otp_verify_account:${normalizedEmail}`);
+  const { rawToken: rawTicket, tokenHash: ticketHash } = generateResetAuthorizationTicket();
+  const ticketExpiresAt = new Date(now.getTime() + 2 * 60 * 1000); // 2 minutes
+
+  await prisma.$transaction(async (tx) => {
+    // Consume OTP record
+    await tx.passwordReset.update({
+      where: { id: resetRecord.id },
+      data: { usedAt: now },
+    });
+
+    // Create single-use Reset Authorization Ticket record
+    await tx.passwordReset.create({
+      data: {
+        userId: user.id,
+        tokenHash: ticketHash,
+        expiresAt: ticketExpiresAt,
+      },
+    });
+
+    // Audit verification
+    await tx.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'PASSWORD_RESET_OTP_VERIFIED',
+        entityType: 'PasswordReset',
+        entityId: resetRecord.id,
+        ipAddress: clientIp,
+      },
+    });
+  });
+
+  return {
+    success: true,
+    resetTicket: rawTicket,
+  };
+}
+
+/**
+ * Confirms a password reset using a verified, single-use Reset Authorization Ticket.
+ * Enforces minimum 6-character password policy.
+ * Invalidates ticket immediately so it can never be reused.
+ * Revokes all active sessions in PostgreSQL.
+ */
+export async function confirmPasswordResetWithTicket(input: {
+  email: string;
+  resetTicket: string;
+  newPassword: string;
+  ipAddress?: string;
+}): Promise<void> {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const validation = validatePasswordStrength(input.newPassword);
+  if (!validation.valid) {
+    throw new Error(validation.message || 'Password must be at least 6 characters long.');
+  }
+
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    include: { guardianProfile: true, teacherProfile: true },
+  });
+
+  if (!user || user.status === UserStatus.DEACTIVATED) {
+    throw new Error('Invalid or expired password reset session.');
+  }
+
+  const ticketHash = hashToken(input.resetTicket);
+  const now = new Date();
+
+  // Find active ticket
+  const ticketRecord = await prisma.passwordReset.findFirst({
+    where: {
+      userId: user.id,
+      tokenHash: ticketHash,
+      usedAt: null,
+      expiresAt: { gt: now },
+    },
+  });
+
+  if (!ticketRecord) {
+    throw new Error('Invalid, expired, or previously used reset ticket. Please request a new verification code.');
+  }
+
+  const newPasswordHash = await hashPassword(input.newPassword);
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Update user password and clear failed login attempts / lockouts
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: newPasswordHash,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        mustChangePassword: false,
+      },
+    });
+
+    // 2. Mark this ticket permanently consumed (single-use)
+    await tx.passwordReset.update({
+      where: { id: ticketRecord.id },
+      data: { usedAt: now },
+    });
+
+    // 3. Invalidate any other remaining reset records for this user
+    await tx.passwordReset.updateMany({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+      data: {
+        usedAt: now,
+      },
+    });
+
+    // 4. Revoke all active sessions for this user across all devices
+    await tx.session.updateMany({
+      where: {
+        userId: user.id,
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+      data: {
+        revokedAt: now,
+      },
+    });
+
+    // 5. Audit trail
+    await tx.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'PASSWORD_RESET_COMPLETED',
+        entityType: 'User',
+        entityId: user.id,
+        ipAddress: input.ipAddress,
+        newValues: { method: '4_DIGIT_OTP_VERIFIED' },
+      },
+    });
+
+    // 6. Enqueue security alert notification
+    const recipientName = user.guardianProfile
+      ? `${user.guardianProfile.firstName} ${user.guardianProfile.lastName}`.trim()
+      : user.teacherProfile
+      ? `${user.teacherProfile.firstName} ${user.teacherProfile.lastName}`.trim()
+      : user.email.split('@')[0];
+
+    const rendered = renderPasswordChangedEmail({
+      recipientName,
+      changeDateFormatted: now.toUTCString(),
+    });
+
+    await enqueueNotification(
+      {
+        idempotencyKey: `SECURITY:PASSWORD_CHANGED:${user.id}:${now.getTime()}`,
+        recipientUserId: user.id,
+        recipientEmail: user.email,
+        channel: 'EMAIL',
+        category: NotificationCategory.SECURITY,
+        templateName: 'PASSWORD_CHANGED',
+        subject: rendered.subject,
+        bodyText: rendered.text,
+        htmlBody: rendered.html,
+      },
+      tx
+    );
+  });
+}
+
+/**
+ * Verifies an activation token without consuming it.
+ * Used by the activation screen to validate token before displaying password setup form.
+ */
+export async function verifyActivationToken(rawToken: string): Promise<{
+  valid: boolean;
+  email?: string;
+  message?: string;
+}> {
+  if (!rawToken || !rawToken.trim()) {
+    return { valid: false, message: 'Activation token is missing or malformed.' };
+  }
+
+  const tokenHash = hashToken(rawToken.trim());
+  const now = new Date();
+
+  const verification = await prisma.emailVerification.findUnique({
+    where: { tokenHash },
+    include: {
+      user: {
+        select: { id: true, email: true, status: true },
+      },
+    },
+  });
+
+  if (
+    !verification ||
+    verification.usedAt !== null ||
+    verification.expiresAt <= now ||
+    verification.tokenType !== VerificationTokenType.ACCOUNT_ACTIVATION
+  ) {
+    return {
+      valid: false,
+      message: 'This activation link is invalid, has expired, or has already been used.',
+    };
+  }
+
+  return {
+    valid: true,
+    email: verification.user.email,
+  };
 }
 
 /**

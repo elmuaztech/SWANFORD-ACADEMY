@@ -81,7 +81,7 @@ describe('Stage 8 — Integration: Payments, Allocations & Receipts', () => {
     // 4. Student & Guardian
     const student = await prisma.student.create({
       data: {
-        admissionNumber: await generateNextAdmissionNumber(2026, prisma),
+        admissionNumber: `PAR-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
         firstName: 'Aliyu',
         lastName: 'Sanusi',
         gender: Gender.MALE,

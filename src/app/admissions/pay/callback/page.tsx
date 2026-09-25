@@ -65,7 +65,7 @@ function PaymentCallbackContent() {
       <div className="py-16 max-w-lg mx-auto px-4">
         <LoadingState
           title="Verifying Transaction"
-          description="Connecting to Paystack and confirming your transaction with the academy ledger..."
+          description="Confirming your payment and updating your admission record..."
         />
       </div>
     );
@@ -102,7 +102,7 @@ function PaymentCallbackContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Payment Confirmed Successfully!</h2>
+              <h2 className="text-xl font-bold text-[#5B0612] mb-2">Payment Confirmed Successfully!</h2>
               <p className="text-sm text-slate-600 mb-6">
                 Your admission fee payment has been officially credited and confirmed.
               </p>
@@ -148,7 +148,7 @@ function PaymentCallbackContent() {
         <Card className="p-6 text-center">
           <h2 className="text-xl font-bold text-amber-700 mb-2">Payment Processing</h2>
           <p className="text-sm text-slate-600 mb-4">
-            Paystack is currently processing your transaction. Your application will automatically update to confirmed
+            Your transaction is currently being processed. Your application will automatically update to confirmed
             as soon as payment settlement finishes.
           </p>
           <p className="text-xs font-mono text-slate-500 mb-6">Ref: {result.reference}</p>

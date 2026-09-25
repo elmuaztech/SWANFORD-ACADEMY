@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
 import { getCurrentUser, SafeUser } from '@/lib/auth/service';
 
 /**
@@ -27,3 +28,19 @@ export async function getAuthUser(req: NextRequest): Promise<SafeUser | null> {
     return null;
   }
 }
+
+/**
+ * Extracts and validates the authenticated user in React Server Components via cookies.
+ */
+export async function getServerSessionUser(): Promise<SafeUser | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('swanford_session')?.value;
+    if (!token) return null;
+
+    return await getCurrentUser(token);
+  } catch {
+    return null;
+  }
+}
+

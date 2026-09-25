@@ -103,7 +103,7 @@ export default function ParentSettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Account & Preferences</h1>
+        <h1 className="text-2xl font-bold text-[#5B0612] tracking-tight">Account & Preferences</h1>
         <p className="text-sm text-stone-600 mt-1">
           Manage your verified guardian profile and customize school notification channels
         </p>

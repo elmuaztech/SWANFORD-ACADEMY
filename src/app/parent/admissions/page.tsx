@@ -86,7 +86,7 @@ export default function ParentAdmissionsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Admissions & Applications</h1>
+          <h1 className="text-2xl font-bold text-[#5B0612] tracking-tight">Admissions & Applications</h1>
           <p className="text-sm text-stone-600 mt-1">
             Track verified entrance applications and enrollment progress for your children
           </p>
@@ -135,7 +135,7 @@ export default function ParentAdmissionsPage() {
                       <span className="font-mono text-sm font-semibold text-stone-800">{app.applicationNumber}</span>
                       {getStatusBadge(app.status)}
                     </div>
-                    <h3 className="text-lg font-bold text-stone-900">{app.studentName}</h3>
+                    <h3 className="text-lg font-bold text-[#5B0612]">{app.studentName}</h3>
                     <p className="text-sm text-stone-600">
                       Programme: <span className="font-medium text-stone-800">{app.programmeName}</span>
                       {app.targetClassName && (

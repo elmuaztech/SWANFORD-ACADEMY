@@ -79,7 +79,7 @@ export default function TeacherClassesPage() {
               <CardContent className="p-5 space-y-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="text-lg font-bold text-stone-900 tracking-tight">
+                    <h3 className="text-lg font-bold text-[#5B0612] tracking-tight">
                       {cls.className} {cls.arm ? `(${cls.arm})` : ""}
                     </h3>
                     <p className="text-xs font-semibold text-[#800020] uppercase tracking-wider mt-0.5">

@@ -8,11 +8,15 @@ import {
 } from '@/lib/media/media_service';
 import { ImageValidationError } from '@/lib/media/image_processor';
 
+export const dynamic = 'force-dynamic';
+
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+
 /**
  * Swanford Academy — Teacher Self-Service Profile Photo Update
  * Master Specification Reference: Section 11 (Teacher Profile Photo)
  */
-export async function PUT(request: NextRequest) {
+async function handlePhotoUpload(request: NextRequest) {
   try {
     const actor = await getAuthUser(request);
 
@@ -37,6 +41,13 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: 'Photo file is required.' }, { status: 400 });
       }
 
+      if (file.size > MAX_FILE_BYTES) {
+        return NextResponse.json(
+          { error: 'File size exceeds maximum permitted limit of 5 MB.' },
+          { status: 413 }
+        );
+      }
+
       const buffer = Buffer.from(await file.arrayBuffer());
       const asset = await uploadAndStoreProfilePhoto({
         buffer,
@@ -44,7 +55,7 @@ export async function PUT(request: NextRequest) {
       });
       newAssetId = asset.id;
     } else {
-      const body = await request.json();
+      const body = await request.json().catch(() => ({}));
       newAssetId = body.assetId;
       if (!newAssetId) {
         return NextResponse.json({ error: 'assetId is required.' }, { status: 400 });
@@ -74,9 +85,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const message = error instanceof Error ? error.message : 'Failed to update profile photo.';
     return NextResponse.json(
-      { error: 'Failed to update profile photo.' },
+      { error: message },
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  return handlePhotoUpload(request);
+}
+
+export async function PUT(request: NextRequest) {
+  return handlePhotoUpload(request);
 }

@@ -35,7 +35,7 @@ interface AssessmentDetail {
   id: string;
   title: string;
   type: string;
-  status: "DRAFT" | "SUBMITTED" | "FINALIZED";
+  status: "DRAFT" | "SUBMITTED" | "RETURNED_FOR_CORRECTION" | "APPROVED" | "FINALIZED";
   maxScore: number;
   weightPercentage: number;
   programme: { name: string; code: string };
@@ -44,6 +44,12 @@ interface AssessmentDetail {
   session: { name: string };
   term: { name: string };
   createdAt: string;
+  latestReview?: {
+    comment: string;
+    action: string;
+    reviewerName: string;
+    createdAt: string;
+  } | null;
 }
 
 export default function AssessmentDetailPage({
@@ -203,7 +209,7 @@ export default function AssessmentDetailPage({
     );
   }
 
-  const isEditable = assessment.status === "DRAFT";
+  const isEditable = assessment.status === "DRAFT" || assessment.status === "RETURNED_FOR_CORRECTION";
 
   return (
     <div className="space-y-6">
@@ -218,8 +224,12 @@ export default function AssessmentDetailPage({
         badge={
           assessment.status === "FINALIZED" ? (
             <Badge variant="success">Finalized & Published</Badge>
+          ) : assessment.status === "APPROVED" ? (
+            <Badge variant="info">Approved (Pending Publication)</Badge>
           ) : assessment.status === "SUBMITTED" ? (
             <Badge variant="warning">Submitted for Review</Badge>
+          ) : assessment.status === "RETURNED_FOR_CORRECTION" ? (
+            <Badge variant="danger">Returned for Correction</Badge>
           ) : (
             <Badge variant="neutral">Draft (Editable)</Badge>
           )
@@ -236,9 +246,29 @@ export default function AssessmentDetailPage({
         </Alert>
       )}
 
+      {assessment.status === "RETURNED_FOR_CORRECTION" && (
+        <Alert variant="danger" title="Returned for Correction">
+          <p className="font-semibold text-stone-900 mb-1">
+            Correction Instructions from {assessment.latestReview?.reviewerName || "Administrator"}:
+          </p>
+          <div className="bg-white/80 p-3 rounded-lg border border-red-200 text-stone-800 text-sm mb-2 whitespace-pre-wrap">
+            {assessment.latestReview?.comment || "Please review the scores and re-submit for administrative review."}
+          </div>
+          <p className="text-xs text-stone-600">
+            Please make the necessary score adjustments below and click &quot;Re-Submit for Review&quot;.
+          </p>
+        </Alert>
+      )}
+
+      {assessment.status === "APPROVED" && (
+        <Alert variant="success" title="Approved">
+          This assessment has been reviewed and approved by the administration. Scores are verified and ready for terminal report sheet compilation.
+        </Alert>
+      )}
+
       {!isEditable && (
         <Alert variant="info" title="Assessment Locked">
-          This assessment is currently in <strong className="font-semibold">{assessment.status}</strong> status. Scores cannot be edited by teachers while pending review or finalized.
+          This assessment is currently in <strong className="font-semibold">{assessment.status}</strong> status. Scores cannot be edited by teachers while pending review, approved, or finalized.
         </Alert>
       )}
 
@@ -258,7 +288,7 @@ export default function AssessmentDetailPage({
                       <span className="text-xs font-mono text-[#800020] font-semibold">
                         {item.student.admissionNumber}
                       </span>
-                      <h4 className="text-base font-bold text-stone-900">
+                      <h4 className="text-base font-bold text-[#5B0612]">
                         {idx + 1}. {item.student.lastName}, {item.student.firstName}
                       </h4>
                     </div>
@@ -444,7 +474,7 @@ export default function AssessmentDetailPage({
                 onClick={handleSubmitForReview}
                 isLoading={isSubmitting}
               >
-                Submit Assessment
+                {assessment.status === "RETURNED_FOR_CORRECTION" ? "Re-Submit for Review" : "Submit Assessment"}
               </Button>
             </div>
           </div>

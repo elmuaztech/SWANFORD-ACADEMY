@@ -38,6 +38,19 @@ Thumbs.db
 *.pem
 *.tmp
 .temp/
+scratch/
+*.pdf
+
+# Archives & Backups
+*.zip
+*.tar
+*.tar.gz
+*.sql
+*.dump
+*.bak
+
+# Temporary Audit & Diagnostic Reports
+scripts/*_report.json
 
 # IDE & Editor files
 .vscode/
@@ -48,7 +61,6 @@ Thumbs.db
 # TypeScript build info
 *.tsbuildinfo
 
-# Local Media Storage
+# Local Media Storage & Uploads
 /storage/
 /uploads/
-

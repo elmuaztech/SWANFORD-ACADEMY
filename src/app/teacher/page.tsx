@@ -42,12 +42,18 @@ export default function TeacherDashboardPage() {
   useEffect(() => {
     fetch("/api/teacher/me")
       .then((res) => {
+        if (res.status === 401) {
+          window.location.href = "/auth/login?from=/teacher";
+          return;
+        }
         if (!res.ok) throw new Error("Failed to load dashboard data");
         return res.json();
       })
       .then((d) => {
-        setData(d);
-        setIsLoading(false);
+        if (d) {
+          setData(d);
+          setIsLoading(false);
+        }
       })
       .catch((err) => {
         setError(err.message);
@@ -60,12 +66,30 @@ export default function TeacherDashboardPage() {
   }
 
   if (error || !data) {
+    const isAuthRequired =
+      error?.toLowerCase().includes("authentication") ||
+      error?.toLowerCase().includes("sign in") ||
+      error?.toLowerCase().includes("unauthorized");
+
     return (
-      <ErrorState
-        title="Dashboard Unavailable"
-        message={error || "Could not retrieve teacher dashboard information."}
-        onRetry={() => window.location.reload()}
-      />
+      <div className="py-8 max-w-xl mx-auto">
+        <ErrorState
+          title={isAuthRequired ? "Teacher Sign-In Required" : "Dashboard Unavailable"}
+          message={
+            isAuthRequired
+              ? "Please sign in with your teacher account to record attendance and enter student assessments."
+              : error || "Could not retrieve teacher dashboard information."
+          }
+          actionLabel={isAuthRequired ? "Sign In to Teacher Portal" : "Try Again"}
+          onAction={() => {
+            if (isAuthRequired) {
+              window.location.href = "/auth/login?from=/teacher";
+            } else {
+              window.location.reload();
+            }
+          }}
+        />
+      </div>
     );
   }
 
@@ -79,7 +103,7 @@ export default function TeacherDashboardPage() {
         subtitle={`Staff ID: ${teacher.staffIdNumber} · Active Session: ${activeSession?.name || "None"} (${activeTerm?.name || "No Active Term"})`}
         badge={
           <Badge variant="brand" className="bg-[#FAF2F3] text-[#800020] border-[#EFE9DF]">
-            Academic Faculty
+            Teacher
           </Badge>
         }
         primaryAction={
@@ -127,7 +151,7 @@ export default function TeacherDashboardPage() {
               <span className="text-sm sm:text-base font-bold text-stone-900">
                 {data.hasRecordedAttendanceToday ? "Recorded ✅" : "Pending ⏳"}
               </span>
-              <span className="text-xs font-medium text-stone-500">Africa/Lagos</span>
+              <span className="text-xs font-medium text-stone-500">Today</span>
             </div>
           </CardContent>
         </Card>
@@ -146,7 +170,7 @@ export default function TeacherDashboardPage() {
       {/* Assigned Classes Roster Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight">Your Assigned Classes</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-[#5B0612] tracking-tight">Your Assigned Classes</h2>
           <Link href="/teacher/classes" className="text-xs sm:text-sm font-semibold text-[#800020] hover:underline">
             View All Classes →
           </Link>

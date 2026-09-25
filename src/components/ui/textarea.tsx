@@ -8,7 +8,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ isError = false, className = "", disabled, rows = 3, ...props }, ref) => {
     const errorClasses = isError
       ? "border-rose-400 focus-visible:ring-rose-500 text-rose-900 placeholder:text-rose-300"
-      : "border-slate-300 focus-visible:ring-emerald-600 text-slate-900 placeholder:text-slate-400";
+      : "border-[#EADBDA] focus-visible:ring-[#800020] focus:border-[#800020] text-slate-900 placeholder:text-slate-400";
 
     return (
       <textarea

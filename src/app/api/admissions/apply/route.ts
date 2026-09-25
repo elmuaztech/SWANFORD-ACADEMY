@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createDraftApplication, CreateApplicationSchema } from '@/lib/admissions/application_service';
+import {
+  createDraftApplication,
+  submitApplication,
+  CreateApplicationSchema,
+} from '@/lib/admissions/application_service';
+import { AuthorizationError } from '@/lib/auth/authorization';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate_limiter';
 
 /**
@@ -31,15 +36,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = CreateApplicationSchema.parse(body);
 
-    const application = await createDraftApplication(validated);
+    const draft = await createDraftApplication(validated);
+    const application = await submitApplication(draft.id);
 
     return NextResponse.json({
       success: true,
       applicationId: application.id,
       applicationNumber: application.applicationNumber,
+      status: application.status,
+      paymentStatus: application.paymentStatus,
+      totalAmountKobo: application.totalAmountKobo.toString(),
       message: 'Admission application submitted successfully.',
     });
   } catch (error: unknown) {
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 400 }
+      );
+    }
     const message = error instanceof Error ? error.message : 'Failed to submit admission application.';
     return NextResponse.json({ error: message }, { status: 400 });
   }

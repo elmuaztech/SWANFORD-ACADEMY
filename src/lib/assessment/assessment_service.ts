@@ -25,11 +25,15 @@ export interface CreateAssessmentInput {
   gradingScaleId: string;
   maxScore: number;
   weightPercentage?: number;
+  structureConfigId?: string | null;
 }
+
+export type ComponentScoresMap = Record<string, number>;
 
 export interface ScoreEntryItem {
   studentId: string;
   rawScore?: number | null;
+  componentScores?: ComponentScoresMap;
   scoreStatus?: AssessmentScoreStatus;
   teacherNotes?: string | null;
 }
@@ -188,9 +192,12 @@ export async function updateAssessmentScores(
   }
 
   // Mandatory integrity check: Teacher cannot edit submitted or finalized assessments
-  if (assessment.status !== AssessmentStatus.DRAFT) {
+  if (
+    assessment.status !== AssessmentStatus.DRAFT &&
+    assessment.status !== AssessmentStatus.RETURNED_FOR_CORRECTION
+  ) {
     throw new AuthorizationError(
-      `Cannot edit scores: Assessment is in '${assessment.status}' status. Only DRAFT assessments may be modified.`,
+      `Cannot edit scores: Assessment is in '${assessment.status}' status. Only DRAFT or RETURNED_FOR_CORRECTION assessments may be modified.`,
       400,
       'ASSESSMENT_NOT_EDITABLE'
     );
@@ -233,7 +240,10 @@ export async function updateAssessmentScores(
     isPass: boolean | null;
     scoreStatus: AssessmentScoreStatus;
     teacherNotes: string | null;
+    componentScoresJson?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
   }> = [];
+
+  const studentComponentScoresMap: Record<string, ComponentScoresMap> = {};
 
   for (const item of input.scores) {
     if (!enrolledSet.has(item.studentId)) {
@@ -246,6 +256,10 @@ export async function updateAssessmentScores(
 
     const scoreStatus = item.scoreStatus || AssessmentScoreStatus.SCORED;
 
+    if (item.componentScores) {
+      studentComponentScoresMap[item.studentId] = item.componentScores;
+    }
+
     if (scoreStatus === AssessmentScoreStatus.ABSENT || scoreStatus === AssessmentScoreStatus.EXEMPT) {
       validatedScores.push({
         studentId: item.studentId,
@@ -256,10 +270,20 @@ export async function updateAssessmentScores(
         isPass: null,
         scoreStatus,
         teacherNotes: item.teacherNotes || null,
+        componentScoresJson: Prisma.JsonNull,
       });
     } else {
-      // SCORED: Must validate rawScore
-      if (item.rawScore === undefined || item.rawScore === null || isNaN(item.rawScore)) {
+      // Calculate raw score from component scores if provided
+      let effectiveScore = item.rawScore;
+      if (item.componentScores && Object.keys(item.componentScores).length > 0) {
+        effectiveScore = Object.values(item.componentScores).reduce(
+          (acc, val) => acc + (Number(val) || 0),
+          0
+        );
+      }
+
+      // SCORED: Must validate effectiveScore
+      if (effectiveScore === undefined || effectiveScore === null || isNaN(effectiveScore)) {
         throw new AuthorizationError(
           `Score is required for student ${item.studentId} when status is SCORED.`,
           400,
@@ -267,27 +291,30 @@ export async function updateAssessmentScores(
         );
       }
 
-      if (item.rawScore < 0 || item.rawScore > maxScoreNum) {
+      if (effectiveScore < 0 || effectiveScore > maxScoreNum) {
         throw new AuthorizationError(
-          `Score (${item.rawScore}) is outside the valid range [0, ${maxScoreNum}].`,
+          `Score (${effectiveScore}) is outside the valid range [0, ${maxScoreNum}].`,
           400,
           'SCORE_OUT_OF_RANGE'
         );
       }
 
       // Normalize score to grading scale's max score
-      const normalizedScore = (item.rawScore / maxScoreNum) * scaleMaxScore;
+      const normalizedScore = (effectiveScore / maxScoreNum) * scaleMaxScore;
       const resolved = await resolveGrade(assessment.gradingScaleId, normalizedScore);
 
       validatedScores.push({
         studentId: item.studentId,
-        rawScore: new Prisma.Decimal(item.rawScore),
+        rawScore: new Prisma.Decimal(effectiveScore),
         grade: resolved.grade,
         points: resolved.points !== undefined ? new Prisma.Decimal(resolved.points) : null,
         remark: resolved.remark,
         isPass: resolved.isPass,
         scoreStatus: AssessmentScoreStatus.SCORED,
         teacherNotes: item.teacherNotes || null,
+        componentScoresJson: item.componentScores
+          ? (item.componentScores as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
       });
     }
   }
@@ -306,6 +333,7 @@ export async function updateAssessmentScores(
           assessmentId: assessment.id,
           studentId: s.studentId,
           rawScore: s.rawScore,
+          componentScoresJson: s.componentScoresJson,
           grade: s.grade,
           points: s.points,
           remark: s.remark,
@@ -315,6 +343,7 @@ export async function updateAssessmentScores(
         },
         update: {
           rawScore: s.rawScore,
+          componentScoresJson: s.componentScoresJson,
           grade: s.grade,
           points: s.points,
           remark: s.remark,
@@ -348,11 +377,12 @@ export async function updateAssessmentScores(
 
 /**
  * Submits an assessment for administrative review and publication.
- * Lifecycle: DRAFT -> SUBMITTED.
+ * Lifecycle: DRAFT or RETURNED_FOR_CORRECTION -> SUBMITTED.
  */
 export async function submitAssessment(
   actor: SafeUser | string,
-  assessmentId: string
+  assessmentId: string,
+  notes?: string
 ) {
   const actorUserId = typeof actor === 'string' ? actor : actor.id;
   await requirePermission(actorUserId, PermissionCode.ASSESSMENT_ENTER);
@@ -368,9 +398,12 @@ export async function submitAssessment(
     throw new AuthorizationError('Assessment not found.', 404, 'ASSESSMENT_NOT_FOUND');
   }
 
-  if (assessment.status !== AssessmentStatus.DRAFT) {
+  if (
+    assessment.status !== AssessmentStatus.DRAFT &&
+    assessment.status !== AssessmentStatus.RETURNED_FOR_CORRECTION
+  ) {
     throw new AuthorizationError(
-      `Cannot submit assessment in '${assessment.status}' status. Only DRAFT assessments may be submitted.`,
+      `Cannot submit assessment in '${assessment.status}' status. Only DRAFT or RETURNED_FOR_CORRECTION assessments may be submitted.`,
       400,
       'INVALID_STATUS_TRANSITION'
     );
@@ -392,10 +425,21 @@ export async function submitAssessment(
     );
   }
 
+  const previousStatus = assessment.status;
+
   const updated = await prisma.$transaction(async (tx) => {
     const res = await tx.assessment.update({
       where: { id: assessmentId },
       data: { status: AssessmentStatus.SUBMITTED },
+    });
+
+    await tx.assessmentReviewLog.create({
+      data: {
+        assessmentId,
+        actorUserId,
+        action: AssessmentStatus.SUBMITTED,
+        comment: notes || null,
+      },
     });
 
     await tx.auditLog.create({
@@ -405,9 +449,10 @@ export async function submitAssessment(
         entityType: 'Assessment',
         entityId: assessmentId,
         newValues: {
-          previousStatus: 'DRAFT',
+          previousStatus,
           newStatus: 'SUBMITTED',
           scoresCount: assessment.scores.length,
+          notes: notes || null,
         },
       },
     });
@@ -419,9 +464,107 @@ export async function submitAssessment(
 }
 
 /**
+ * Reviews a submitted assessment: either APPROVES it or RETURNS_FOR_CORRECTION.
+ * When returning for correction, a mandatory reason/comment is enforced.
+ */
+export async function reviewAssessment(
+  actor: SafeUser | string,
+  assessmentId: string,
+  action: 'APPROVE' | 'RETURN',
+  comment?: string
+) {
+  const actorUserId = typeof actor === 'string' ? actor : actor.id;
+  await requirePermission(actorUserId, PermissionCode.RESULT_PUBLISH);
+
+  const assessment = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
+  });
+
+  if (!assessment) {
+    throw new AuthorizationError('Assessment not found.', 404, 'ASSESSMENT_NOT_FOUND');
+  }
+
+  if (assessment.status !== AssessmentStatus.SUBMITTED) {
+    throw new AuthorizationError(
+      `Cannot review assessment: Current status is '${assessment.status}'. Only SUBMITTED assessments may be reviewed.`,
+      400,
+      'INVALID_STATUS_TRANSITION'
+    );
+  }
+
+  if (action === 'RETURN') {
+    if (!comment || comment.trim().length < 5) {
+      throw new AuthorizationError(
+        'A clear reason or correction instructions (minimum 5 characters) must be provided when returning an assessment.',
+        400,
+        'COMMENT_REQUIRED'
+      );
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.assessment.update({
+        where: { id: assessmentId },
+        data: { status: AssessmentStatus.RETURNED_FOR_CORRECTION },
+      });
+
+      await tx.assessmentReviewLog.create({
+        data: {
+          assessmentId,
+          actorUserId,
+          action: AssessmentStatus.RETURNED_FOR_CORRECTION,
+          comment: comment.trim(),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: actorUserId,
+          action: 'ASSESSMENT_RETURNED_FOR_CORRECTION',
+          entityType: 'Assessment',
+          entityId: assessmentId,
+          newValues: { reason: comment.trim() },
+        },
+      });
+
+      return updated;
+    });
+  } else if (action === 'APPROVE') {
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.assessment.update({
+        where: { id: assessmentId },
+        data: { status: AssessmentStatus.APPROVED },
+      });
+
+      await tx.assessmentReviewLog.create({
+        data: {
+          assessmentId,
+          actorUserId,
+          action: AssessmentStatus.APPROVED,
+          comment: comment?.trim() || null,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: actorUserId,
+          action: 'ASSESSMENT_APPROVED',
+          entityType: 'Assessment',
+          entityId: assessmentId,
+          newValues: { approvedBy: actorUserId },
+        },
+      });
+
+      return updated;
+    });
+  } else {
+    throw new AuthorizationError('Invalid review action. Must be APPROVE or RETURN.', 400, 'INVALID_ACTION');
+  }
+}
+
+/**
  * Finalizes and publishes an assessment.
  * Restricted to administrative roles with RESULT_PUBLISH permission.
- * Lifecycle: SUBMITTED -> FINALIZED.
+ * Lifecycle: APPROVED (or SUBMITTED) -> FINALIZED.
  */
 export async function finalizeAssessment(
   actor: SafeUser | string,
@@ -454,18 +597,31 @@ export async function finalizeAssessment(
     throw new AuthorizationError('Assessment not found.', 404, 'ASSESSMENT_NOT_FOUND');
   }
 
-  if (assessment.status !== AssessmentStatus.SUBMITTED) {
+  if (
+    assessment.status !== AssessmentStatus.APPROVED &&
+    assessment.status !== AssessmentStatus.SUBMITTED
+  ) {
     throw new AuthorizationError(
-      `Cannot finalize assessment: Current status is '${assessment.status}'. Only SUBMITTED assessments may be finalized.`,
+      `Cannot finalize assessment: Current status is '${assessment.status}'. Only APPROVED or SUBMITTED assessments may be finalized.`,
       400,
       'INVALID_STATUS_TRANSITION'
     );
   }
 
+  const previousStatus = assessment.status;
+
   const finalized = await prisma.$transaction(async (tx) => {
     const updated = await tx.assessment.update({
       where: { id: assessmentId },
       data: { status: AssessmentStatus.FINALIZED },
+    });
+
+    await tx.assessmentReviewLog.create({
+      data: {
+        assessmentId,
+        actorUserId,
+        action: AssessmentStatus.FINALIZED,
+      },
     });
 
     await tx.auditLog.create({
@@ -475,7 +631,7 @@ export async function finalizeAssessment(
         entityType: 'Assessment',
         entityId: assessmentId,
         newValues: {
-          previousStatus: 'SUBMITTED',
+          previousStatus,
           newStatus: 'FINALIZED',
           finalizedBy: actorUserId,
         },
@@ -565,6 +721,15 @@ export async function reopenAssessment(
       data: { status: AssessmentStatus.DRAFT },
     });
 
+    await tx.assessmentReviewLog.create({
+      data: {
+        assessmentId,
+        actorUserId,
+        action: AssessmentStatus.DRAFT,
+        comment: justification.trim(),
+      },
+    });
+
     await tx.auditLog.create({
       data: {
         userId: actorUserId,
@@ -584,6 +749,30 @@ export async function reopenAssessment(
   });
 
   return reopened;
+}
+
+export async function getAssessmentReviewHistory(
+  actor: SafeUser | string,
+  assessmentId: string
+) {
+  const actorUserId = typeof actor === 'string' ? actor : actor.id;
+  await requirePermission(actorUserId, PermissionCode.ASSESSMENT_VIEW);
+
+  return prisma.assessmentReviewLog.findMany({
+    where: { assessmentId },
+    include: {
+      actorUser: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          userRoles: { select: { role: { select: { code: true, name: true } } } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
 /**

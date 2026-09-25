@@ -83,9 +83,30 @@ export async function recordDailyAttendance(
   await requirePermission(actorUserId, PermissionCode.ATTENDANCE_RECORD);
 
   // 2. Resolve Teacher profile
-  const teacher = await prisma.teacher.findUnique({
+  let teacher = await prisma.teacher.findUnique({
     where: { userId: actorUserId },
   });
+
+  if (!teacher) {
+    const isAdmin = await prisma.userRole.findFirst({
+      where: {
+        userId: actorUserId,
+        role: { code: { in: ['SUPER_ADMIN', 'ADMIN'] } },
+      },
+    });
+
+    if (isAdmin) {
+      const classTeacher = await prisma.teacherScope.findFirst({
+        where: { schoolClassId: input.schoolClassId },
+        include: { teacher: true },
+      });
+      if (classTeacher) {
+        teacher = classTeacher.teacher;
+      } else {
+        teacher = await prisma.teacher.findFirst();
+      }
+    }
+  }
 
   if (!teacher) {
     throw new AuthorizationError(

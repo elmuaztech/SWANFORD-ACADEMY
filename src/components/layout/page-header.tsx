@@ -9,9 +9,11 @@ export interface BreadcrumbItem {
 export interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  description?: string;
   breadcrumbs?: BreadcrumbItem[];
   primaryAction?: React.ReactNode;
   secondaryAction?: React.ReactNode;
+  actions?: React.ReactNode;
   badge?: React.ReactNode;
   className?: string;
 }
@@ -19,12 +21,24 @@ export interface PageHeaderProps {
 export function PageHeader({
   title,
   subtitle,
+  description,
   breadcrumbs,
   primaryAction,
   secondaryAction,
+  actions,
   badge,
   className = "",
 }: PageHeaderProps) {
+  const displaySubtitle = description || subtitle;
+  const displayActions = actions || (
+    (primaryAction || secondaryAction) ? (
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+        {secondaryAction}
+        {primaryAction}
+      </div>
+    ) : null
+  );
+
   return (
     <div className={`flex flex-col gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-slate-200/80 mb-6 ${className}`}>
       {/* Breadcrumbs */}
@@ -38,7 +52,7 @@ export function PageHeader({
                 {crumb.href && !isLast ? (
                   <Link
                     href={crumb.href}
-                    className="hover:text-emerald-700 underline-offset-2 hover:underline transition-colors"
+                    className="hover:text-[#800020] underline-offset-2 hover:underline transition-colors"
                   >
                     {crumb.label}
                   </Link>
@@ -57,23 +71,22 @@ export function PageHeader({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[#5B0612]">
               {title}
             </h1>
             {badge && <div>{badge}</div>}
           </div>
-          {subtitle && (
+          {displaySubtitle && (
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl">
-              {subtitle}
+              {displaySubtitle}
             </p>
           )}
         </div>
 
-        {/* Action Buttons (Stacked on mobile, row on tablet+) */}
-        {(primaryAction || secondaryAction) && (
-          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-            {secondaryAction}
-            {primaryAction}
+        {/* Action Buttons */}
+        {displayActions && (
+          <div className="shrink-0">
+            {displayActions}
           </div>
         )}
       </div>

@@ -78,9 +78,9 @@ export function Pagination({
                 type="button"
                 onClick={() => onPageChange(pageNumber)}
                 aria-current={isCurrent ? "page" : undefined}
-                className={`min-w-[36px] min-h-[36px] text-xs font-semibold rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
+                className={`min-w-[36px] min-h-[36px] text-xs font-semibold rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] ${
                   isCurrent
-                    ? "bg-emerald-700 text-white"
+                    ? "bg-[#800020] text-white"
                     : "text-slate-700 hover:bg-slate-100"
                 }`}
               >

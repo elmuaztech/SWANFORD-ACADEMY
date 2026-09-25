@@ -5,16 +5,16 @@
 
 export const SCHOOL_PROFILE = {
   name: "Swanford Academy",
-  subtitle: "Nursery, Primary & Tahfeez School",
+  subtitle: "Nursery, Primary & Tahfeez School — Dutse",
   address: "PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE",
   contactPerson: "Muhammad Kanti, Proprietor",
   language: "English",
   curriculum: "Nigerian Curriculum",
-  motto: "Illuminating the Path to Success",
+  motto: "“Illuminating the Path to Success”",
   vision:
-    "To be a leading institution recognized for excellence in education, character and discipline, producing capable and responsible individuals.",
+    "To become a leading institution recognised for excellence in education, character and discipline, producing highly capable individuals who are respected, responsible and prepared to make a positive impact on society.",
   mission:
-    "To develop educated, disciplined, well-mannered and responsible individuals equipped with knowledge, character and skills to thrive.",
+    "To develop highly educated, disciplined, well-mannered and responsible individuals, equipped with the knowledge, character and skills to make a positive impact on society and confidently navigate the challenges of a dynamic world.",
   coreValues: [
     "Excellence",
     "Integrity",

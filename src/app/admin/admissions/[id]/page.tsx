@@ -3,14 +3,24 @@
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Modal } from "@/components/ui/modal";
-import { LoadingState, ErrorState } from "@/components/ui/states";
-import { Avatar } from "@/components/ui/avatar";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Badge,
+  Button,
+  Input,
+  Select,
+  Textarea,
+  Modal,
+  Alert,
+  FormGroup,
+  PageHeader,
+  LoadingState,
+  ErrorState,
+  Avatar,
+} from "@/components";
 
 interface ApplicationDetail {
   id: string;
@@ -22,6 +32,7 @@ interface ApplicationDetail {
   applicantDob: string;
   status: string;
   paymentStatus: string;
+  totalAmountKobo?: string | number | bigint;
   profilePhotoId: string | null;
   reviewNotes: string | null;
   createdAt: string;
@@ -59,6 +70,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Review modal state
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -103,37 +115,17 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   };
 
   useEffect(() => {
-    fetch(`/api/admin/admissions/${applicationId}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error || "Failed to load application details.");
-        }
-        return res.json();
-      })
-      .then((json) => {
-        setApplication(json);
-        if (json.programmeSelections?.[0]?.programme) {
-          setSelectedProgrammeId(json.programmeSelections[0].programme.id);
-          if (json.programmeSelections[0].programme.classes?.[0]) {
-            setSelectedClassId(json.programmeSelections[0].programme.classes[0].id);
-          }
-        }
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Error retrieving application.");
-        setLoading(false);
-      });
+    fetchApplication();
   }, [applicationId]);
 
   const handleReviewSubmit = async () => {
     if (!application?.programmeSelections?.[0]?.id) {
-      alert("No programme selection found on application.");
+      setActionError("No programme selection found on application.");
       return;
     }
     setActionLoading(true);
     setActionMessage(null);
+    setActionError(null);
     try {
       const res = await fetch(`/api/admin/admissions/${applicationId}/review`, {
         method: "PUT",
@@ -150,7 +142,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
       await fetchApplication();
       setActionMessage(`Application successfully ${reviewDecision === "APPROVED" ? "approved for admission" : "rejected"}.`);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to record decision.");
+      setActionError(err instanceof Error ? err.message : "Failed to record decision.");
     } finally {
       setActionLoading(false);
     }
@@ -159,13 +151,14 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   const handlePaymentConfirm = async () => {
     setActionLoading(true);
     setActionMessage(null);
+    setActionError(null);
     try {
       const res = await fetch(`/api/admin/admissions/${applicationId}/confirm-payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentReference: paymentRef.trim() || `MANUAL-${Date.now()}`,
-          amountPaidKobo: 1000000,
+          amountPaidKobo: application?.totalAmountKobo ? Number(application.totalAmountKobo) : 500000,
         }),
       });
       const json = await res.json();
@@ -174,7 +167,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
       await fetchApplication();
       setActionMessage("Application fee payment recorded successfully.");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to confirm payment.");
+      setActionError(err instanceof Error ? err.message : "Failed to confirm payment.");
     } finally {
       setActionLoading(false);
     }
@@ -182,26 +175,26 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
 
   const handleMatriculate = async () => {
     if (!selectedProgrammeId || !selectedClassId) {
-      alert("Please select both programme and class for enrollment.");
+      setActionError("Please select both programme and class for enrollment.");
       return;
     }
     setActionLoading(true);
     setActionMessage(null);
+    setActionError(null);
     try {
       const res = await fetch(`/api/admin/admissions/${applicationId}/matriculate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          programmeClassAssignments: [{ programmeId: selectedProgrammeId, schoolClassId: selectedClassId }],
+          programmeClassAssignments: { [selectedProgrammeId]: selectedClassId },
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to matriculate student.");
       setShowMatriculateModal(false);
-      alert(`Student successfully matriculated! Admission Number: ${json.admissionNumber || json.student?.admissionNumber}`);
       router.push(`/admin/students/${json.studentId || json.student?.id}`);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Matriculation failed.");
+      setActionError(err instanceof Error ? err.message : "Matriculation failed.");
     } finally {
       setActionLoading(false);
     }
@@ -234,62 +227,62 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Top Breadcrumb & Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-stone-500 mb-1">
-            <Link href="/admin/admissions" className="hover:underline">
-              ← Admissions
-            </Link>
-            <span>/</span>
-            <span className="font-mono">{application.applicationNumber}</span>
+      <PageHeader
+        title={`${application.applicantFirstName} ${application.applicantLastName}`}
+        description={`Application #${application.applicationNumber} • Submitted ${new Date(application.createdAt).toLocaleDateString()}`}
+        breadcrumbs={[
+          { label: "Dashboard", href: "/admin" },
+          { label: "Admissions", href: "/admin/admissions" },
+          { label: application.applicationNumber },
+        ]}
+        actions={
+          <div className="flex flex-wrap items-center gap-2.5">
+            {application.paymentStatus !== "PAYMENT_CONFIRMED" && (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setShowPaymentModal(true)}
+                className="font-semibold"
+              >
+                Confirm Fee Payment
+              </Button>
+            )}
+
+            {application.status === "SUBMITTED" || application.status === "UNDER_REVIEW" ? (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setShowReviewModal(true)}
+                className="font-bold"
+              >
+                Review & Decision
+              </Button>
+            ) : null}
+
+            {application.status === "APPROVED" ? (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setShowMatriculateModal(true)}
+                className="font-bold"
+              >
+                Matriculate Student
+              </Button>
+            ) : null}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">
-            {application.applicantFirstName} {application.applicantLastName}
-          </h1>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {application.paymentStatus !== "PAID" && (
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => setShowPaymentModal(true)}
-              className="font-semibold"
-            >
-              Confirm Fee Payment
-            </Button>
-          )}
-
-          {application.status === "SUBMITTED" || application.status === "UNDER_REVIEW" ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setShowReviewModal(true)}
-              className="bg-[#5B0612] hover:bg-[#800020] text-white font-bold"
-            >
-              Review & Decision
-            </Button>
-          ) : null}
-
-          {application.status === "APPROVED" ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setShowMatriculateModal(true)}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
-            >
-              Matriculate Student
-            </Button>
-          ) : null}
-        </div>
-      </div>
+        }
+      />
 
       {actionMessage && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-semibold rounded-xl">
+        <Alert variant="success" onClose={() => setActionMessage(null)}>
           {actionMessage}
-        </div>
+        </Alert>
+      )}
+
+      {actionError && (
+        <Alert variant="danger" onClose={() => setActionError(null)}>
+          {actionError}
+        </Alert>
       )}
 
       {/* Main Dossier Grid */}
@@ -314,11 +307,13 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               <span className="text-stone-500">Status</span>
               <Badge
                 variant={
-                  application.status === "OFFERED" || application.status === "ACCEPTED"
+                  application.status === "APPROVED" || application.status === "ENROLLED"
                     ? "success"
-                    : application.status === "SUBMITTED"
-                    ? "info"
-                    : "neutral"
+                    : application.status === "PARTIALLY_APPROVED" || application.status === "UNDER_REVIEW"
+                    ? "warning"
+                    : application.status === "REJECTED"
+                    ? "danger"
+                    : "info"
                 }
                 size="sm"
               >
@@ -327,7 +322,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
             </div>
             <div className="flex justify-between py-1.5 border-b border-stone-100">
               <span className="text-stone-500">Fee Status</span>
-              <Badge variant={application.paymentStatus === "PAID" ? "success" : "warning"} size="sm">
+              <Badge variant={application.paymentStatus === "PAYMENT_CONFIRMED" ? "success" : "warning"} size="sm">
                 {application.paymentStatus}
               </Badge>
             </div>
@@ -496,7 +491,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               variant="primary"
               disabled={actionLoading}
               onClick={handleReviewSubmit}
-              className="bg-[#5B0612] text-white font-bold"
+              className="font-bold"
             >
               {actionLoading ? "Submitting..." : "Confirm Decision"}
             </Button>
@@ -517,7 +512,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
           <div>
             <label className="block text-xs font-bold text-stone-700 mb-1">Bank Reference (Optional)</label>
             <Input
-              placeholder="e.g. JAIZ-TXN-12345"
+              placeholder="e.g. TXN-12345"
               value={paymentRef}
               onChange={(e) => setPaymentRef(e.target.value)}
             />
@@ -539,7 +534,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               variant="primary"
               disabled={actionLoading}
               onClick={handlePaymentConfirm}
-              className="bg-emerald-700 text-white font-bold"
+              className="font-bold"
             >
               {actionLoading ? "Confirming..." : "Record Payment"}
             </Button>
@@ -561,17 +556,17 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
 
           <div>
             <label className="block text-xs font-bold text-stone-700 mb-1">Target Class</label>
-            <select
+            <Select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="w-full h-11 px-3 rounded-lg border border-stone-300 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#5B0612]"
+              className="w-full"
             >
               {selectedProgramme?.classes?.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               )) || <option value="">No classes available</option>}
-            </select>
+            </Select>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -582,7 +577,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               variant="primary"
               disabled={actionLoading || !selectedClassId}
               onClick={handleMatriculate}
-              className="bg-emerald-700 text-white font-bold"
+              className="font-bold"
             >
               {actionLoading ? "Enrolling..." : "Matriculate & Create Student"}
             </Button>

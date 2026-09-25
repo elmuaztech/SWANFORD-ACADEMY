@@ -5,7 +5,7 @@ import { SafeUser } from '@/lib/auth/service';
 import { AuthorizationError, hasPermission } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
 import { assertTeacherStudentScope } from '@/lib/auth/scopes';
-import { processProfilePhoto } from './image_processor';
+import { processProfilePhoto, processGalleryPhoto } from './image_processor';
 import { saveMediaFile, readMediaFile, deleteMediaFile } from './storage';
 
 /**
@@ -68,6 +68,43 @@ export async function uploadAndStoreProfilePhoto(options: CreateMediaAssetOption
 }
 
 /**
+ * Optimizes an uploaded gallery photo and stores both the file and its database reference.
+ * Supports both landscape and portrait orientations without distortion.
+ */
+export async function uploadAndStoreGalleryPhoto(options: {
+  buffer: Buffer;
+  uploadedById?: string;
+  maxWidth?: number;
+  maxHeight?: number;
+}): Promise<MediaAsset> {
+  const processed = await processGalleryPhoto(options.buffer, {
+    maxWidth: options.maxWidth || 1920,
+    maxHeight: options.maxHeight || 1080,
+  });
+
+  const assetId = crypto.randomUUID();
+  const storageKey = `gallery-photos/${assetId}.webp`;
+
+  await saveMediaFile(storageKey, processed.buffer);
+
+  const mediaAsset = await prisma.mediaAsset.create({
+    data: {
+      id: assetId,
+      storageKey,
+      mediaType: MediaType.GALLERY_PHOTO,
+      mimeType: processed.mimeType,
+      fileSize: processed.size,
+      width: processed.width,
+      height: processed.height,
+      checksum: processed.checksum,
+      uploadedById: options.uploadedById || null,
+    },
+  });
+
+  return mediaAsset;
+}
+
+/**
  * Retrieves a media asset metadata record by ID.
  */
 export async function getMediaAsset(id: string): Promise<MediaAsset | null> {
@@ -83,16 +120,40 @@ export async function getAuthorizedMedia(
   assetId: string,
   actor: SafeUser | null
 ): Promise<{ asset: MediaAsset; buffer: Buffer }> {
-  if (!actor) {
-    throw new AuthorizationError('Authentication required to access media asset.', 401, 'UNAUTHENTICATED');
-  }
-
   const asset = await prisma.mediaAsset.findUnique({
     where: { id: assetId },
   });
 
   if (!asset) {
     throw new AuthorizationError('Media asset not found.', 404, 'MEDIA_NOT_FOUND');
+  }
+
+  // Gallery Photos: Published photos are publicly accessible to all (including unauthenticated visitors)
+  if (asset.mediaType === MediaType.GALLERY_PHOTO) {
+    const galleryItem = await prisma.galleryItem.findFirst({
+      where: { mediaAssetId: assetId },
+    });
+
+    if (galleryItem && galleryItem.isPublished) {
+      const buffer = await readMediaFile(asset.storageKey);
+      return { asset, buffer };
+    }
+
+    // Unpublished gallery photos: Accessible ONLY by authorized Super Admin users
+    if (actor && actorHasRole(actor, RoleCode.SUPER_ADMIN)) {
+      const buffer = await readMediaFile(asset.storageKey);
+      return { asset, buffer };
+    }
+
+    if (!actor) {
+      throw new AuthorizationError('Authentication required to access unpublished media.', 401, 'UNAUTHENTICATED');
+    }
+    throw new AuthorizationError('You do not have permission to view unpublished gallery media.', 403, 'FORBIDDEN');
+  }
+
+  // Non-gallery media assets (profile photos, student documents) require authentication
+  if (!actor) {
+    throw new AuthorizationError('Authentication required to access media asset.', 401, 'UNAUTHENTICATED');
   }
 
   const isSuperAdmin = actorHasRole(actor, RoleCode.SUPER_ADMIN);

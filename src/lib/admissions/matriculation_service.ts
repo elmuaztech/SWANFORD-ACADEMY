@@ -4,6 +4,7 @@ import {
   ApplicationStatus,
   EnrollmentType,
   ProgrammeSelectionStatus,
+  RoleCode,
   TermCode,
 } from '@prisma/client';
 import { requirePermission, AuthorizationError } from '@/lib/auth/authorization';
@@ -28,20 +29,29 @@ export const MatriculateApplicationSchema = z.object({
 export type MatriculateApplicationInput = z.infer<typeof MatriculateApplicationSchema>;
 
 /**
- * Swanford Academy — Atomic Application Matriculation Engine
- * Master Specification Reference: Sections 6, 8, 9, 21.
+ * Swanford Academy - Stage 7 Atomic Matriculation Service
+ * Master Specification Reference: Sections 5, 6, 8, 12, 14
  *
- * Directives Enforced:
+ * Requirements:
  * 1. 100% Atomic: student, guardian, relationship, enrollments, and application state roll back together.
  * 2. MAIN_ACADEMIC Rule: At least one approved programme must be an official main academic programme.
  * 3. Concurrency-Safe Quota: Transactionally verifies AdmissionCycleProgramme.maxCapacity.
  * 4. Reuses Stage 6 domain services rather than duplicating student/guardian/enrollment code.
+ * 5. STRICT GOVERNANCE: Only a user with the SUPER_ADMIN role may matriculate applications and trigger portal creation.
  */
 export async function matriculateApplication(
   actor: SafeUser,
   input: MatriculateApplicationInput
 ) {
   await requirePermission(actor, PermissionCode.ADMISSION_APPLICATION_APPROVE);
+  const actorRoles = actor.roles || [];
+  if (!actorRoles.includes(RoleCode.SUPER_ADMIN)) {
+    throw new AuthorizationError(
+      'Only a user with the SUPER_ADMIN role may accept an admission and matriculate applications.',
+      403,
+      'SUPER_ADMIN_REQUIRED'
+    );
+  }
   const validated = MatriculateApplicationSchema.parse(input);
 
   return prisma.$transaction(async (tx) => {

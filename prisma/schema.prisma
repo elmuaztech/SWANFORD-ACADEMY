@@ -37,8 +37,20 @@ enum RoleCode {
 }
 
 enum TeacherStatus {
+  APPLICANT
+  TEMPORARY
+  PROBATION
+  CONFIRMED
   ACTIVE
   ON_LEAVE
+  SUSPENDED
+  TRANSFERRED
+  RESIGNED
+  DISMISSED
+  DECEASED
+  RETIRED
+  FORMER_STAFF
+  INACTIVE
   TERMINATED
 }
 
@@ -262,7 +274,56 @@ enum AssessmentType {
 enum AssessmentStatus {
   DRAFT
   SUBMITTED
+  RETURNED_FOR_CORRECTION
+  APPROVED
   FINALIZED
+}
+
+enum TeacherAssignmentStatus {
+  ACTIVE
+  ENDED
+  TRANSFERRED
+}
+
+enum TeacherAssignmentAction {
+  ASSIGNED
+  REASSIGNED
+  TRANSFERRED
+  SWITCHED
+  ENDED
+}
+
+enum StaffDocumentType {
+  PROBATION_APPOINTMENT_LETTER
+  CONFIRMATION_OF_APPOINTMENT_LETTER
+  PROBATION_ASSESSMENT_FORM
+}
+
+enum StaffDocumentStatus {
+  DRAFT
+  FINALIZED
+  ISSUED
+  ACKNOWLEDGED
+}
+
+enum ProbationRating {
+  EXCELLENT
+  GOOD
+  SATISFACTORY
+  NEEDS_IMPROVEMENT
+  UNSATISFACTORY
+}
+
+enum ProbationRecommendation {
+  CONFIRM_APPOINTMENT
+  EXTEND_PROBATION
+  DO_NOT_CONFIRM_APPOINTMENT
+}
+
+enum ReportReleaseStatus {
+  DRAFT
+  READY_FOR_RELEASE
+  RELEASED
 }
 
 enum AssessmentScoreStatus {
@@ -296,6 +357,20 @@ enum NotificationCategory {
   GENERAL
 }
 
+enum ReminderScheduleStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum ReminderTargetType {
+  ALL_OUTSTANDING
+  NO_PAYMENT_ONLY
+  PARTIAL_PAYMENT_ONLY
+}
+
 enum ImportBatchStatus {
   PROCESSING
   COMPLETED
@@ -324,6 +399,7 @@ enum ConfigCategory {
 enum MediaType {
   PROFILE_PHOTO
   DOCUMENT
+  GALLERY_PHOTO
 }
 
 // -----------------------------------------------------------------------------
@@ -340,6 +416,9 @@ model User {
   failedLoginAttempts  Int           @default(0) @map("failed_login_attempts")
   lockedUntil          DateTime?     @map("locked_until")
   lastLoginAt          DateTime?     @map("last_login_at")
+  firstName            String?       @map("first_name")
+  lastName             String?       @map("last_name")
+  mustChangePassword   Boolean       @default(false) @map("must_change_password")
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
@@ -359,10 +438,20 @@ model User {
   auditLogs            AuditLog[]
   studentImportBatches StudentImportBatch[]
   notificationPreferences NotificationPreference[]
+  userNotificationReads   UserNotificationRead[]
   createdAssessments   Assessment[]                     @relation("AssessmentCreatedBy")
   profilePhotoId       String?                          @map("profile_photo_id") @db.Uuid
   profilePhoto         MediaAsset?                      @relation("UserProfilePhoto", fields: [profilePhotoId], references: [id], onDelete: SetNull)
   uploadedMedia        MediaAsset[]                     @relation("UploadedMedia")
+  galleryItems         GalleryItem[]                    @relation("GalleryItemCreatedBy")
+  sentMessages         InternalMessage[]                @relation("SentMessages")
+  receivedMessages     InternalMessage[]                @relation("ReceivedMessages")
+  issuedStaffDocuments StaffDocument[]                  @relation("StaffDocumentIssuer")
+  probationAssessments StaffProbationRecord[]           @relation("ProbationAssessor")
+  createdAssessmentConfigs AssessmentStructureConfig[]  @relation("AssessmentConfigCreatedBy")
+  reviewedAssessments  Assessment[]                     @relation("AssessmentReviewedBy")
+  assessmentReviewLogs AssessmentReviewLog[]            @relation("AssessmentReviewActor")
+  releasedReports      ReportRelease[]                  @relation("ReportReleasedBy")
 
   @@index([status])
   @@index([profilePhotoId])
@@ -508,14 +597,22 @@ model Teacher {
   staffIdNumber  String        @unique @map("staff_id_number")
   firstName      String        @map("first_name")
   lastName       String        @map("last_name")
-  qualification  String?
-  status         TeacherStatus @default(ACTIVE)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  qualification      String?
+  position           String?
+  department         String?
+  dateOfEmployment   DateTime?                @map("date_of_employment")
+  probationStartDate DateTime?                @map("probation_start_date")
+  probationEndDate   DateTime?                @map("probation_end_date")
+  status             TeacherStatus            @default(ACTIVE)
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
 
-  user           User          @relation(fields: [userId], references: [id], onDelete: Restrict)
-  scopes         TeacherScope[]
+  user               User                     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  scopes             TeacherScope[]
   recordedAttendance AttendanceRecord[]
+  documents          StaffDocument[]
+  probationRecords   StaffProbationRecord[]
+  assignmentHistory  TeacherAssignmentHistory[]
 
   @@map("teachers")
 }
@@ -551,6 +648,7 @@ model Student {
   importRows        StudentImportRow[]
   attendanceRecords AttendanceRecord[]
   assessmentScores  AssessmentScore[]
+  reportReleases    ReportRelease[]
   profilePhotoId    String?            @map("profile_photo_id") @db.Uuid
   profilePhoto      MediaAsset?        @relation("StudentProfilePhoto", fields: [profilePhotoId], references: [id], onDelete: SetNull)
 
@@ -592,9 +690,14 @@ model TeacherScope {
   programmeId       String          @map("programme_id") @db.Uuid
   schoolClassId     String?         @map("school_class_id") @db.Uuid
   subjectId         String?         @map("subject_id") @db.Uuid
-  isFormTeacher     Boolean         @default(false) @map("is_form_teacher")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
+  isFormTeacher     Boolean                 @default(false) @map("is_form_teacher")
+  status            TeacherAssignmentStatus @default(ACTIVE)
+  startDate         DateTime                @default(now()) @map("start_date")
+  endDate           DateTime?               @map("end_date")
+  reason            String?
+  assignedByUserId  String?                 @map("assigned_by_user_id") @db.Uuid
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
 
   teacher           Teacher         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   academicSession   AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
@@ -633,6 +736,11 @@ model AcademicSession {
   expenses        Expense[]
   attendanceRecords AttendanceRecord[]
   assessments     Assessment[]
+  scheduledReminders ScheduledReminder[]
+  assessmentConfigs    AssessmentStructureConfig[]
+  assignmentHistories  TeacherAssignmentHistory[]
+  reportTemplates      ReportTemplateConfig[]
+  reportReleases       ReportRelease[]
 
   @@map("academic_sessions")
 }
@@ -655,7 +763,10 @@ model AcademicTerm {
   invoices          Invoice[]
   expenses          Expense[]
   attendanceRecords AttendanceRecord[]
-  assessments     Assessment[]
+  assessments       Assessment[]
+  scheduledReminders ScheduledReminder[]
+  assessmentConfigs AssessmentStructureConfig[]
+  reportReleases    ReportRelease[]
 
   @@unique([academicSessionId, termCode])
   @@map("academic_terms")
@@ -663,7 +774,7 @@ model AcademicTerm {
 
 model Programme {
   id                          String                          @id @default(uuid()) @db.Uuid
-  code                        ProgrammeCode                   @unique
+  code                        String                          @unique
   name                        String
   isMainAcademic              Boolean                         @default(true) @map("is_main_academic") // false for Tahfeez
   isActive                    Boolean                         @default(true) @map("is_active")
@@ -683,6 +794,8 @@ model Programme {
   teacherScopes               TeacherScope[]
   attendanceRecords           AttendanceRecord[]
   assessments                 Assessment[]
+  assessmentConfigs           AssessmentStructureConfig[]
+  assignmentHistories         TeacherAssignmentHistory[]
 
   @@map("programmes")
 }
@@ -706,25 +819,31 @@ model SchoolClass {
   applicationSelections ApplicationProgrammeSelection[]
   attendanceRecords     AttendanceRecord[]
   assessments           Assessment[]
+  assessmentConfigs     AssessmentStructureConfig[]
+  assignmentHistories   TeacherAssignmentHistory[]
+  reportReleases        ReportRelease[]
+  internalMessages      InternalMessage[]
 
   @@index([programmeId])
   @@map("school_classes")
 }
 
 model Subject {
-  id            String         @id @default(uuid()) @db.Uuid
-  programmeId   String         @map("programme_id") @db.Uuid
-  code          String         @unique // e.g. "MATH", "ENG", "QURAN"
-  name          String
-  description   String?
-  isActive      Boolean        @default(true) @map("is_active")
-  displayOrder  Int            @default(0) @map("display_order")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  id                  String                      @id @default(uuid()) @db.Uuid
+  programmeId         String                      @map("programme_id") @db.Uuid
+  code                String                      @unique // e.g. "MATH", "ENG", "QURAN"
+  name                String
+  description         String?
+  isActive            Boolean                     @default(true) @map("is_active")
+  displayOrder        Int                         @default(0) @map("display_order")
+  createdAt           DateTime                    @default(now()) @map("created_at")
+  updatedAt           DateTime                    @updatedAt @map("updated_at")
 
-  programme     Programme      @relation(fields: [programmeId], references: [id], onDelete: Restrict)
-  teacherScopes TeacherScope[]
-  assessments   Assessment[]
+  programme           Programme                   @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  teacherScopes       TeacherScope[]
+  assessments         Assessment[]
+  assessmentConfigs   AssessmentStructureConfig[]
+  assignmentHistories TeacherAssignmentHistory[]
 
   @@index([programmeId])
   @@map("subjects")
@@ -844,6 +963,9 @@ model Assessment {
   maxScore          Decimal          @map("max_score") @db.Decimal(5, 2)
   weightPercentage  Decimal          @default(100.00) @map("weight_percentage") @db.Decimal(5, 2)
   status            AssessmentStatus @default(DRAFT)
+  reviewComment     String?          @map("review_comment") @db.Text
+  reviewedByUserId  String?          @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt        DateTime?        @map("reviewed_at")
   createdById       String           @map("created_by_id") @db.Uuid
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")
@@ -855,7 +977,9 @@ model Assessment {
   academicTerm      AcademicTerm     @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
   gradingScale      GradingScale     @relation(fields: [gradingScaleId], references: [id], onDelete: Restrict)
   createdBy         User             @relation("AssessmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  reviewedByUser    User?            @relation("AssessmentReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   scores            AssessmentScore[]
+  reviews           AssessmentReviewLog[]
 
   @@index([schoolClassId, programmeId, academicTermId])
   @@index([subjectId, academicTermId])
@@ -864,18 +988,22 @@ model Assessment {
 }
 
 model AssessmentScore {
-  id           String                @id @default(uuid()) @db.Uuid
-  assessmentId String                @map("assessment_id") @db.Uuid
-  studentId    String                @map("student_id") @db.Uuid
-  rawScore     Decimal?              @map("raw_score") @db.Decimal(5, 2)
-  grade        String?
-  points       Decimal?              @db.Decimal(4, 2)
-  remark       String?
-  isPass       Boolean?              @map("is_pass")
-  scoreStatus  AssessmentScoreStatus @default(SCORED) @map("score_status")
-  teacherNotes String?               @map("teacher_notes")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  updatedAt    DateTime              @updatedAt @map("updated_at")
+  id                  String                @id @default(uuid()) @db.Uuid
+  assessmentId        String                @map("assessment_id") @db.Uuid
+  studentId           String                @map("student_id") @db.Uuid
+  rawScore            Decimal?              @map("raw_score") @db.Decimal(5, 2)
+  componentScoresJson Json?                 @map("component_scores_json")
+  totalScore          Decimal?              @map("total_score") @db.Decimal(5, 2)
+  enteredByTeacherId  String?               @map("entered_by_teacher_id") @db.Uuid
+  updatedByTeacherId  String?               @map("updated_by_teacher_id") @db.Uuid
+  grade               String?
+  points              Decimal?              @db.Decimal(4, 2)
+  remark              String?
+  isPass              Boolean?              @map("is_pass")
+  scoreStatus         AssessmentScoreStatus @default(SCORED) @map("score_status")
+  teacherNotes        String?               @map("teacher_notes")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
 
   assessment   Assessment            @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   student      Student               @relation(fields: [studentId], references: [id], onDelete: Restrict)
@@ -1538,11 +1666,27 @@ model Notification {
   deliveredAt       DateTime?            @map("delivered_at")
   createdAt         DateTime             @default(now()) @map("created_at")
 
+  reads             UserNotificationRead[]
+
   @@index([status, nextRetryAt])
   @@index([status, channel])
   @@index([recipientEmail])
   @@index([category])
   @@map("notifications")
+}
+
+model UserNotificationRead {
+  id             String       @id @default(uuid()) @db.Uuid
+  notificationId String       @map("notification_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  readAt         DateTime     @default(now()) @map("read_at")
+
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+  @@map("user_notification_reads")
 }
 
 model NotificationPreference {
@@ -1594,9 +1738,289 @@ model MediaAsset {
   students     Student[]     @relation("StudentProfilePhoto")
   applications Application[] @relation("ApplicationProfilePhoto")
   users        User[]        @relation("UserProfilePhoto")
+  galleryItems GalleryItem[]
 
   @@index([mediaType])
   @@index([uploadedById])
   @@map("media_assets")
 }
+
+// -----------------------------------------------------------------------------
+// DOMAIN 12: SCHOOL GALLERY & PUBLIC ASSETS
+// -----------------------------------------------------------------------------
+
+model GalleryItem {
+  id           String      @id @default(uuid()) @db.Uuid
+  mediaAssetId String      @map("media_asset_id") @db.Uuid
+  title        String
+  caption      String?
+  altText      String      @map("alt_text")
+  category     String      @default("CAMPUS") // e.g., CAMPUS, ACADEMICS, ACTIVITIES, FACILITIES, TAHFEEZ
+  displayOrder Int         @default(0) @map("display_order")
+  isPublished  Boolean     @default(false) @map("is_published")
+  publishedAt  DateTime?   @map("published_at")
+  createdById  String?     @map("created_by_id") @db.Uuid
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  mediaAsset   MediaAsset  @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  createdBy    User?       @relation("GalleryItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isPublished, displayOrder])
+  @@index([category])
+  @@map("gallery_items")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 13: SCHEDULED PAYMENT REMINDERS (Server-Side Execution)
+// -----------------------------------------------------------------------------
+
+model ScheduledReminder {
+  id                String                 @id @default(uuid()) @db.Uuid
+  academicSessionId String?                @map("academic_session_id") @db.Uuid
+  academicTermId    String?                @map("academic_term_id") @db.Uuid
+  scheduledFor      DateTime               @map("scheduled_for")
+  targetType        ReminderTargetType     @default(ALL_OUTSTANDING) @map("target_type")
+  status            ReminderScheduleStatus @default(PENDING)
+  totalTargeted     Int                    @default(0) @map("total_targeted")
+  totalSent         Int                    @default(0) @map("total_sent")
+  notes             String?
+  sentAt            DateTime?              @map("sent_at")
+  cancelledAt       DateTime?              @map("cancelled_at")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+
+  academicSession   AcademicSession?       @relation(fields: [academicSessionId], references: [id], onDelete: SetNull)
+  academicTerm      AcademicTerm?          @relation(fields: [academicTermId], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledFor])
+  @@map("scheduled_reminders")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 14: TEACHER ASSIGNMENT & LIFECYCLE HISTORY
+// -----------------------------------------------------------------------------
+
+model TeacherAssignmentHistory {
+  id                String                  @id @default(uuid()) @db.Uuid
+  teacherId         String                  @map("teacher_id") @db.Uuid
+  academicSessionId String                  @map("academic_session_id") @db.Uuid
+  programmeId       String                  @map("programme_id") @db.Uuid
+  schoolClassId     String?                 @map("school_class_id") @db.Uuid
+  subjectId         String?                 @map("subject_id") @db.Uuid
+  previousClassId   String?                 @map("previous_class_id") @db.Uuid
+  newClassId        String?                 @map("new_class_id") @db.Uuid
+  action            TeacherAssignmentAction @default(ASSIGNED)
+  reason            String?
+  performedByUserId String?                 @map("performed_by_user_id") @db.Uuid
+  createdAt         DateTime                @default(now()) @map("created_at")
+
+  teacher           Teacher                 @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  academicSession   AcademicSession         @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  programme         Programme               @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  schoolClass       SchoolClass?            @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
+  subject           Subject?                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@index([teacherId, academicSessionId])
+  @@index([schoolClassId])
+  @@map("teacher_assignment_histories")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 15: STAFF DOCUMENTS & 4-MONTH PROBATION SYSTEM
+// -----------------------------------------------------------------------------
+
+model StaffProbationRecord {
+  id                  String                  @id @default(uuid()) @db.Uuid
+  teacherId           String                  @map("teacher_id") @db.Uuid
+  monthNumber         Int                     @map("month_number") // 1, 2, 3, or 4
+  position            String
+  department          String?
+  dateOfEmployment    DateTime                @map("date_of_employment")
+  probationStartDate  DateTime                @map("probation_start_date")
+  probationEndDate    DateTime                @map("probation_end_date")
+  assessorName        String                  @map("assessor_name")
+  assessorUserId      String?                 @map("assessor_user_id") @db.Uuid
+  ratingsJson         Json                    @map("ratings_json")
+  comments            String?                 @db.Text
+  strengths           String?                 @db.Text
+  areasForImprovement String?                 @map("areas_for_improvement") @db.Text
+  targets             String?                 @db.Text
+  recommendation      ProbationRecommendation @default(CONFIRM_APPOINTMENT)
+  isFinal             Boolean                 @default(false) @map("is_final")
+  finalRecommendation String?                 @map("final_recommendation")
+  assessorSignature   String?                 @map("assessor_signature")
+  staffSignature      String?                 @map("staff_signature")
+  signedAt            DateTime?               @map("signed_at")
+  createdAt           DateTime                @default(now()) @map("created_at")
+  updatedAt           DateTime                @updatedAt @map("updated_at")
+
+  teacher             Teacher                 @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  assessorUser        User?                   @relation("ProbationAssessor", fields: [assessorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([teacherId, monthNumber])
+  @@index([teacherId])
+  @@map("staff_probation_records")
+}
+
+model StaffDocument {
+  id              String              @id @default(uuid()) @db.Uuid
+  teacherId       String              @map("teacher_id") @db.Uuid
+  documentType    StaffDocumentType   @map("document_type")
+  title           String
+  content         String              @db.Text
+  status          StaffDocumentStatus @default(DRAFT)
+  issuedByUserId  String?             @map("issued_by_user_id") @db.Uuid
+  issuedAt        DateTime?           @map("issued_at")
+  acknowledgedAt  DateTime?           @map("acknowledged_at")
+  metadataJson    Json?               @map("metadata_json")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  teacher         Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  issuedByUser    User?               @relation("StaffDocumentIssuer", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([teacherId, status])
+  @@index([documentType])
+  @@map("staff_documents")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 16: ASSESSMENT STRUCTURE CONFIGURATION & REVIEW LOGS
+// -----------------------------------------------------------------------------
+
+model AssessmentStructureConfig {
+  id                String           @id @default(uuid()) @db.Uuid
+  academicSessionId String           @map("academic_session_id") @db.Uuid
+  academicTermId    String?          @map("academic_term_id") @db.Uuid
+  programmeId       String           @map("programme_id") @db.Uuid
+  schoolClassId     String?          @map("school_class_id") @db.Uuid
+  subjectId         String?          @map("subject_id") @db.Uuid
+  name              String
+  componentsJson    Json             @map("components_json")
+  totalMaxScore     Decimal          @default(100.00) @map("total_max_score") @db.Decimal(5, 2)
+  isActive          Boolean          @default(true) @map("is_active")
+  createdById       String?          @map("created_by_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  academicSession   AcademicSession  @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm      AcademicTerm?    @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  programme         Programme        @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  schoolClass       SchoolClass?     @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
+  subject           Subject?         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  createdBy         User?            @relation("AssessmentConfigCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([academicSessionId, programmeId])
+  @@index([schoolClassId, subjectId])
+  @@map("assessment_structure_configs")
+}
+
+model AssessmentReviewLog {
+  id            String           @id @default(uuid()) @db.Uuid
+  assessmentId  String           @map("assessment_id") @db.Uuid
+  action        AssessmentStatus
+  comment       String?          @db.Text
+  actorUserId   String?          @map("actor_user_id") @db.Uuid
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  assessment    Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  actorUser     User?            @relation("AssessmentReviewActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([assessmentId])
+  @@map("assessment_review_logs")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 17: REPORT SHEET TEMPLATE & RELEASE WORKFLOW
+// -----------------------------------------------------------------------------
+
+model ReportTemplateConfig {
+  id                  String           @id @default(uuid()) @db.Uuid
+  academicSessionId   String?          @map("academic_session_id") @db.Uuid
+  name                String           @default("Official Swanford Primary Report Template")
+  isDefault           Boolean          @default(true) @map("is_default")
+  schoolName          String           @default("SWANFORD ACADEMY") @map("school_name")
+  schoolAddress       String           @default("Plot 212, Dr Nuhu Muhammadu Sanusi Way, Dutse, Jigawa State, Nigeria") @map("school_address")
+  schoolPhone         String           @default("09068897489, 08103807498") @map("school_phone")
+  schoolEmail         String           @default("Swanford99@gmail.com") @map("school_email")
+  schoolMotto         String           @default("Excellence & Character") @map("school_motto")
+  primaryColor        String           @default("#5B0612") @map("primary_color")
+  accentColor         String           @default("#C49A45") @map("accent_color")
+  fontFamily          String           @default("Inter") @map("font_family")
+  fontSize            String           @default("11px") @map("font_size")
+  tableBorderColor    String           @default("#D1D5DB") @map("table_border_color")
+  headerHtml          String?          @map("header_html") @db.Text
+  footerHtml          String?          @map("footer_html") @db.Text
+  showAttendance      Boolean          @default(true) @map("show_attendance")
+  showPosition        Boolean          @default(true) @map("show_position")
+  showClassAverage    Boolean          @default(true) @map("show_class_average")
+  showTeacherComment  Boolean          @default(true) @map("show_teacher_comment")
+  showDirectorComment Boolean          @default(true) @map("show_director_comment")
+  customStylingJson   Json?            @map("custom_styling_json")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  academicSession     AcademicSession? @relation(fields: [academicSessionId], references: [id], onDelete: SetNull)
+
+  @@map("report_template_configs")
+}
+
+model ReportRelease {
+  id                String              @id @default(uuid()) @db.Uuid
+  academicSessionId String              @map("academic_session_id") @db.Uuid
+  academicTermId    String              @map("academic_term_id") @db.Uuid
+  schoolClassId     String?             @map("school_class_id") @db.Uuid
+  studentId         String?             @map("student_id") @db.Uuid
+  status            ReportReleaseStatus @default(DRAFT)
+  releasedAt        DateTime?           @map("released_at")
+  releasedByUserId  String?             @map("released_by_user_id") @db.Uuid
+  notes             String?             @db.Text
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  academicSession   AcademicSession     @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm      AcademicTerm        @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  schoolClass       SchoolClass?        @relation(fields: [schoolClassId], references: [id], onDelete: SetNull)
+  student           Student?            @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  releasedByUser    User?               @relation("ReportReleasedBy", fields: [releasedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([academicSessionId, academicTermId, status])
+  @@index([schoolClassId])
+  @@index([studentId])
+  @@map("report_releases")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN 18: INTERNAL SCHOOL MESSAGING SYSTEM
+// -----------------------------------------------------------------------------
+
+model InternalMessage {
+  id              String            @id @default(uuid()) @db.Uuid
+  senderUserId    String            @map("sender_user_id") @db.Uuid
+  recipientUserId String?           @map("recipient_user_id") @db.Uuid
+  recipientRole   RoleCode?         @map("recipient_role")
+  schoolClassId   String?           @map("school_class_id") @db.Uuid
+  parentMessageId String?           @map("parent_message_id") @db.Uuid
+  subject         String
+  body            String            @db.Text
+  isRead          Boolean           @default(false) @map("is_read")
+  readAt          DateTime?         @map("read_at")
+  isBroadcast     Boolean           @default(false) @map("is_broadcast")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  senderUser      User              @relation("SentMessages", fields: [senderUserId], references: [id], onDelete: Restrict)
+  recipientUser   User?             @relation("ReceivedMessages", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  parentMessage   InternalMessage?  @relation("MessageReplies", fields: [parentMessageId], references: [id], onDelete: SetNull)
+  replies         InternalMessage[] @relation("MessageReplies")
+  schoolClass     SchoolClass?      @relation(fields: [schoolClassId], references: [id], onDelete: SetNull)
+
+  @@index([senderUserId])
+  @@index([recipientUserId, isRead])
+  @@index([recipientRole])
+  @@index([parentMessageId])
+  @@map("internal_messages")
+}
+
 

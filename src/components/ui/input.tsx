@@ -10,7 +10,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ isError = false, leftAddon, rightAddon, className = "", disabled, ...props }, ref) => {
     const errorClasses = isError
       ? "border-rose-400 focus-visible:ring-rose-500 text-rose-900 placeholder:text-rose-300"
-      : "border-slate-300 focus-visible:ring-emerald-600 text-slate-900 placeholder:text-slate-400";
+      : "border-[#EADBDA] focus-visible:ring-[#800020] focus:border-[#800020] text-slate-900 placeholder:text-slate-400";
 
     const baseInput =
       "w-full bg-white rounded-lg border px-3 py-2 text-sm transition-colors duration-150 " +

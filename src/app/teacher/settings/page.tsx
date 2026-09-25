@@ -108,7 +108,7 @@ export default function TeacherSettingsPage() {
             </div>
             <div>
               <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Qualification</span>
-              <span className="text-stone-800 mt-1 block">{teacher.qualification || "Educational Faculty"}</span>
+              <span className="text-stone-800 mt-1 block">{teacher.qualification || "Certified Teacher"}</span>
             </div>
             <div>
               <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Status</span>

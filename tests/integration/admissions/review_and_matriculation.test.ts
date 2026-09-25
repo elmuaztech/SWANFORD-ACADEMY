@@ -72,6 +72,7 @@ describe('Stage 7 — Integration: Review Decisions & Atomic Matriculation', () 
       email: user.email,
       phoneNumber: null,
       status: 'ACTIVE',
+      roles: [RoleCode.SUPER_ADMIN],
       emailVerifiedAt: new Date(),
       lastLoginAt: new Date(),
       createdAt: new Date(),

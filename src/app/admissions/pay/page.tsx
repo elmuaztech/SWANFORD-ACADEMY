@@ -105,17 +105,17 @@ function AdmissionPaymentContent() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Payment gateway communication failed.");
+        throw new Error(data.error || "Unable to reach the payment service. Please try again.");
       }
 
-      // Redirect browser to Paystack checkout
+      // Redirect browser to checkout
       if (data.authorizationUrl) {
         window.location.href = data.authorizationUrl;
       } else {
-        throw new Error("Missing payment authorization URL.");
+        throw new Error("Missing payment authorization link.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unable to initiate gateway transaction.";
+      const msg = err instanceof Error ? err.message : "Unable to initiate payment.";
       setError(msg);
       setSubmitting(false);
     }
@@ -126,7 +126,7 @@ function AdmissionPaymentContent() {
       <div className="py-16 max-w-xl mx-auto px-4">
         <LoadingState
           title="Securing Payment Session"
-          description="Connecting to the Swanford admissions checkout gateway..."
+          description="Connecting to the Swanford admissions checkout..."
         />
       </div>
     );
@@ -156,7 +156,7 @@ function AdmissionPaymentContent() {
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
       <PageHeader
         title="Admission Application Fee"
-        subtitle="Official online payment portal powered by Paystack."
+        subtitle="Official online payment portal for Swanford Academy."
         badge={
           <Badge variant="brand" size="md">
             Secure 256-bit Encrypted
@@ -216,7 +216,7 @@ function AdmissionPaymentContent() {
           </div>
 
           <Alert variant="info" title="Safe Payment Information">
-            Your payment is securely processed through Paystack using card, bank transfer, or USSD. Swanford Academy never stores your card credentials.
+            Your payment is processed with bank-grade encryption using debit card, bank transfer, or USSD. Swanford Academy never stores your payment card credentials.
           </Alert>
         </CardContent>
 
@@ -233,7 +233,7 @@ function AdmissionPaymentContent() {
             onClick={handleProceedToPay}
             disabled={submitting}
           >
-            {submitting ? "Connecting to Paystack..." : `Pay ${formatNaira(amountKobo)} with Paystack`}
+            {submitting ? "Connecting to Secure Checkout..." : `Proceed to Pay ${formatNaira(amountKobo)}`}
           </Button>
         </CardFooter>
       </Card>

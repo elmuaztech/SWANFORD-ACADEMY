@@ -36,9 +36,15 @@ export function CardTitle({
   as: Component = "h3",
   ...props
 }: React.HTMLAttributes<HTMLHeadingElement> & { as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6" }) {
+  const sanitizedClassName = className.replace(
+    /\btext-(stone|slate|gray|neutral|zinc)-(800|900|950)\b|\btext-black\b/g,
+    ""
+  );
+  const hasExplicitColor = /\btext-(white|emerald|amber|gold)\b|text-\[#(?:fff|ffffff|D4AF37|F5D061)\]/i.test(className);
+  const defaultColor = hasExplicitColor ? "" : "text-[#5B0612]";
   return (
     <Component
-      className={`text-base sm:text-lg font-semibold text-slate-900 tracking-tight leading-snug ${className}`}
+      className={`card-title text-base sm:text-lg font-semibold ${defaultColor} tracking-tight leading-snug break-words ${sanitizedClassName}`}
       {...props}
     >
       {children}

@@ -24,6 +24,8 @@ import {
   Prisma,
   ReconciliationStatus,
   SettlementStatus,
+  NotificationChannel,
+  NotificationStatus,
 } from "@prisma/client";
 import { AuthorizationError } from "@/lib/auth/authorization";
 import { SafeUser } from "@/lib/auth/service";
@@ -331,11 +333,14 @@ export async function processVerifiedTransaction(
           payment_status: ApplicationPaymentStatus;
           status: ApplicationStatus;
           application_number: string;
+          applicant_first_name: string;
+          applicant_last_name: string;
           guardian_email: string;
           guardian_first_name: string;
+          guardian_last_name: string;
         }>
       >`
-        SELECT id, total_amount_kobo, amount_paid_kobo, payment_status, status, application_number, guardian_email, guardian_first_name
+        SELECT id, total_amount_kobo, amount_paid_kobo, payment_status, status, application_number, applicant_first_name, applicant_last_name, guardian_email, guardian_first_name, guardian_last_name
         FROM applications
         WHERE id = ${existingTx.applicationId}::uuid
         FOR UPDATE;
@@ -411,6 +416,31 @@ export async function processVerifiedTransaction(
             gatewayFeeKobo: gatewayFeeKobo?.toString() || null,
             status: nextStatus,
             paymentStatus: ApplicationPaymentStatus.PAYMENT_CONFIRMED,
+          },
+        },
+      });
+
+      // Administrative In-App Alert for Super Admin & Admissions Staff
+      await tx.notification.create({
+        data: {
+          idempotencyKey: `ADMIN_NOTIF:APP_PAYMENT_CONFIRMED:${reference}`,
+          recipientUserId: null,
+          recipientEmail: null,
+          channel: NotificationChannel.EMAIL,
+          category: NotificationCategory.FINANCE,
+          templateName: 'ADMIN_FINANCIAL_ALERT',
+          subject: `Admission Fee Paid: ₦${(Number(gatewayAmountKobo) / 100).toLocaleString()} — Application ${lockedApp.application_number}`,
+          bodyText: `Payment confirmed for admission application ${lockedApp.application_number} (${lockedApp.applicant_first_name} ${lockedApp.applicant_last_name}).\nAmount: ₦${(Number(gatewayAmountKobo) / 100).toLocaleString()}\nGuardian: ${lockedApp.guardian_first_name} ${lockedApp.guardian_last_name} (${lockedApp.guardian_email})\nGateway Reference: ${reference}\nDate: ${new Date().toISOString()}`,
+          status: NotificationStatus.DELIVERED,
+          sentAt: new Date(),
+          metadata: {
+            applicationId: lockedApp.id,
+            applicationNumber: lockedApp.application_number,
+            amountKobo: gatewayAmountKobo.toString(),
+            guardianEmail: lockedApp.guardian_email,
+            gatewayReference: reference,
+            status: 'CONFIRMED',
+            linkUrl: `/admin/admissions/${lockedApp.id}`,
           },
         },
       });
@@ -610,6 +640,33 @@ export async function processVerifiedTransaction(
             amountKobo: gatewayAmountKobo.toString(),
             receiptNumber: receiptNum,
             status: PaymentStatus.CONFIRMED,
+          },
+        },
+      });
+
+      // Administrative In-App Alert for Super Admin & Finance Staff
+      await tx.notification.create({
+        data: {
+          idempotencyKey: `ADMIN_NOTIF:INVOICE_PAYMENT_CONFIRMED:${reference}`,
+          recipientUserId: null,
+          recipientEmail: null,
+          channel: NotificationChannel.EMAIL,
+          category: NotificationCategory.FINANCE,
+          templateName: 'ADMIN_FINANCIAL_ALERT',
+          subject: `Payment Received: ₦${(Number(gatewayAmountKobo) / 100).toLocaleString()} — Receipt ${receiptNum} (Invoice ${lockedInvoice.invoice_number})`,
+          bodyText: `Online payment received for Invoice ${lockedInvoice.invoice_number}.\nPayer: ${issuedToName}\nAmount: ₦${(Number(gatewayAmountKobo) / 100).toLocaleString()}\nReceipt Number: ${receiptNum}\nPayment Reference: ${officialPayRef}\nRemaining Balance: ₦${(Number(newOutstanding) / 100).toLocaleString()}\nStatus: ${newStatus}\nDate: ${new Date().toISOString()}`,
+          status: NotificationStatus.DELIVERED,
+          sentAt: new Date(),
+          metadata: {
+            invoiceId: lockedInvoice.id,
+            invoiceNumber: lockedInvoice.invoice_number,
+            receiptNumber: receiptNum,
+            paymentReference: officialPayRef,
+            gatewayReference: reference,
+            amountKobo: gatewayAmountKobo.toString(),
+            payerName: issuedToName,
+            status: 'CONFIRMED',
+            linkUrl: `/admin/finance/invoices/${lockedInvoice.id}`,
           },
         },
       });

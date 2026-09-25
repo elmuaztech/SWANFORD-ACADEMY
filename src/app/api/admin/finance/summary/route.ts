@@ -42,11 +42,29 @@ export async function GET(request: NextRequest) {
       programmeId,
     });
 
+    const expensesAgg = await prisma.expense.aggregate({
+      where: {
+        academicSessionId: sessionId,
+        ...(termId ? { academicTermId: termId } : {}),
+        status: 'RECORDED',
+      },
+      _sum: {
+        amountKobo: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const totalExpensesKobo = expensesAgg._sum.amountKobo || BigInt(0);
+
     return NextResponse.json({
       ...summary,
       totalInvoicedKobo: summary.totalInvoicedKobo.toString(),
       totalCollectedKobo: summary.totalCollectedKobo.toString(),
       totalOutstandingKobo: summary.totalOutstandingKobo.toString(),
+      totalExpensesKobo: totalExpensesKobo.toString(),
+      expenseCount: expensesAgg._count.id,
     });
   } catch (error: unknown) {
     if (error instanceof AuthorizationError) {

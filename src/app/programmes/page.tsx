@@ -10,17 +10,17 @@ export const metadata = {
 
 export default function ProgrammesPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFFFFF] text-[#1C1A1A]">
+    <div className="min-h-screen flex flex-col bg-[#FFFFFF] text-[#1C1A1A] w-full max-w-full overflow-x-hidden">
       <Navbar currentPath="/programmes" />
 
-      <main className="flex-1">
+      <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {/* Page Banner */}
-        <section className="bg-[#FDFBF7] border-b border-[#EADBDA] py-12 sm:py-16">
+        <section className="bg-[#FDFBF7] border-b border-[#EADBDA] py-12 sm:py-16 overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
               Educational Offerings
             </div>
-            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#1C1A1A]">
+            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#5B0612]">
               Academic &amp; Tahfeez Programmes
             </h1>
             <p className="text-sm sm:text-base text-[#524B46] max-w-2xl mx-auto">
@@ -30,21 +30,21 @@ export default function ProgrammesPage() {
         </section>
 
         {/* Section 1: Early Years */}
-        <section id="early-years" className="py-16 sm:py-20 bg-white border-b border-[#EADBDA]">
+        <section id="early-years" className="py-16 sm:py-20 bg-white border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               <div className="lg:col-span-5 space-y-4">
                 <div className="inline-block px-3 py-1 bg-[#F5F0EB] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
                   Stage 01
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-[#1C1A1A]">
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">
                   Early Years Foundation
                 </h2>
                 <p className="text-sm text-[#524B46] leading-relaxed">
                   Our Early Years section offers a secure, stimulating environment where foundational cognitive, linguistic, and motor skills are cultivated with care.
                 </p>
                 <div className="p-4 bg-[#FDFBF7] rounded-xl border border-[#EADBDA] text-xs text-[#524B46] space-y-1">
-                  <p className="font-semibold text-[#1C1A1A]">Placement Guidance:</p>
+                  <p className="font-semibold text-[#5B0612]">Placement Guidance:</p>
                   <p>Contact the school for placement guidance.</p>
                 </div>
                 <div className="pt-2">
@@ -59,7 +59,7 @@ export default function ProgrammesPage() {
               <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
                   <CardContent className="p-6 space-y-2">
-                    <h3 className="font-bold text-base text-[#1C1A1A]">Creche</h3>
+                    <h3 className="font-bold text-base text-[#5B0612]">Creche</h3>
                     <p className="text-xs text-[#524B46] leading-relaxed">
                       Safe, caring, and stimulating infant care focusing on early sensory discovery and physical comfort.
                     </p>
@@ -68,7 +68,7 @@ export default function ProgrammesPage() {
 
                 <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
                   <CardContent className="p-6 space-y-2">
-                    <h3 className="font-bold text-base text-[#1C1A1A]">Pre-Scholars</h3>
+                    <h3 className="font-bold text-base text-[#5B0612]">Pre-Scholars</h3>
                     <p className="text-xs text-[#524B46] leading-relaxed">
                       Introduction to structured routines, social interaction, active play, and communicative expression.
                     </p>
@@ -77,7 +77,7 @@ export default function ProgrammesPage() {
 
                 <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
                   <CardContent className="p-6 space-y-2">
-                    <h3 className="font-bold text-base text-[#1C1A1A]">Pre-Nursery</h3>
+                    <h3 className="font-bold text-base text-[#5B0612]">Pre-Nursery</h3>
                     <p className="text-xs text-[#524B46] leading-relaxed">
                       Pre-literacy and pre-numeracy skills, fine motor coordination, and curiosity-driven activities.
                     </p>
@@ -86,7 +86,7 @@ export default function ProgrammesPage() {
 
                 <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
                   <CardContent className="p-6 space-y-2">
-                    <h3 className="font-bold text-base text-[#1C1A1A]">Nursery 1 &amp; Nursery 2</h3>
+                    <h3 className="font-bold text-base text-[#5B0612]">Nursery 1 &amp; Nursery 2</h3>
                     <p className="text-xs text-[#524B46] leading-relaxed">
                       Phonics foundation, early writing, foundational arithmetic, and social readiness for primary school.
                     </p>
@@ -98,21 +98,21 @@ export default function ProgrammesPage() {
         </section>
 
         {/* Section 2: Primary School */}
-        <section id="primary" className="py-16 sm:py-20 bg-[#FDFBF7] border-b border-[#EADBDA]">
+        <section id="primary" className="py-16 sm:py-20 bg-[#FDFBF7] border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               <div className="lg:col-span-5 space-y-4">
                 <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
                   Stage 02
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-[#1C1A1A]">
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">
                   Primary Education (1 &ndash; 6)
                 </h2>
                 <p className="text-sm text-[#524B46] leading-relaxed">
                   Swanford Academy Primary school follows the Nigerian national basic education curriculum, providing rigorous instruction in mathematics, languages, sciences, and digital literacy.
                 </p>
                 <div className="p-4 bg-white rounded-xl border border-[#EADBDA] text-xs text-[#524B46] space-y-1">
-                  <p className="font-semibold text-[#1C1A1A]">Core Subjects:</p>
+                  <p className="font-semibold text-[#5B0612]">Core Subjects:</p>
                   <p>Mathematics, English Studies, Basic Science &amp; Technology, Social Studies, Civic Education, ICT, Creative Arts, and Islamic Religious Studies.</p>
                 </div>
                 <div className="pt-2">
@@ -127,7 +127,7 @@ export default function ProgrammesPage() {
               <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white p-6 rounded-xl border border-[#EADBDA] shadow-xs space-y-2">
                   <span className="text-xs font-bold text-[#5B0612]">Grades 1 &ndash; 3</span>
-                  <h3 className="font-bold text-base text-[#1C1A1A]">Lower Primary</h3>
+                  <h3 className="font-bold text-base text-[#5B0612]">Lower Primary</h3>
                   <p className="text-xs text-[#524B46] leading-relaxed">
                     Consolidation of reading fluency, mathematical reasoning, active scientific inquiry, and civic responsibility.
                   </p>
@@ -135,7 +135,7 @@ export default function ProgrammesPage() {
 
                 <div className="bg-white p-6 rounded-xl border border-[#EADBDA] shadow-xs space-y-2">
                   <span className="text-xs font-bold text-[#5B0612]">Grades 4 &ndash; 6</span>
-                  <h3 className="font-bold text-base text-[#1C1A1A]">Upper Primary</h3>
+                  <h3 className="font-bold text-base text-[#5B0612]">Upper Primary</h3>
                   <p className="text-xs text-[#524B46] leading-relaxed">
                     Advanced problem solving, critical thinking, research projects, essay writing, and preparation for secondary education.
                   </p>
@@ -146,7 +146,7 @@ export default function ProgrammesPage() {
         </section>
 
         {/* Section 3: Tahfeez Programme (Standalone) */}
-        <section id="tahfeez" className="py-16 sm:py-20 bg-white border-b border-[#EADBDA]">
+        <section id="tahfeez" className="py-16 sm:py-20 bg-white border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto bg-[#FDFBF7] p-8 sm:p-12 rounded-2xl border-2 border-[#5B0612] space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EADBDA] pb-6">
@@ -154,7 +154,7 @@ export default function ProgrammesPage() {
                   <div className="inline-block px-3 py-1 bg-[#5B0612] text-white rounded text-xs font-bold uppercase tracking-wider mb-2">
                     Standalone Programme
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-[#1C1A1A]">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">
                     Tahfeez Quranic Memorization Programme
                   </h2>
                 </div>
@@ -170,13 +170,13 @@ export default function ProgrammesPage() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   <div className="bg-white p-4 rounded-xl border border-[#EADBDA] space-y-1">
-                    <h4 className="font-bold text-[#1C1A1A] text-sm">Flexible Enrollment</h4>
+                    <h4 className="font-bold text-[#5B0612] text-sm">Flexible Enrollment</h4>
                     <p className="text-xs text-[#524B46]">
                       May be taken as a standalone programme or combined alongside conventional primary enrollment.
                     </p>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-[#EADBDA] space-y-1">
-                    <h4 className="font-bold text-[#1C1A1A] text-sm">Daily Supervision</h4>
+                    <h4 className="font-bold text-[#5B0612] text-sm">Daily Supervision</h4>
                     <p className="text-xs text-[#524B46]">
                       Experienced instructors monitor recitation accuracy, daily revision, and progressive Juz completion.
                     </p>
@@ -201,9 +201,9 @@ export default function ProgrammesPage() {
         </section>
 
         {/* Bottom CTA */}
-        <section className="py-16 bg-[#FDFBF7] text-center">
+        <section className="py-16 bg-[#FDFBF7] text-center overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#1C1A1A]">Ready to Apply?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">Ready to Apply?</h2>
             <p className="text-sm text-[#524B46] max-w-xl mx-auto">
               Admissions are currently open for the active academic cycle. Complete the online admission form in minutes.
             </p>

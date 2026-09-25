@@ -23,12 +23,17 @@ export interface SchoolProfile {
   vision?: string;
   coreValues?: string;
   address: string;
+  state?: string;
+  country?: string;
   phonePrimary: string;
   phoneSecondary?: string;
   email: string;
   website?: string;
   proprietor?: string;
   logoUrl?: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
   primaryColor?: string;
   secondaryColor?: string;
   timezone: string;
@@ -42,18 +47,24 @@ export const SchoolProfileSchema = z.object({
   vision: z.string().optional(),
   coreValues: z.string().optional(),
   address: z.string().min(5, 'Address is required'),
+  state: z.string().optional(),
+  country: z.string().optional(),
   phonePrimary: z.string().min(5, 'Primary phone is required'),
   phoneSecondary: z.string().optional(),
   email: z.string().email('Valid email is required'),
   website: z.string().url().optional().or(z.literal('')),
   proprietor: z.string().optional(),
   logoUrl: z.string().optional(),
+  bankName: z.string().optional(),
+  bankAccountName: z.string().optional(),
+  bankAccountNumber: z.string().optional(),
   primaryColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Invalid hex color').optional(),
   secondaryColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Invalid hex color').optional(),
   timezone: z.string().default(LAGOS_TIMEZONE),
 });
 
-export type UpdateSchoolProfileInput = z.infer<typeof SchoolProfileSchema>;
+export const UpdateSchoolProfileSchema = SchoolProfileSchema.partial();
+export type UpdateSchoolProfileInput = z.infer<typeof UpdateSchoolProfileSchema>;
 
 const PROFILE_KEY_MAP: Record<keyof SchoolProfile, string> = {
   name: 'school.name',
@@ -63,12 +74,17 @@ const PROFILE_KEY_MAP: Record<keyof SchoolProfile, string> = {
   vision: 'school.vision',
   coreValues: 'school.core_values',
   address: 'school.address',
+  state: 'school.state',
+  country: 'school.country',
   phonePrimary: 'school.phone_primary',
   phoneSecondary: 'school.phone_secondary',
   email: 'school.email',
   website: 'school.website',
   proprietor: 'school.proprietor',
   logoUrl: 'school.logo_url',
+  bankName: 'school.bank_name',
+  bankAccountName: 'school.bank_account_name',
+  bankAccountNumber: 'school.bank_account_number',
   primaryColor: 'school.primary_color',
   secondaryColor: 'school.secondary_color',
   timezone: 'school.timezone',
@@ -93,20 +109,31 @@ export async function getSchoolProfile(): Promise<SchoolProfile> {
 
   return {
     name: configMap.get('school.name') || 'Swanford Academy',
-    subtitle: configMap.get('school.subtitle') || undefined,
-    motto: configMap.get('school.motto') || 'Illuminating the Path to Success',
-    mission: configMap.get('school.mission') || undefined,
-    vision: configMap.get('school.vision') || undefined,
-    coreValues: configMap.get('school.core_values') || undefined,
+    subtitle: configMap.get('school.subtitle') || 'Nursery, Primary & Tahfeez School — Dutse',
+    motto: configMap.get('school.motto') || '“Illuminating the Path to Success”',
+    mission:
+      configMap.get('school.mission') ||
+      'To develop highly educated, disciplined, well-mannered and responsible individuals, equipped with the knowledge, character and skills to make a positive impact on society and confidently navigate the challenges of a dynamic world.',
+    vision:
+      configMap.get('school.vision') ||
+      'To become a leading institution recognised for excellence in education, character and discipline, producing highly capable individuals who are respected, responsible and prepared to make a positive impact on society.',
+    coreValues:
+      configMap.get('school.core_values') ||
+      'Excellence • Integrity • Discipline • Respect • Responsibility • Good Character • Wisdom • Leadership',
     address: configMap.get('school.address') || 'PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE',
-    phonePrimary: configMap.get('school.phone_primary') || '08000000000',
+    state: configMap.get('school.state') || 'Jigawa State',
+    country: configMap.get('school.country') || 'Nigeria',
+    phonePrimary: configMap.get('school.phone_primary') || '+234 803 695 0352',
     phoneSecondary: configMap.get('school.phone_secondary') || undefined,
     email: configMap.get('school.email') || 'info@swanfordacademy.edu.ng',
     website: configMap.get('school.website') || undefined,
-    proprietor: configMap.get('school.proprietor') || undefined,
+    proprietor: configMap.get('school.proprietor') || 'Muhammad Kanti, Proprietor',
     logoUrl: configMap.get('school.logo_url') || undefined,
-    primaryColor: configMap.get('school.primary_color') || '#1E3A8A',
-    secondaryColor: configMap.get('school.secondary_color') || '#F59E0B',
+    bankName: configMap.get('school.bank_name') || 'Stanbic IBTC Bank',
+    bankAccountName: configMap.get('school.bank_account_name') || 'Swanford Academy Ltd',
+    bankAccountNumber: configMap.get('school.bank_account_number') || '0034567890',
+    primaryColor: configMap.get('school.primary_color') || '#800020',
+    secondaryColor: configMap.get('school.secondary_color') || '#D4AF37',
     timezone: configMap.get('school.timezone') || LAGOS_TIMEZONE,
   };
 }
@@ -120,9 +147,9 @@ export async function updateSchoolProfile(
 ): Promise<SchoolProfile> {
   await requirePermission(actorUserId, PermissionCode.SYSTEM_CONFIG_MANAGE);
 
-  const validated = SchoolProfileSchema.parse(input);
-
   const oldProfile = await getSchoolProfile();
+  const merged = { ...oldProfile, ...input };
+  const validated = SchoolProfileSchema.parse(merged);
 
   await prisma.$transaction(async (tx) => {
     for (const [field, key] of Object.entries(PROFILE_KEY_MAP)) {

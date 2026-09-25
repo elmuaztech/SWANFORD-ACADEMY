@@ -66,6 +66,7 @@ describe('Stage 8 — Integration: Admission Matriculation & School Fee Invoicin
       email: user.email,
       phoneNumber: null,
       status: 'ACTIVE',
+      roles: [RoleCode.SUPER_ADMIN],
       emailVerifiedAt: new Date(),
       lastLoginAt: new Date(),
       createdAt: new Date(),

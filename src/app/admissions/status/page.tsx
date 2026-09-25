@@ -85,7 +85,7 @@ export default function AdmissionStatusPage() {
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
               Verification Desk
             </div>
-            <h1 className="text-2xl sm:text-4xl font-bold text-[#1C1A1A] tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-bold text-[#5B0612] tracking-tight">
               Track Admission Status
             </h1>
             <p className="text-xs sm:text-sm text-[#524B46] max-w-md mx-auto">
@@ -224,7 +224,7 @@ export default function AdmissionStatusPage() {
                     </div>
                     {result.receipt.reference && (
                       <div className="flex justify-between text-[11px] text-[#8C827A]">
-                        <span>Gateway Reference:</span>
+                        <span>Payment Reference:</span>
                         <span className="font-mono">{result.receipt.reference}</span>
                       </div>
                     )}

@@ -30,28 +30,38 @@ export function ImageUpload({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Synchronize previewUrl if currentImageUrl changes asynchronously after load
+  React.useEffect(() => {
+    if (currentImageUrl !== undefined) {
+      setPreviewUrl(currentImageUrl);
+    }
+  }, [currentImageUrl]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setError(null);
 
-    // Client-side quick size check (5 MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // Client-side size check (5 MB maximum)
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
       setError('File is too large. Maximum permitted upload size is 5 MB.');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    // Client-side quick type check
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      setError('Unsupported file type. Please upload a JPEG, PNG, or WebP image.');
+    // Client-side file type validation (JPEG, PNG, WebP)
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
+      setError('Unsupported file type. Please upload a genuine JPEG, PNG, or WebP image.');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    // Immediate local preview while optimizing
+    // Immediate local preview while uploading & optimizing
     const localUrl = URL.createObjectURL(file);
     setPreviewUrl(localUrl);
     setIsUploading(true);
@@ -66,17 +76,46 @@ export function ImageUpload({
         body: formData,
       });
 
-      const data = await res.json();
+      // Defensive JSON parsing: inspect response header and body safely
+      let data: Record<string, any> | null = null;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to upload and optimize image.');
+        let errorMsg = data?.error;
+        if (!errorMsg) {
+          if (res.status === 405) {
+            errorMsg = 'This upload endpoint does not accept POST requests. Please contact the administrator.';
+          } else if (res.status === 413) {
+            errorMsg = 'File size exceeds maximum permitted limit of 5 MB.';
+          } else if (res.status === 401) {
+            errorMsg = 'Authentication required. Please log in again to upload photos.';
+          } else if (res.status === 403) {
+            errorMsg = 'Access denied: You do not have permission to upload this photo.';
+          } else if (res.status >= 500) {
+            errorMsg = 'The server encountered an issue processing the image. Please try again.';
+          } else {
+            errorMsg = `Failed to upload photo (Status ${res.status}). Please try again.`;
+          }
+        }
+        throw new Error(errorMsg);
+      }
+
+      if (!data || !data.url) {
+        throw new Error('Image upload succeeded, but the server returned an invalid response format.');
       }
 
       // Server optimized asset ready
       setPreviewUrl(data.url);
       onUploadSuccess({ assetId: data.assetId, url: data.url });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An error occurred during upload';
+      const message = err instanceof Error ? err.message : 'An error occurred during photo upload.';
       setError(message);
       setPreviewUrl(currentImageUrl || null);
     } finally {

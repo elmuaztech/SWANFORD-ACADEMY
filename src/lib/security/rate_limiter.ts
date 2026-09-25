@@ -89,3 +89,11 @@ export function getClientIp(req: Request): string {
   if (xRealIp) return xRealIp.trim();
   return '127.0.0.1';
 }
+
+/**
+ * Clears rate limit state for a specific key (e.g. on new OTP generation).
+ */
+export function clearRateLimit(key: string): void {
+  store.delete(key);
+}
+

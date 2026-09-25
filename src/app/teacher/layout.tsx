@@ -1,35 +1,32 @@
 import React from 'react';
-import { Navbar } from '@/components/layout/navbar';
+import { redirect } from 'next/navigation';
+import { getServerSessionUser } from '@/lib/auth/request_auth';
+import { RoleCode } from '@prisma/client';
+import { TeacherShell } from '@/components/layout/teacher-shell';
 
 export const metadata = {
   title: 'Teacher Portal — Swanford Academy',
   description: 'Academic class management, daily attendance recording, and continuous assessments for Swanford Academy educators.',
 };
 
-export default function TeacherLayout({ children }: { children: React.ReactNode }) {
-  const teacherNav = [
-    { label: 'Dashboard', href: '/teacher' },
-    { label: 'My Classes', href: '/teacher/classes' },
-    { label: 'Attendance', href: '/teacher/attendance' },
-    { label: 'Assessments', href: '/teacher/assessments' },
-    { label: 'Profile & Scopes', href: '/teacher/settings' },
-  ];
+export default async function TeacherLayout({ children }: { children: React.ReactNode }) {
+  const user = await getServerSessionUser();
+  if (!user) {
+    redirect('/auth/login?from=/teacher');
+  }
+
+  if (user.mustChangePassword) {
+    redirect('/auth/change-password');
+  }
+
+  const userRoles = user.roles || [];
+  if (!userRoles.includes(RoleCode.TEACHER)) {
+    redirect('/auth/login?error=unauthorized_teacher');
+  }
 
   return (
-    <div className="min-h-screen bg-[#FDFCF9] text-stone-900 flex flex-col antialiased">
-      <Navbar
-        userRole="TEACHER"
-        navItems={teacherNav}
-        currentPath="/teacher"
-      />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {children}
-      </main>
-      <footer className="border-t border-[#EFE9DF] bg-white/70 py-6 text-center text-xs text-stone-500">
-        <div className="max-w-7xl mx-auto px-4">
-          <p>© {new Date().getFullYear()} Swanford Academy. All rights reserved. Canonical Timezone: Africa/Lagos (WAT).</p>
-        </div>
-      </footer>
-    </div>
+    <TeacherShell userEmail={user.email}>
+      {children}
+    </TeacherShell>
   );
 }

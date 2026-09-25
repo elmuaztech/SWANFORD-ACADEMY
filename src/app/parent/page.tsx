@@ -68,12 +68,18 @@ export default function ParentDashboardPage() {
   useEffect(() => {
     fetch("/api/parent/me")
       .then((res) => {
+        if (res.status === 401) {
+          window.location.href = "/auth/login?from=/parent";
+          return;
+        }
         if (!res.ok) throw new Error("Failed to load parent profile");
         return res.json();
       })
       .then((d) => {
-        setProfile(d);
-        setIsLoadingProfile(false);
+        if (d) {
+          setProfile(d);
+          setIsLoadingProfile(false);
+        }
       })
       .catch((err) => {
         setError(err.message);
@@ -126,12 +132,30 @@ export default function ParentDashboardPage() {
   }
 
   if (error || !profile) {
+    const isAuthRequired =
+      error?.toLowerCase().includes("authentication") ||
+      error?.toLowerCase().includes("sign in") ||
+      error?.toLowerCase().includes("unauthorized");
+
     return (
-      <ErrorState
-        title="Dashboard Unavailable"
-        message={error || "Failed to load parent dashboard."}
-        onRetry={() => window.location.reload()}
-      />
+      <div className="py-8 max-w-xl mx-auto">
+        <ErrorState
+          title={isAuthRequired ? "Parent Sign-In Required" : "Dashboard Unavailable"}
+          message={
+            isAuthRequired
+              ? "Please sign in with your verified guardian account to access your children's records, attendance, and fee invoices."
+              : error || "Failed to load parent dashboard."
+          }
+          actionLabel={isAuthRequired ? "Sign In to Parent Portal" : "Try Again"}
+          onAction={() => {
+            if (isAuthRequired) {
+              window.location.href = "/auth/login?from=/parent";
+            } else {
+              window.location.reload();
+            }
+          }}
+        />
+      </div>
     );
   }
 
@@ -193,7 +217,7 @@ export default function ParentDashboardPage() {
                 >
                   <span>{child.firstName} {child.lastName}</span>
                   <span className="text-xs font-normal opacity-80">
-                    ({child.enrollments.map((e) => e.className).join(", ") || "Enrolled"})
+                    ({(child.enrollments || []).map((e) => e.className).join(", ") || "Enrolled"})
                   </span>
                 </button>
               );
@@ -207,7 +231,7 @@ export default function ParentDashboardPage() {
           >
             {profile.children.map((child, idx) => (
               <option key={child.studentId} value={idx}>
-                {child.firstName} {child.lastName} · {child.admissionNumber} ({child.enrollments.map((e) => e.className).join(", ")})
+                {child.firstName} {child.lastName} · {child.admissionNumber} ({(child.enrollments || []).map((e) => e.className).join(", ")})
               </option>
             ))}
           </select>
@@ -221,7 +245,7 @@ export default function ParentDashboardPage() {
             <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider mr-1">
               Enrolled Programmes:
             </span>
-            {selectedChild.enrollments.map((enr) => (
+            {(selectedChild.enrollments || []).map((enr) => (
               <Badge key={enr.programmeId} variant="brand" className="bg-[#FAF2F3] text-[#800020] font-semibold text-xs">
                 {enr.programmeName}: {enr.className} {enr.arm ? `(${enr.arm})` : ""}
               </Badge>
@@ -274,7 +298,7 @@ export default function ParentDashboardPage() {
                 </div>
                 <p className="text-xs text-stone-500">
                   {selectedChild.receivesInvoices
-                    ? "Official digital invoices & Paystack receipting"
+                    ? "Official digital invoices & automated receipting"
                     : "Not designated to receive financial statements"}
                 </p>
               </CardContent>

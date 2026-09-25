@@ -2,7 +2,7 @@ import React from "react";
 import { toUserFacingError } from "@/lib/ui/error_messages";
 
 export interface AlertProps {
-  variant?: "info" | "success" | "warning" | "error";
+  variant?: "info" | "success" | "warning" | "error" | "danger";
   title?: string;
   error?: unknown;
   children?: React.ReactNode;
@@ -61,7 +61,7 @@ export function Alert({
         </svg>
       ),
     },
-  }[variant];
+  }[variant === "danger" ? "error" : variant];
 
   return (
     <div
@@ -83,7 +83,7 @@ export function Alert({
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 -mr-1 -mt-1 p-2 rounded-md hover:bg-black/5 text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="shrink-0 -mr-1 -mt-1 p-2 rounded-md hover:bg-black/5 text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] min-w-[44px] min-h-[44px] flex items-center justify-center"
           aria-label="Dismiss message"
         >
           <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">

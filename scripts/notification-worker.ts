@@ -12,6 +12,7 @@
  */
 
 import { processPendingNotifications, reapStaleNotificationLocks } from '../src/lib/notifications/worker';
+import { processDueScheduledReminders } from '../src/lib/finance/reminder_service';
 
 const POLL_INTERVAL_MS = 5000;
 let isRunning = true;
@@ -19,7 +20,7 @@ let isRunning = true;
 async function main() {
   const workerId = `hostinger-worker-${process.pid}`;
   console.log('------------------------------------------------------------');
-  console.log('Swanford Academy — Notification Outbox Worker Started');
+  console.log('Swanford Academy — Notification Outbox & Reminder Worker Started');
   console.log(`Process PID: ${process.pid} | Worker ID: ${workerId}`);
   console.log('------------------------------------------------------------');
 
@@ -34,6 +35,20 @@ async function main() {
         const reaped = await reapStaleNotificationLocks();
         if (reaped > 0) {
           console.log(`[Reaper] Reclaimed ${reaped} stale notification leases.`);
+        }
+      }
+
+      // Every 6 loops (~30 seconds), check for and process due scheduled payment reminders
+      if (loopCount % 6 === 0) {
+        try {
+          const processedCount = await processDueScheduledReminders();
+          if (processedCount > 0) {
+            console.log(
+              `[Reminder Worker] Processed ${processedCount} scheduled reminder batch(es).`
+            );
+          }
+        } catch (reminderErr) {
+          console.error('[Reminder Worker Error]:', reminderErr);
         }
       }
 

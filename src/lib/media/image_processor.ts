@@ -226,3 +226,87 @@ export async function processProfilePhoto(
     checksum,
   };
 }
+
+export interface ProcessGalleryPhotoOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
+}
+
+/**
+ * Validates and optimizes an image buffer for the School Gallery into an efficient, safe WebP image.
+ * Supports both portrait and landscape orientations without distortion or forced cropping.
+ */
+export async function processGalleryPhoto(
+  inputBuffer: Buffer,
+  options?: ProcessGalleryPhotoOptions
+): Promise<ProcessedImageResult> {
+  validateImageSignature(inputBuffer);
+
+  const maxWidth = options?.maxWidth || 1920;
+  const maxHeight = options?.maxHeight || 1080;
+  const quality = options?.quality || 82;
+
+  const image = sharp(inputBuffer, {
+    failOn: 'truncated',
+    limitInputPixels: MAX_INPUT_PIXELS,
+  });
+
+  let metadata: Metadata;
+  try {
+    metadata = await image.metadata();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Corrupt or malformed image';
+    throw new ImageValidationError(`Corrupted image content: ${message}`, 'CORRUPT_IMAGE');
+  }
+
+  if (!metadata.width || !metadata.height) {
+    throw new ImageValidationError('Image has invalid or missing dimensions.', 'INVALID_DIMENSIONS');
+  }
+
+  if (metadata.width > MAX_INPUT_DIMENSION || metadata.height > MAX_INPUT_DIMENSION) {
+    throw new ImageValidationError(
+      `Image dimensions (${metadata.width}x${metadata.height}) exceed maximum allowed of ${MAX_INPUT_DIMENSION}px.`,
+      'DIMENSIONS_TOO_LARGE'
+    );
+  }
+
+  if (metadata.pages && metadata.pages > 1) {
+    throw new ImageValidationError(
+      'Animated images are not permitted in the gallery.',
+      'ANIMATION_NOT_PERMITTED'
+    );
+  }
+
+  const pipeline = sharp(inputBuffer, {
+    failOn: 'truncated',
+    limitInputPixels: MAX_INPUT_PIXELS,
+  })
+    .rotate()
+    .resize(maxWidth, maxHeight, {
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .webp({
+      quality,
+      effort: 4,
+      lossless: false,
+    });
+
+  const processedBuffer = await pipeline.toBuffer();
+  const finalMeta = await sharp(processedBuffer).metadata();
+  const finalWidth = finalMeta.width || metadata.width;
+  const finalHeight = finalMeta.height || metadata.height;
+
+  const checksum = crypto.createHash('sha256').update(processedBuffer).digest('hex');
+
+  return {
+    buffer: processedBuffer,
+    width: finalWidth,
+    height: finalHeight,
+    format: 'webp',
+    size: processedBuffer.length,
+    mimeType: 'image/webp',
+    checksum,
+  };
+}

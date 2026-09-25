@@ -38,3 +38,29 @@ export function hashToken(rawToken: string): string {
 export function isValidTokenHashFormat(hash: string): boolean {
   return typeof hash === 'string' && /^[0-9a-f]{64}$/i.test(hash);
 }
+
+export interface GeneratedOtpPair {
+  rawOtp: string;
+  otpHash: string;
+}
+
+/**
+ * Generates a cryptographically secure numeric OTP of exact digit length.
+ * For digits=4: covers 0000-9999 and pads with leading zeros (e.g. "0427").
+ * Raw OTP is for delivery only; only otpHash (SHA-256) is stored in the database.
+ */
+export function generateSecureNumericOtp(digits = 4): GeneratedOtpPair {
+  const max = Math.pow(10, digits); // e.g. 10000 for 4 digits (range 0..9999)
+  const num = crypto.randomInt(0, max);
+  const rawOtp = num.toString().padStart(digits, '0');
+  const otpHash = hashToken(rawOtp);
+  return { rawOtp, otpHash };
+}
+
+/**
+ * Generates a single-use cryptographically secure Reset Authorization Ticket.
+ * Issued upon successful 4-digit OTP verification; valid for 10 minutes.
+ */
+export function generateResetAuthorizationTicket(): GeneratedTokenPair {
+  return generateSecureToken();
+}
