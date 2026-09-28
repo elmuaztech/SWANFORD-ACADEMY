@@ -12,11 +12,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const profile = await getParentProfile(user.id);
-    const invoiceEligibleChildren = profile.children.filter((c) => c.receivesInvoices);
+    let profile;
+    try {
+      profile = await getParentProfile(user.id);
+    } catch {
+      // If guardian profile is not yet linked or active, return empty list cleanly
+      return NextResponse.json([]);
+    }
+
+    const children = profile.children.length > 0
+      ? (profile.children.some((c) => c.receivesInvoices)
+          ? profile.children.filter((c) => c.receivesInvoices)
+          : profile.children)
+      : [];
 
     const allInvoices = [];
-    for (const child of invoiceEligibleChildren) {
+    for (const child of children) {
       try {
         const invoices = await getParentChildFinance(user.id, child.studentId);
         for (const inv of invoices) {

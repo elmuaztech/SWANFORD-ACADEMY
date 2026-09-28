@@ -26,6 +26,7 @@ import {
   PageHeader,
   Alert,
 } from "@/components";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { StudentStatus } from "@prisma/client";
 
 interface StudentDetail {
@@ -37,6 +38,7 @@ interface StudentDetail {
   gender: string;
   dob: string;
   status: StudentStatus;
+  profilePhotoId?: string | null;
   primaryClass: { id: string; name: string } | null;
   tahfeezClass: { id: string; name: string } | null;
   user: { id: string; email: string } | null;
@@ -90,6 +92,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
   // Status Change Modal State
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [newStatus, setNewStatus] = useState<StudentStatus>(StudentStatus.ACTIVE);
   const [statusReason, setStatusReason] = useState("");
   const [statusSubmitting, setStatusSubmitting] = useState(false);
@@ -207,12 +210,20 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         {/* Left Column: Student Bio Card */}
         <Card className="md:col-span-1 border border-[#EADBDA]/80">
           <CardHeader className="text-center pb-2">
-            <div className="flex justify-center mb-3">
+            <div className="flex flex-col items-center justify-center mb-3">
               <Avatar
-                size="lg"
+                size="xl"
+                src={student.profilePhotoId ? `/api/media/${student.profilePhotoId}` : null}
                 fallback={`${student.firstName[0]}${student.lastName[0]}`}
                 alt={`${student.firstName} ${student.lastName}`}
               />
+              <button
+                type="button"
+                onClick={() => setShowPhotoModal(true)}
+                className="mt-2 text-xs font-semibold text-[#800020] hover:text-[#5B0612] hover:underline transition-colors min-h-[36px] flex items-center justify-center px-2.5 py-1 rounded-md bg-[#FAF7F2] border border-[#EADBDA]/60"
+              >
+                {student.profilePhotoId ? "📷 Change Photo" : "📷 Upload Photo"}
+              </button>
             </div>
             <CardTitle className="text-lg font-bold text-stone-900">
               {student.firstName} {student.lastName}
@@ -438,6 +449,41 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </Modal>
+
+      {/* Student Identification Photo Upload Modal */}
+      {showPhotoModal && (
+        <Modal
+          isOpen={showPhotoModal}
+          onClose={() => setShowPhotoModal(false)}
+          title={`Identification Photo — ${student.firstName} ${student.lastName}`}
+        >
+          <div className="p-4 space-y-4">
+            <ImageUpload
+              label="Student Passport Photo"
+              helperText="Upload official student passport photograph. Automatically compressed to preserve face clarity while saving VPS bandwidth."
+              currentImageUrl={student.profilePhotoId ? `/api/media/${student.profilePhotoId}` : null}
+              uploadEndpoint={`/api/admin/students/${studentId}/photo`}
+              onUploadSuccess={({ assetId }) => {
+                setStudent((prev) => (prev ? { ...prev, profilePhotoId: assetId } : null));
+                setShowPhotoModal(false);
+                setActionSuccess("Student identification photo successfully updated.");
+              }}
+              onRemove={async () => {
+                try {
+                  const res = await fetch(`/api/admin/students/${studentId}/photo`, { method: "DELETE" });
+                  if (res.ok) {
+                    setStudent((prev) => (prev ? { ...prev, profilePhotoId: null } : null));
+                    setShowPhotoModal(false);
+                    setActionSuccess("Student identification photo removed.");
+                  }
+                } catch {
+                  // ignore
+                }
+              }}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

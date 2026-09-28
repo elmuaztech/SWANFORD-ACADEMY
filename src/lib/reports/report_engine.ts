@@ -1437,6 +1437,18 @@ export async function releaseTerminalReports(
     },
   });
 
+  // Ensure submitted and approved assessments for this session/term are finalized so results display properly
+  await prisma.assessment.updateMany({
+    where: {
+      academicSessionId: params.academicSessionId,
+      academicTermId: params.academicTermId,
+      status: { in: ['SUBMITTED', 'APPROVED'] },
+    },
+    data: {
+      status: AssessmentStatus.FINALIZED,
+    },
+  });
+
   // Query enrolled students affected by this release
   const enrollments = await prisma.studentProgrammeEnrollment.findMany({
     where: {
@@ -1470,6 +1482,7 @@ export async function releaseTerminalReports(
     for (const link of student.guardianLinks) {
       if (link.guardian.email) {
         const portalUrl = `${process.env.APP_URL || 'https://portal.swanford.edu.ng'}/parent/results`;
+        const downloadPdfUrl = `${process.env.APP_URL || 'https://portal.swanford.edu.ng'}/api/parent/reports/${student.id}?termId=${params.academicTermId}&download=pdf`;
 
         await enqueueNotification({
           idempotencyKey: `REPORT-RELEASE-${release.id}-${student.id}-${link.guardianId}`,
@@ -1478,11 +1491,37 @@ export async function releaseTerminalReports(
           category: 'ACADEMIC',
           templateName: 'RESULT_PUBLISHED',
           subject: `Swanford Academy: Official ${termName} Terminal Report Sheet Released for ${studentName}`,
-          bodyText: `Dear ${link.guardian.firstName} ${link.guardian.lastName},\n\nThe official terminal report sheet for ${studentName} for ${termName} has been officially released by the school administration.\n\nYou can view and print the complete report sheet directly from your Parent Portal at: ${portalUrl}\n\nSwanford Academy Management.`,
+          bodyText: `Dear ${link.guardian.firstName} ${link.guardian.lastName},\n\nThe official terminal report sheet for ${studentName} for ${termName} has been officially released by the school administration.\n\n📲 DOWNLOAD PDF REPORT SHEET TO YOUR PHONE:\n${downloadPdfUrl}\n\nYou can also view the full breakdown in your Parent Portal:\n${portalUrl}\n\nSwanford Academy Management.`,
+          htmlBody: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1c1917; line-height: 1.6;">
+              <div style="background-color: #5B0612; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 1px;">SWANFORD ACADEMY</h1>
+                <p style="color: #C49A45; margin: 6px 0 0 0; font-size: 13px;">Excellence &amp; Character</p>
+              </div>
+              <div style="padding: 24px; border: 1px solid #EADBDA; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+                <h2 style="color: #5B0612; font-size: 17px; margin-top: 0;">Official Terminal Report Sheet Released</h2>
+                <p>Dear <strong>${link.guardian.firstName} ${link.guardian.lastName}</strong>,</p>
+                <p>The official terminal report sheet for <strong>${studentName}</strong> for <strong>${termName}</strong> has been published by the academic committee.</p>
+                
+                <div style="text-align: center; margin: 28px 0;">
+                  <a href="${downloadPdfUrl}" style="background-color: #800020; color: #ffffff; padding: 14px 28px; border-radius: 6px; font-weight: bold; text-decoration: none; display: inline-block; font-size: 14px;">
+                    📥 Download PDF Report Sheet
+                  </a>
+                </div>
+                
+                <p style="font-size: 13px; color: #78716c; text-align: center;">
+                  Or access via portal: <a href="${portalUrl}" style="color: #800020;">${portalUrl}</a>
+                </p>
+                <hr style="border: none; border-top: 1px solid #EADBDA; margin: 24px 0;" />
+                <p style="font-size: 11px; color: #a8a29e; text-align: center; margin: 0;">Swanford Academy — Nursery, Primary &amp; Tahfeez</p>
+              </div>
+            </div>
+          `,
           metadata: {
             releaseId: release.id,
             studentId: student.id,
             termId: params.academicTermId,
+            downloadPdfUrl,
           },
         }).catch((err) => {
           console.error(`Failed to enqueue report release notification for student ${student.id}:`, err);

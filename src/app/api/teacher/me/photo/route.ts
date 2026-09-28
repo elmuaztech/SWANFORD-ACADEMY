@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RoleCode } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth/request_auth';
 import { AuthorizationError } from '@/lib/auth/authorization';
-import {
-  uploadAndStoreProfilePhoto,
-  replaceProfilePhoto,
-} from '@/lib/media/media_service';
+import { uploadAndStoreProfilePhoto, replaceProfilePhoto } from '@/lib/media/media_service';
 import { ImageValidationError } from '@/lib/media/image_processor';
 
 export const dynamic = 'force-dynamic';
@@ -13,22 +11,50 @@ export const dynamic = 'force-dynamic';
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 /**
- * Swanford Academy — Teacher Self-Service Profile Photo Update
- * Master Specification Reference: Section 11 (Teacher Profile Photo)
+ * GET /api/teacher/me/photo
+ * Retrieves authenticated teacher's profile photo.
  */
-async function handlePhotoUpload(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const actor = await getAuthUser(request);
-
     if (!actor) {
       return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
     }
 
     if (!actor.roles?.includes(RoleCode.TEACHER)) {
-      return NextResponse.json(
-        { error: 'Access denied: Teacher role required.' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Access denied: Teacher role required.' }, { status: 403 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: actor.id },
+      select: { profilePhotoId: true },
+    });
+
+    const url = user?.profilePhotoId ? `/api/media/${user.profilePhotoId}` : null;
+
+    return NextResponse.json({
+      success: true,
+      assetId: user?.profilePhotoId || null,
+      url,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to retrieve profile photo.';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * Upload & replace teacher's profile photo.
+ */
+async function handlePhotoUpload(request: NextRequest) {
+  try {
+    const actor = await getAuthUser(request);
+    if (!actor) {
+      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
+    if (!actor.roles?.includes(RoleCode.TEACHER)) {
+      return NextResponse.json({ error: 'Access denied: Teacher role required.' }, { status: 403 });
     }
 
     const contentType = request.headers.get('content-type') || '';
@@ -62,34 +88,23 @@ async function handlePhotoUpload(request: NextRequest) {
       }
     }
 
-    // Only modifies the authenticated teacher's own profile photo
     await replaceProfilePhoto({ type: 'USER', id: actor.id }, newAssetId, actor);
 
     return NextResponse.json({
       success: true,
       assetId: newAssetId,
       url: `/api/media/${newAssetId}`,
-      message: 'Profile photo updated successfully.',
+      message: 'Teacher profile photo updated successfully.',
     });
   } catch (error: unknown) {
-    if (error instanceof AuthorizationError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.statusCode }
-      );
-    }
     if (error instanceof ImageValidationError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
     }
-
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
+    }
     const message = error instanceof Error ? error.message : 'Failed to update profile photo.';
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -99,4 +114,23 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   return handlePhotoUpload(request);
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const actor = await getAuthUser(request);
+    if (!actor) {
+      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
+    await prisma.user.update({
+      where: { id: actor.id },
+      data: { profilePhotoId: null },
+    });
+
+    return NextResponse.json({ success: true, message: 'Profile photo removed.' });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to remove photo.';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

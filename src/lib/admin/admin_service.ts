@@ -636,6 +636,8 @@ export async function createAdminUser(
     firstName?: string;
     lastName?: string;
     status?: UserStatus;
+    schoolClassId?: string;
+    programmeId?: string;
   },
   ipAddress?: string
 ) {
@@ -750,7 +752,7 @@ export async function createAdminUser(
     if (resolvedRoles.includes(RoleCode.TEACHER)) {
       const teacherCount = await tx.teacher.count();
       const staffIdNumber = `SA-TEA-${String(teacherCount + 1).padStart(4, '0')}`;
-      await tx.teacher.create({
+      const newTeacher = await tx.teacher.create({
         data: {
           userId: user.id,
           staffIdNumber,
@@ -759,6 +761,27 @@ export async function createAdminUser(
           status: TeacherStatus.ACTIVE,
         },
       });
+
+      if (input.schoolClassId) {
+        const schoolClass = await tx.schoolClass.findUnique({
+          where: { id: input.schoolClassId },
+        });
+        const currentSession =
+          (await tx.academicSession.findFirst({ where: { isCurrent: true } })) ||
+          (await tx.academicSession.findFirst({ orderBy: { startDate: 'desc' } }));
+
+        if (schoolClass && currentSession) {
+          await tx.teacherScope.create({
+            data: {
+              teacherId: newTeacher.id,
+              programmeId: input.programmeId || schoolClass.programmeId,
+              schoolClassId: schoolClass.id,
+              academicSessionId: currentSession.id,
+              isFormTeacher: true,
+            },
+          });
+        }
+      }
     }
 
     if (resolvedRoles.includes(RoleCode.PARENT)) {
@@ -1762,20 +1785,35 @@ export async function createAdminTeacher(
 export async function getAdminAttendanceOverview(
   actor: SafeUser,
   options: {
-    date: string | Date;
+    date?: string | Date;
+    startDate?: string | Date;
+    endDate?: string | Date;
     programmeId?: string;
     schoolClassId?: string;
   }
 ) {
   await requirePermission(actor, PermissionCode.ATTENDANCE_VIEW);
 
-  const { date: normalizedDate } = normalizeAttendanceDate(options.date);
-
   const where: Prisma.AttendanceRecordWhereInput = {
-    date: normalizedDate,
     ...(options.programmeId && { programmeId: options.programmeId }),
     ...(options.schoolClassId && { schoolClassId: options.schoolClassId }),
   };
+
+  let normalizedDate: Date;
+  if (options.startDate && options.endDate) {
+    const { date: normStart } = normalizeAttendanceDate(options.startDate);
+    const { date: normEnd } = normalizeAttendanceDate(options.endDate);
+    where.date = { gte: normStart, lte: normEnd };
+    normalizedDate = normStart;
+  } else if (options.date) {
+    const norm = normalizeAttendanceDate(options.date);
+    normalizedDate = norm.date;
+    where.date = normalizedDate;
+  } else {
+    const norm = normalizeAttendanceDate(new Date());
+    normalizedDate = norm.date;
+    where.date = normalizedDate;
+  }
 
   const [records, summaryGroup] = await Promise.all([
     prisma.attendanceRecord.findMany({

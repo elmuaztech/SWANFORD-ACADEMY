@@ -53,6 +53,7 @@ export default function AdminAcademicPage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   // Modal State for Creating a new Academic Session
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [sessionNameInput, setSessionNameInput] = useState("");
   const [startDateInput, setStartDateInput] = useState("");
@@ -82,6 +83,9 @@ export default function AdminAcademicPage() {
       if (configRes.ok) {
         const configJson = await configRes.json();
         setProgrammes(configJson.programmes || []);
+        setIsSuperAdmin(true);
+      } else {
+        setIsSuperAdmin(false);
       }
       setLoading(false);
     } catch (err: unknown) {
@@ -206,18 +210,20 @@ export default function AdminAcademicPage() {
         title="Academic Sessions & Terms"
         subtitle="Manage official academy sessions, activate operational terms, and inspect educational curriculum arms."
         primaryAction={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setModalError(null);
-              setIsCreateModalOpen(true);
-            }}
-            className="bg-[#800020] hover:bg-[#6b001a] text-white font-bold"
-          >
-            <span>+</span>
-            <span>Create Academic Session</span>
-          </Button>
+          isSuperAdmin ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                setModalError(null);
+                setIsCreateModalOpen(true);
+              }}
+              className="bg-[#800020] hover:bg-[#6b001a] text-white font-bold"
+            >
+              <span>+</span>
+              <span>Create Academic Session</span>
+            </Button>
+          ) : undefined
         }
       />
 

@@ -67,9 +67,9 @@ export const VERIFIED_SCHOOL_INFO = {
   email: 'info@swanfordacademy.edu.ng',
   phone: '+234 803 695 0352',
   proprietor: 'Muhammad Kanti, Proprietor',
-  bankName: 'Stanbic IBTC Bank',
-  bankAccountNumber: '0034567890',
-  bankAccountName: 'Swanford Academy Ltd',
+  bankName: '',
+  bankAccountNumber: '',
+  bankAccountName: 'Swanford Academy',
 } as const;
 
 export const EMAIL_LAYOUT_CONSTANTS = {

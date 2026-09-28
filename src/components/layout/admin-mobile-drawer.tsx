@@ -103,7 +103,7 @@ export function AdminMobileDrawer({
       title: "ADMINISTRATION",
       items: [
         { label: "User Accounts", href: "/admin/users", superAdminOnly: true },
-        { label: "Gallery", href: "/admin/gallery" },
+        { label: "Gallery", href: "/admin/gallery", superAdminOnly: true },
         { label: "Notifications", href: "/admin/notifications" },
         { label: "Settings", href: "/admin/settings", superAdminOnly: true },
         { label: "Audit Logs", href: "/admin/audit", superAdminOnly: true },

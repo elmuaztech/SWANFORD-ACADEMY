@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
         email: schoolProfile.email,
         website: schoolProfile.website,
         bankAccount: {
-          bank: schoolProfile.bankName || 'Stanbic IBTC Bank',
-          accountName: schoolProfile.bankAccountName || 'Swanford Academy Ltd',
-          accountNumber: schoolProfile.bankAccountNumber || '0034567890',
+          bank: schoolProfile.bankName || '',
+          accountName: schoolProfile.bankAccountName || 'Swanford Academy',
+          accountNumber: schoolProfile.bankAccountNumber || '',
         },
       },
       academicSessions: sessions,

@@ -23,7 +23,14 @@ export function getSafeFilePath(storageKey: string): string {
   const normalizedKey = path.normalize(storageKey).replace(/^(\.\.[\/\\])+/, '');
   const absolutePath = path.resolve(BASE_STORAGE_DIR, normalizedKey);
 
-  if (!absolutePath.startsWith(BASE_STORAGE_DIR)) {
+  const relative = path.relative(BASE_STORAGE_DIR, absolutePath);
+  const isTraversal = relative.startsWith('..') || path.isAbsolute(relative);
+
+  // Case-insensitive check for Windows drive letters
+  const normalizedAbsolute = path.resolve(absolutePath).toLowerCase();
+  const normalizedBase = path.resolve(BASE_STORAGE_DIR).toLowerCase();
+
+  if (isTraversal || !normalizedAbsolute.startsWith(normalizedBase)) {
     throw new Error('Access denied: Invalid storage key or attempted path traversal.');
   }
 

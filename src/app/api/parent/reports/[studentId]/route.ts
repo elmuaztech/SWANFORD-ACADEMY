@@ -58,18 +58,47 @@ export async function GET(
     const termId = searchParams.get('termId');
     const sessionId = searchParams.get('sessionId') || undefined;
     const format = searchParams.get('format') || 'html';
+    const isDownloadPdf = searchParams.get('download') === 'pdf' || searchParams.get('print') === 'true';
 
-    if (!termId) {
-      // Find latest term if not provided
-      const currentTerm = await prisma.academicTerm.findFirst({
-        where: { isCurrent: true },
+    // 1. Resolve student's class and active/latest enrollment
+    const studentEnrollment = await prisma.studentProgrammeEnrollment.findFirst({
+      where: {
+        studentId,
+        enrollmentStatus: 'ACTIVE',
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        schoolClassId: true,
+        academicTermId: true,
+        academicSessionId: true,
+      },
+    });
+
+    // 2. If termId not provided, search for latest released term for this student, or active enrollment term
+    let effectiveTermId: string | null = termId;
+    if (!effectiveTermId) {
+      const latestRelease = await prisma.reportRelease.findFirst({
+        where: {
+          status: ReportReleaseStatus.RELEASED,
+          OR: [
+            { studentId },
+            ...(studentEnrollment?.schoolClassId ? [{ schoolClassId: studentEnrollment.schoolClassId }] : []),
+            { schoolClassId: null, studentId: null },
+          ],
+        },
+        orderBy: { releasedAt: 'desc' },
       });
-      if (!currentTerm) {
-        return NextResponse.json({ error: 'No active academic term found.' }, { status: 400 });
+
+      if (latestRelease) {
+        effectiveTermId = latestRelease.academicTermId;
+      } else if (studentEnrollment?.academicTermId) {
+        effectiveTermId = studentEnrollment.academicTermId;
+      } else {
+        const currentTerm = await prisma.academicTerm.findFirst({ where: { isCurrent: true } });
+        effectiveTermId = currentTerm?.id || null;
       }
     }
 
-    const effectiveTermId = termId || (await prisma.academicTerm.findFirst({ where: { isCurrent: true } }))?.id;
     if (!effectiveTermId) {
       return NextResponse.json({ error: 'Academic term is required.' }, { status: 400 });
     }
@@ -82,7 +111,8 @@ export async function GET(
           status: ReportReleaseStatus.RELEASED,
           OR: [
             { studentId },
-            { studentId: null },
+            ...(studentEnrollment?.schoolClassId ? [{ schoolClassId: studentEnrollment.schoolClassId }] : []),
+            { schoolClassId: null, studentId: null },
           ],
         },
       });
@@ -102,7 +132,15 @@ export async function GET(
     }
 
     const templateConfig = await getReportTemplateConfig(sessionId);
-    const html = renderReportHtml(reportData, templateConfig);
+    let html = renderReportHtml(reportData, templateConfig);
+
+    if (isDownloadPdf) {
+      // Inject print script so mobile browsers / desktops immediately trigger Save as PDF
+      html = html.replace(
+        '</body>',
+        '<script>window.addEventListener("load", function() { setTimeout(function() { window.print(); }, 400); });</script></body>'
+      );
+    }
 
     return new NextResponse(html, {
       status: 200,

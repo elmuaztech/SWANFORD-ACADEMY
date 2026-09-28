@@ -275,7 +275,7 @@ export function AdminSidebar({
       title: "ADMINISTRATION",
       items: [
         { label: "User Accounts", href: "/admin/users", icon: UsersIcon, superAdminOnly: true },
-        { label: "Gallery", href: "/admin/gallery", icon: GalleryIcon },
+        { label: "Gallery", href: "/admin/gallery", icon: GalleryIcon, superAdminOnly: true },
         { label: "Notifications", href: "/admin/notifications", icon: OutboxIcon },
         { label: "Settings", href: "/admin/settings", icon: SettingsIcon, superAdminOnly: true },
         { label: "Audit Logs", href: "/admin/audit", icon: AuditIcon, superAdminOnly: true },

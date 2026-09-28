@@ -157,8 +157,12 @@ export default function AdminConfigPage() {
             <div className="py-1.5">
               <span className="text-stone-500 block text-[11px] uppercase tracking-wider font-semibold">Settlement Bank Account</span>
               <div className="font-semibold text-stone-800 mt-0.5">
-                <p className="text-stone-900 font-bold">{schoolProfile.bankAccount?.bank || "Stanbic IBTC Bank"}</p>
-                <p className="font-mono text-xs">{schoolProfile.bankAccount?.accountNumber || "0034567890"} • {schoolProfile.bankAccount?.accountName || "Swanford Academy Ltd"}</p>
+                <p className="text-stone-900 font-bold">{schoolProfile.bankAccount?.bank || "Not Configured"}</p>
+                {schoolProfile.bankAccount?.accountNumber ? (
+                  <p className="font-mono text-xs">{schoolProfile.bankAccount.accountNumber} • {schoolProfile.bankAccount?.accountName || "Swanford Academy"}</p>
+                ) : (
+                  <p className="text-xs text-stone-400">Configure bank account details in Settings.</p>
+                )}
               </div>
             </div>
           </CardContent>

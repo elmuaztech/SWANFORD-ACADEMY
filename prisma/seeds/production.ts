@@ -189,9 +189,7 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
   // 6. Admission Cycle & Programme Availabilities (2026/2027 Main Intake)
   const admissionCycle = await prisma.admissionCycle.upsert({
     where: { code: "ADM-2026-MAIN" },
-    update: {
-      status: AdmissionCycleStatus.OPEN,
-    },
+    update: {},
     create: {
       code: "ADM-2026-MAIN",
       name: "2026/2027 Main Admission",

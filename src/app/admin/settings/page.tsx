@@ -360,23 +360,23 @@ export default function AdminSettingsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <FormGroup label="Bank Name">
                       <Input
-                        value={profile.bankName || "Stanbic IBTC Bank"}
+                        value={profile.bankName || ""}
                         onChange={(e) => updateField("bankName", e.target.value)}
-                        placeholder="Stanbic IBTC Bank"
+                        placeholder="e.g. Zenith Bank / Jaiz Bank / First Bank"
                       />
                     </FormGroup>
                     <FormGroup label="Account Name">
                       <Input
-                        value={profile.bankAccountName || "Swanford Academy Ltd"}
+                        value={profile.bankAccountName || ""}
                         onChange={(e) => updateField("bankAccountName", e.target.value)}
-                        placeholder="Swanford Academy Ltd"
+                        placeholder="Official School Account Name"
                       />
                     </FormGroup>
                     <FormGroup label="Account Number">
                       <Input
-                        value={profile.bankAccountNumber || "0034567890"}
+                        value={profile.bankAccountNumber || ""}
                         onChange={(e) => updateField("bankAccountNumber", e.target.value)}
-                        placeholder="0034567890"
+                        placeholder="10-digit NUBAN account number"
                       />
                     </FormGroup>
                   </div>

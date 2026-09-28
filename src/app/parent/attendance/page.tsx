@@ -37,6 +37,7 @@ export default function ParentAttendancePage() {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [records, setRecords] = useState<AttendanceRecordItem[]>([]);
+  const [periodFilter, setPeriodFilter] = useState<"week" | "month" | "term">("term");
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +88,55 @@ export default function ParentAttendancePage() {
       });
   }, [selectedChildId]);
 
+  const filteredRecords = React.useMemo(() => {
+    if (periodFilter === "term") return records;
+
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    if (periodFilter === "week") {
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const weekStr = oneWeekAgo.toISOString().slice(0, 10);
+      return records.filter((r) => r.date >= weekStr && r.date <= todayStr);
+    }
+
+    if (periodFilter === "month") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthStr = startOfMonth.toISOString().slice(0, 10);
+      return records.filter((r) => r.date >= monthStr && r.date <= todayStr);
+    }
+
+    return records;
+  }, [records, periodFilter]);
+
+  const activeSummary = React.useMemo(() => {
+    if (periodFilter === "term" && summary) return summary;
+
+    const totalDays = filteredRecords.length;
+    let presentCount = 0;
+    let absentCount = 0;
+    let lateCount = 0;
+    let excusedCount = 0;
+
+    for (const r of filteredRecords) {
+      if (r.status === "PRESENT") presentCount++;
+      else if (r.status === "ABSENT") absentCount++;
+      else if (r.status === "LATE") lateCount++;
+      else if (r.status === "EXCUSED") excusedCount++;
+    }
+
+    const attendancePercentage = totalDays > 0 ? Math.round(((presentCount + lateCount) / totalDays) * 100) : 100;
+
+    return {
+      totalDays,
+      presentCount,
+      absentCount,
+      lateCount,
+      excusedCount,
+      attendancePercentage,
+    };
+  }, [filteredRecords, summary, periodFilter]);
+
   if (isLoading) {
     return <LoadingState message="Loading attendance records..." />;
   }
@@ -123,25 +173,48 @@ export default function ParentAttendancePage() {
         description="View daily classroom presence, punctuality, and attendance records for your children."
       />
 
-      {/* Child selector tabs if more than 1 child */}
-      {children.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-stone-100 rounded-lg max-w-xl">
-          {children.map((child) => (
+      {/* Child selector tabs and Period Filter bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Child selector tabs if more than 1 child */}
+        {children.length > 1 ? (
+          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-stone-100 rounded-lg max-w-xl">
+            {children.map((child) => (
+              <button
+                key={child.studentId}
+                type="button"
+                onClick={() => setSelectedChildId(child.studentId)}
+                className={`px-4 py-2 text-xs font-semibold rounded-md transition-all min-h-[40px] ${
+                  selectedChildId === child.studentId
+                    ? "bg-white text-stone-900 shadow-xs border border-stone-200"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                {child.firstName} {child.lastName}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div />
+        )}
+
+        {/* Period Filter (Week, Month, Term) */}
+        <div className="flex items-center gap-1.5 self-start sm:self-auto p-1 bg-stone-100 rounded-lg border border-stone-200">
+          {(["week", "month", "term"] as const).map((period) => (
             <button
-              key={child.studentId}
+              key={period}
               type="button"
-              onClick={() => setSelectedChildId(child.studentId)}
-              className={`px-4 py-2 text-xs font-semibold rounded-md transition-all min-h-[40px] ${
-                selectedChildId === child.studentId
-                  ? "bg-white text-stone-900 shadow-xs border border-stone-200"
+              onClick={() => setPeriodFilter(period)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all min-h-[36px] ${
+                periodFilter === period
+                  ? "bg-white text-stone-900 shadow-xs border border-stone-200 font-bold"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              {child.firstName} {child.lastName}
+              {period === "week" ? "This Week" : period === "month" ? "This Month" : "This Term"}
             </button>
           ))}
         </div>
-      )}
+      </div>
 
       {isLoadingAttendance ? (
         <LoadingState message="Loading child attendance history..." />
@@ -153,7 +226,7 @@ export default function ParentAttendancePage() {
               <CardContent className="p-4">
                 <span className="text-xs text-stone-500 font-medium block">Total Days</span>
                 <span className="text-2xl font-bold text-stone-900 mt-1 block">
-                  {summary ? summary.totalDays : 0}
+                  {activeSummary.totalDays}
                 </span>
               </CardContent>
             </Card>
@@ -162,7 +235,7 @@ export default function ParentAttendancePage() {
               <CardContent className="p-4">
                 <span className="text-xs text-emerald-700 font-medium block">Present</span>
                 <span className="text-2xl font-bold text-emerald-600 mt-1 block">
-                  {summary ? summary.presentCount : 0}
+                  {activeSummary.presentCount}
                 </span>
               </CardContent>
             </Card>
@@ -171,7 +244,7 @@ export default function ParentAttendancePage() {
               <CardContent className="p-4">
                 <span className="text-xs text-rose-700 font-medium block">Absent</span>
                 <span className="text-2xl font-bold text-rose-600 mt-1 block">
-                  {summary ? summary.absentCount : 0}
+                  {activeSummary.absentCount}
                 </span>
               </CardContent>
             </Card>
@@ -180,17 +253,23 @@ export default function ParentAttendancePage() {
               <CardContent className="p-4">
                 <span className="text-xs text-stone-500 font-medium block">Attendance Rate</span>
                 <span className="text-2xl font-bold text-[#800020] mt-1 block">
-                  {summary ? `${summary.attendancePercentage}%` : "—"}
+                  {activeSummary.attendancePercentage}%
                 </span>
               </CardContent>
             </Card>
           </div>
 
           {/* Daily Table */}
-          {records.length === 0 ? (
+          {filteredRecords.length === 0 ? (
             <EmptyState
-              title="No attendance records recorded yet"
-              description="No attendance sessions have been logged for this student yet."
+              title="No attendance records found for this period"
+              description={`No attendance records logged for ${
+                periodFilter === "week"
+                  ? "the past 7 days"
+                  : periodFilter === "month"
+                  ? "this month"
+                  : "this term"
+              }.`}
             />
           ) : (
             <Card className="border-[#EADBDA] bg-white overflow-hidden shadow-xs">
@@ -205,7 +284,7 @@ export default function ParentAttendancePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {records.map((r) => (
+                    {filteredRecords.map((r) => (
                       <tr key={r.id} className="hover:bg-stone-50/50">
                         <td className="py-3 px-4 font-mono font-medium text-stone-900">
                           {r.date}

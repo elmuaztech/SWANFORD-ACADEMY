@@ -345,6 +345,7 @@ export async function getStudentById(
     dateOfBirth: student.dateOfBirth,
     admissionDate: student.admissionDate,
     currentStatus: student.currentStatus,
+    profilePhotoId: student.profilePhotoId,
     createdAt: student.createdAt,
     updatedAt: student.updatedAt,
   };

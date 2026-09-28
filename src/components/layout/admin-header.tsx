@@ -62,6 +62,7 @@ export function AdminHeader({
   // Profile Menu State
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   // Derive route metadata
@@ -91,6 +92,12 @@ export function AdminHeader({
 
   useEffect(() => {
     fetchNotifications();
+    fetch("/api/admin/me/photo")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.url) setPhotoUrl(data.url);
+      })
+      .catch(() => {});
   }, []);
 
   // Close dropdowns on outside click or Escape key
@@ -328,8 +335,12 @@ export function AdminHeader({
               aria-expanded={isProfileOpen}
               className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-stone-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] min-h-[44px]"
             >
-              <div className="w-8 h-8 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
-                {userEmail ? userEmail[0].toUpperCase() : "A"}
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-[#800020] text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs border border-[#EADBDA]/80">
+                {photoUrl ? (
+                  <img src={photoUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  userEmail ? userEmail[0].toUpperCase() : "A"
+                )}
               </div>
               <div className="hidden sm:flex flex-col text-left">
                 <span className="text-xs font-semibold text-stone-900 max-w-[140px] truncate leading-tight">
@@ -347,11 +358,20 @@ export function AdminHeader({
             {/* Profile Dropdown Panel */}
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-[#EADBDA] overflow-hidden z-50 animate-in fade-in-50 zoom-in-95 duration-150">
-                <div className="p-4 border-b border-[#EADBDA] bg-[#FDFCF9]">
-                  <p className="text-xs font-semibold text-stone-500">Signed in as</p>
-                  <p className="text-xs font-bold text-stone-900 truncate mt-0.5">{userEmail}</p>
-                  <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-[#FDF2F4] text-[#800020] border border-[#EADBDA] uppercase">
-                    {userRole.replace(/_/g, " ")}
+                <div className="p-4 border-b border-[#EADBDA] bg-[#FDFCF9] flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-[#800020] text-white text-sm font-bold flex items-center justify-center shrink-0 border border-[#EADBDA]">
+                    {photoUrl ? (
+                      <img src={photoUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      userEmail ? userEmail[0].toUpperCase() : "A"
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-stone-500">Signed in as</p>
+                    <p className="text-xs font-bold text-stone-900 truncate">{userEmail}</p>
+                    <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-[#FDF2F4] text-[#800020] border border-[#EADBDA] uppercase">
+                      {userRole.replace(/_/g, " ")}
+                    </div>
                   </div>
                 </div>
 

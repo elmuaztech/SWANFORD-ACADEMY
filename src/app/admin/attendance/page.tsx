@@ -53,6 +53,7 @@ interface AttendanceResponse {
 export default function AdminAttendancePage() {
   const todayStr = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month" | "term">("day");
   const [selectedProgFilter, setSelectedProgFilter] = useState("");
   const [selectedClassFilter, setSelectedClassFilter] = useState("");
   const [programmesList, setProgrammesList] = useState<Array<{ id: string; name: string }>>([]);
@@ -107,7 +108,10 @@ export default function AdminAttendancePage() {
   const fetchAttendance = () => {
     setLoading(true);
     setError(null);
-    let url = `/api/admin/attendance?date=${selectedDate}`;
+    let url = `/api/admin/attendance?period=${periodFilter}`;
+    if (periodFilter === "day") {
+      url += `&date=${selectedDate}`;
+    }
     if (selectedProgFilter) url += `&programmeId=${selectedProgFilter}`;
     if (selectedClassFilter) url += `&schoolClassId=${selectedClassFilter}`;
 
@@ -131,7 +135,7 @@ export default function AdminAttendancePage() {
 
   useEffect(() => {
     fetchAttendance();
-  }, [selectedDate, selectedProgFilter, selectedClassFilter]);
+  }, [selectedDate, selectedProgFilter, selectedClassFilter, periodFilter]);
 
   // Load roster when take modal programme and class are chosen
   useEffect(() => {
@@ -280,17 +284,47 @@ export default function AdminAttendancePage() {
 
       {/* Aligned Filter Controls Card */}
       <Card className="border border-[#EADBDA]/80 shadow-xs">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-            <div>
-              <label className="block text-xs font-bold text-stone-600 mb-1">Attendance Date</label>
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full"
-              />
+        <CardContent className="p-4 space-y-3">
+          {/* Period filter buttons */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-stone-500 uppercase tracking-wider mr-1">Period:</span>
+              <div className="inline-flex rounded-lg p-1 bg-stone-100 border border-stone-200">
+                {(["day", "week", "month", "term"] as const).map((period) => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setPeriodFilter(period)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all min-h-[36px] ${
+                      periodFilter === period
+                        ? "bg-white text-stone-900 shadow-xs border border-stone-200 font-bold"
+                        : "text-stone-600 hover:text-stone-900"
+                    }`}
+                  >
+                    {period === "day" ? "Single Day" : period === "week" ? "This Week" : period === "month" ? "This Month" : "This Term"}
+                  </button>
+                ))}
+              </div>
             </div>
+            {periodFilter !== "day" && (
+              <span className="text-xs font-medium text-stone-500 bg-stone-50 px-2.5 py-1 rounded-md border border-stone-200">
+                Aggregating attendance records across {periodFilter === "week" ? "the past 7 days" : periodFilter === "month" ? "this calendar month" : "the current academic term"}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+            {periodFilter === "day" && (
+              <div>
+                <label className="block text-xs font-bold text-stone-600 mb-1">Attendance Date</label>
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-xs font-bold text-stone-600 mb-1">Programme</label>
               <Select

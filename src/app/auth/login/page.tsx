@@ -5,40 +5,16 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SCHOOL_PROFILE } from '@/lib/constants';
 
-interface PortalOption {
-  id: string;
-  name: string;
-  destination: string;
-}
-
-const PORTALS: PortalOption[] = [
-  { id: 'admin', name: 'Admin', destination: '/admin' },
-  { id: 'teacher', name: 'Teacher', destination: '/teacher' },
-  { id: 'parent', name: 'Parent', destination: '/parent' },
-];
-
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialFrom = searchParams.get('from') || '';
-
-  const [selectedPortal, setSelectedPortal] = useState<string>(() => {
-    if (initialFrom.startsWith('/teacher')) return 'teacher';
-    if (initialFrom.startsWith('/parent')) return 'parent';
-    if (initialFrom.startsWith('/admin')) return 'admin';
-    return 'admin';
-  });
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  function handleSelectPortal(portal: PortalOption) {
-    setSelectedPortal(portal.id);
-    setErrorMessage(null);
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +33,6 @@ function LoginFormContent() {
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           password,
-          portal: selectedPortal || 'admin',
         }),
       });
 
@@ -148,35 +123,9 @@ function LoginFormContent() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#5B0612] tracking-tight">
               Portal Sign In
             </h1>
-            <p className="text-xs sm:text-sm text-stone-500 font-normal">
-              Select your portal and enter your authorized credentials.
+            <p className="text-xs sm:text-sm text-stone-500 font-normal max-w-md mx-auto">
+              Enter your authorized credentials. The system automatically detects your role and directs you to your dashboard.
             </p>
-          </div>
-
-          {/* EXACTLY THREE PORTALS: Admin, Teacher, Parent */}
-          <div className="space-y-2">
-            <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
-              Select Portal
-            </span>
-            <div className="grid grid-cols-3 gap-3">
-              {PORTALS.map((portal) => {
-                const isSelected = selectedPortal === portal.id;
-                return (
-                  <button
-                    key={portal.id}
-                    type="button"
-                    onClick={() => handleSelectPortal(portal)}
-                    className={`min-h-[48px] py-2.5 px-3 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center font-bold text-sm ${
-                      isSelected
-                        ? 'border-[#800020] bg-[#800020] text-white shadow-xs'
-                        : 'border-stone-200 bg-white hover:border-stone-400 text-stone-800'
-                    }`}
-                  >
-                    {portal.name}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* Human-Readable Error Notification */}

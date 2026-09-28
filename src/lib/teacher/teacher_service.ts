@@ -59,7 +59,7 @@ export async function getTeacherProfile(userId: string) {
     );
   }
 
-  const activeSession = await prisma.academicSession.findFirst({
+  let activeSession = await prisma.academicSession.findFirst({
     where: { isCurrent: true },
     include: {
       terms: {
@@ -67,6 +67,17 @@ export async function getTeacherProfile(userId: string) {
       },
     },
   });
+
+  if (!activeSession) {
+    activeSession = await prisma.academicSession.findFirst({
+      orderBy: { startDate: 'desc' },
+      include: {
+        terms: {
+          orderBy: { startDate: 'desc' },
+        },
+      },
+    });
+  }
 
   return {
     teacher,
@@ -100,16 +111,28 @@ export async function getTeacherClasses(userId: string, targetSessionId?: string
   // Determine target session
   let sessionId = targetSessionId;
   if (!sessionId) {
-    const activeSession = await prisma.academicSession.findFirst({
+    let activeSession = await prisma.academicSession.findFirst({
       where: { isCurrent: true },
       select: { id: true },
     });
-    if (!activeSession) return [];
-    sessionId = activeSession.id;
+    if (!activeSession) {
+      activeSession = await prisma.academicSession.findFirst({
+        orderBy: { startDate: 'desc' },
+        select: { id: true },
+      });
+    }
+    if (activeSession) {
+      sessionId = activeSession.id;
+    }
   }
 
-  // Filter teacher scopes matching this session
-  const relevantScopes = teacher.scopes.filter((s) => s.academicSessionId === sessionId);
+  // Filter teacher scopes matching this session, or fallback to any scopes assigned to the teacher
+  let relevantScopes = sessionId
+    ? teacher.scopes.filter((s) => s.academicSessionId === sessionId)
+    : teacher.scopes;
+  if (relevantScopes.length === 0 && teacher.scopes.length > 0) {
+    relevantScopes = teacher.scopes;
+  }
   if (relevantScopes.length === 0) {
     return [];
   }
@@ -121,14 +144,23 @@ export async function getTeacherClasses(userId: string, targetSessionId?: string
       // Specific assigned class
       const key = `${scope.schoolClassId}_${scope.programmeId}_${scope.subjectId || 'ALL'}`;
       if (!classMap.has(key)) {
-        const studentCount = await prisma.studentProgrammeEnrollment.count({
+        let studentCount = await prisma.studentProgrammeEnrollment.count({
           where: {
             programmeId: scope.programmeId,
             schoolClassId: scope.schoolClassId,
-            academicSessionId: sessionId,
+            ...(scope.academicSessionId ? { academicSessionId: scope.academicSessionId } : (sessionId ? { academicSessionId: sessionId } : {})),
             enrollmentStatus: EnrollmentStatus.ACTIVE,
           },
         });
+
+        if (studentCount === 0) {
+          studentCount = await prisma.studentProgrammeEnrollment.count({
+            where: {
+              schoolClassId: scope.schoolClassId,
+              enrollmentStatus: EnrollmentStatus.ACTIVE,
+            },
+          });
+        }
 
         classMap.set(key, {
           schoolClassId: scope.schoolClassId,

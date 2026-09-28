@@ -38,17 +38,30 @@ export async function POST(req: NextRequest) {
 
     if (user.mustChangePassword) {
       redirectUrl = '/auth/change-password';
-    } else if (selectedPortal === 'teacher' || (!selectedPortal && userRoles.includes(RoleCode.TEACHER))) {
+    } else if (selectedPortal === 'teacher') {
       redirectUrl = '/teacher';
-    } else if (selectedPortal === 'parent' || (!selectedPortal && userRoles.includes(RoleCode.PARENT))) {
+    } else if (selectedPortal === 'parent') {
       redirectUrl = '/parent';
-    } else {
+    } else if (selectedPortal === 'admin') {
       if (
         userRoles.includes(RoleCode.ACCOUNTANT) &&
         !userRoles.includes(RoleCode.SUPER_ADMIN) &&
         !userRoles.includes(RoleCode.ADMIN)
       ) {
         redirectUrl = '/admin/finance';
+      } else {
+        redirectUrl = '/admin';
+      }
+    } else {
+      // Unified single login: automatically determine destination based on user's authorized roles
+      if (userRoles.includes(RoleCode.SUPER_ADMIN) || userRoles.includes(RoleCode.ADMIN)) {
+        redirectUrl = '/admin';
+      } else if (userRoles.includes(RoleCode.ACCOUNTANT)) {
+        redirectUrl = '/admin/finance';
+      } else if (userRoles.includes(RoleCode.TEACHER)) {
+        redirectUrl = '/teacher';
+      } else if (userRoles.includes(RoleCode.PARENT)) {
+        redirectUrl = '/parent';
       } else {
         redirectUrl = '/admin';
       }

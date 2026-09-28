@@ -56,9 +56,24 @@ export default function AdminUsersPage() {
   const [createStatus, setCreateStatus] = useState<UserStatus>(UserStatus.ACTIVE);
   const [createFirstName, setCreateFirstName] = useState("");
   const [createLastName, setCreateLastName] = useState("");
+  const [createSchoolClassId, setCreateSchoolClassId] = useState("");
+  const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string; programme?: { name: string } }[]>([]);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [bannerNotice, setBannerNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (showCreateModal && availableClasses.length === 0) {
+      fetch("/api/admin/classes")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.items && Array.isArray(data.items)) {
+            setAvailableClasses(data.items);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [showCreateModal, availableClasses.length]);
 
   const handleCreateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +106,7 @@ export default function AdminUsersPage() {
           status: createStatus,
           firstName: createFirstName.trim(),
           lastName: createLastName.trim(),
+          schoolClassId: createRole === RoleCode.TEACHER && createSchoolClassId ? createSchoolClassId : undefined,
         }),
       });
 
@@ -104,6 +120,7 @@ export default function AdminUsersPage() {
       setCreatePhone("");
       setCreateFirstName("");
       setCreateLastName("");
+      setCreateSchoolClassId("");
       setCreateRole(RoleCode.ADMIN);
       setCreateStatus(UserStatus.ACTIVE);
       setBannerNotice(data.message || "User created successfully with welcome email dispatched.");
@@ -537,6 +554,25 @@ export default function AdminUsersPage() {
               </Select>
             </FormGroup>
           </div>
+
+          {createRole === RoleCode.TEACHER && (
+            <FormGroup
+              label="Assign Initial Class (Immediate Scoping)"
+              helperText="Assign the teacher to their class right from account opening so they see it immediately upon login."
+            >
+              <Select
+                value={createSchoolClassId}
+                onChange={(e) => setCreateSchoolClassId(e.target.value)}
+              >
+                <option value="">-- Select Class to Assign (Optional) --</option>
+                {availableClasses.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name} {cls.programme?.name ? `(${cls.programme.name})` : ""}
+                  </option>
+                ))}
+              </Select>
+            </FormGroup>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button

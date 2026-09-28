@@ -139,6 +139,23 @@ export function TeacherSidebar({
         )}
       </div>
 
+      {/* If collapsed, show small expand button right below logo */}
+      {isCollapsed && (
+        <div className="py-2 flex justify-center border-b border-[#EADBDA]/60">
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label="Expand sidebar navigation"
+            title="Expand Sidebar"
+            className="p-2 rounded-lg text-stone-500 hover:text-[#800020] hover:bg-[#FDF2F4] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020]"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Nav List */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5" aria-label="Teacher Nav">
         {items.map((item) => {

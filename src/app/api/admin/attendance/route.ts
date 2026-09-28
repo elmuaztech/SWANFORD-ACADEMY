@@ -13,12 +13,40 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date') || new Date().toISOString().slice(0, 10);
+    const period = searchParams.get('period') || undefined;
+    let startDate = searchParams.get('startDate') || undefined;
+    let endDate = searchParams.get('endDate') || undefined;
+    let date = searchParams.get('date') || undefined;
+
     const programmeId = searchParams.get('programmeId') || undefined;
     const schoolClassId = searchParams.get('schoolClassId') || undefined;
 
+    if (period) {
+      const now = new Date();
+      endDate = now.toISOString().slice(0, 10);
+
+      if (period === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate = weekAgo.toISOString().slice(0, 10);
+      } else if (period === 'month') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate = startOfMonth.toISOString().slice(0, 10);
+      } else if (period === 'term') {
+        const startOfTerm = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        startDate = startOfTerm.toISOString().slice(0, 10);
+      } else if (period === 'day') {
+        date = date || now.toISOString().slice(0, 10);
+        startDate = undefined;
+        endDate = undefined;
+      }
+    } else if (!startDate && !date) {
+      date = new Date().toISOString().slice(0, 10);
+    }
+
     const overview = await getAdminAttendanceOverview(actor, {
       date,
+      startDate,
+      endDate,
       programmeId,
       schoolClassId,
     });

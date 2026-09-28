@@ -3,7 +3,7 @@ import { getAuthUser } from '@/lib/auth/request_auth';
 import { requirePermission, AuthorizationError } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
 import { prisma } from '@/lib/prisma';
-import { TermCode, AcademicSessionStatus, AcademicTermStatus, AdmissionCycleStatus, ProgrammeAvailabilityStatus } from '@prisma/client';
+import { TermCode, AcademicSessionStatus, AcademicTermStatus, AdmissionCycleStatus, ProgrammeAvailabilityStatus, RoleCode } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +43,13 @@ export async function POST(request: NextRequest) {
     const actor = await getAuthUser(request);
     if (!actor) {
       return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
+    if (!actor.roles?.includes(RoleCode.SUPER_ADMIN)) {
+      return NextResponse.json(
+        { error: 'Access denied: Only Super Administrator can create new academic sessions.' },
+        { status: 403 }
+      );
     }
 
     await requirePermission(actor, PermissionCode.SYSTEM_CONFIG_MANAGE);

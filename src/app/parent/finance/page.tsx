@@ -59,6 +59,16 @@ interface ParentInvoice {
   payments: PaymentRecord[];
 }
 
+function safeBigInt(val: unknown): bigint {
+  if (val === null || val === undefined || val === '') return BigInt(0);
+  try {
+    const s = String(val).split('.')[0].trim();
+    return BigInt(s || 0);
+  } catch {
+    return BigInt(0);
+  }
+}
+
 export default function ParentFinancePage() {
   const [invoices, setInvoices] = useState<ParentInvoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,9 +127,9 @@ export default function ParentFinancePage() {
   const allPayments: (PaymentRecord & { studentName: string; invoiceNumber: string })[] = [];
 
   for (const inv of invoices) {
-    totalBilled += BigInt(inv.totalAmountKobo || 0);
-    totalPaid += BigInt(inv.amountPaidKobo || 0);
-    totalOutstanding += BigInt(inv.outstandingBalanceKobo || 0);
+    totalBilled += safeBigInt(inv.totalAmountKobo);
+    totalPaid += safeBigInt(inv.amountPaidKobo);
+    totalOutstanding += safeBigInt(inv.outstandingBalanceKobo);
 
     for (const p of inv.payments || []) {
       allPayments.push({
@@ -261,13 +271,13 @@ export default function ParentFinancePage() {
                           {inv.termName} ({inv.sessionName})
                         </TableCell>
                         <TableCell className="w-32 text-xs font-bold text-stone-900">
-                          {formatNaira(BigInt(inv.totalAmountKobo))}
+                          {formatNaira(safeBigInt(inv.totalAmountKobo))}
                         </TableCell>
                         <TableCell className="w-32 text-xs font-bold text-emerald-800">
-                          {formatNaira(BigInt(inv.amountPaidKobo))}
+                          {formatNaira(safeBigInt(inv.amountPaidKobo))}
                         </TableCell>
                         <TableCell className="w-32 text-xs font-bold text-amber-800">
-                          {formatNaira(BigInt(inv.outstandingBalanceKobo))}
+                          {formatNaira(safeBigInt(inv.outstandingBalanceKobo))}
                         </TableCell>
                         <TableCell className="w-28 text-right">
                           <Badge
@@ -334,9 +344,9 @@ export default function ParentFinancePage() {
                   }
                   fields={[
                     { label: "Term & Session", value: `${inv.termName} (${inv.sessionName})` },
-                    { label: "Total Fee", value: formatNaira(BigInt(inv.totalAmountKobo)) },
-                    { label: "Amount Paid", value: formatNaira(BigInt(inv.amountPaidKobo)) },
-                    { label: "Balance", value: formatNaira(BigInt(inv.outstandingBalanceKobo)) },
+                    { label: "Total Fee", value: formatNaira(safeBigInt(inv.totalAmountKobo)) },
+                    { label: "Amount Paid", value: formatNaira(safeBigInt(inv.amountPaidKobo)) },
+                    { label: "Balance", value: formatNaira(safeBigInt(inv.outstandingBalanceKobo)) },
                   ]}
                 />
               ))}
@@ -384,7 +394,7 @@ export default function ParentFinancePage() {
                           {p.studentName}
                         </TableCell>
                         <TableCell className="w-32 text-xs font-bold text-emerald-800">
-                          {formatNaira(BigInt(p.amountKobo))}
+                          {formatNaira(safeBigInt(p.amountKobo))}
                         </TableCell>
                         <TableCell className="w-32 text-xs text-stone-600">
                           {p.paymentMethod.replace("_", " ")}
@@ -428,7 +438,7 @@ export default function ParentFinancePage() {
                     </Badge>
                   }
                   fields={[
-                    { label: "Amount Paid", value: formatNaira(BigInt(p.amountKobo)) },
+                    { label: "Amount Paid", value: formatNaira(safeBigInt(p.amountKobo)) },
                     { label: "Payment Method", value: p.paymentMethod.replace("_", " ") },
                     { label: "Receipt Number", value: p.receiptNumber || "Pending" },
                     { label: "Date Paid", value: p.paidAt },
