@@ -362,7 +362,7 @@ export async function requestPasswordReset(email: string, ipAddress?: string): P
   }
 
   const { rawToken, tokenHash } = generateSecureToken();
-  const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // exactly 2 minutes
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
   await prisma.$transaction(async (tx) => {
     await tx.passwordReset.create({
@@ -565,7 +565,7 @@ export async function requestPasswordResetOtp(
   // Generate exact 4-digit OTP (0000-9999) with leading zeros
   const { rawOtp, otpHash } = generateSecureNumericOtp(4);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 2 * 60 * 1000); // exactly 2 minutes
+  const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
 
   await prisma.$transaction(async (tx) => {
     // 1. Invalidate any prior active, unexpired OTPs for this user

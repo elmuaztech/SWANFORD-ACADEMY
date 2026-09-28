@@ -16,19 +16,16 @@ describe('Integration Tests: Work Package D — Public Website & Admissions Expe
 
   beforeAll(async () => {
     // 1. Ensure current session has an OPEN admission cycle
-    let currentSession = await prisma.academicSession.findFirst({
+    const currentSession = await prisma.academicSession.findFirst({
+      where: { name: '2026/2027' },
+    }) || await prisma.academicSession.findFirst({
       where: { isCurrent: true },
     });
-    if (!currentSession) {
-      currentSession = await prisma.academicSession.findFirst({
-        where: { name: '2026/2027' },
+    if (currentSession) {
+      await prisma.academicSession.update({
+        where: { id: currentSession.id },
+        data: { isCurrent: true },
       });
-      if (currentSession) {
-        await prisma.academicSession.update({
-          where: { id: currentSession.id },
-          data: { isCurrent: true },
-        });
-      }
     }
     if (!currentSession) throw new Error('No current academic session found.');
 
@@ -61,6 +58,37 @@ describe('Integration Tests: Work Package D — Public Website & Admissions Expe
 
     primaryProgId = primary.id;
     tahfeezProgId = tahfeez.id;
+
+    // Ensure programmes are available in this cycle
+    await prisma.admissionCycleProgramme.upsert({
+      where: {
+        unique_cycle_programme: {
+          admissionCycleId: openCycleId,
+          programmeId: primaryProgId,
+        },
+      },
+      update: { status: 'OPEN' },
+      create: {
+        admissionCycleId: openCycleId,
+        programmeId: primaryProgId,
+        status: 'OPEN',
+      },
+    });
+
+    await prisma.admissionCycleProgramme.upsert({
+      where: {
+        unique_cycle_programme: {
+          admissionCycleId: openCycleId,
+          programmeId: tahfeezProgId,
+        },
+      },
+      update: { status: 'OPEN' },
+      create: {
+        admissionCycleId: openCycleId,
+        programmeId: tahfeezProgId,
+        status: 'OPEN',
+      },
+    });
   });
 
   describe('1. Public Dynamic Fee Schedule & Options', () => {

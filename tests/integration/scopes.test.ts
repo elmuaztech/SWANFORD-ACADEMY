@@ -111,8 +111,14 @@ describe('Integration Tests: Scoping Engine, Multi-Programme Isolation & Paramet
     });
 
     // 2. Academic Sessions & Terms
-    academicSession = await prisma.academicSession.findFirstOrThrow({
+    academicSession = (await prisma.academicSession.findFirst({
+      where: { name: '2026/2027' },
+    })) || (await prisma.academicSession.findFirstOrThrow({
       where: { isCurrent: true },
+    }));
+    await prisma.academicSession.update({
+      where: { id: academicSession.id },
+      data: { isCurrent: true },
     });
 
     const academicTerm = await prisma.academicTerm.findFirstOrThrow({

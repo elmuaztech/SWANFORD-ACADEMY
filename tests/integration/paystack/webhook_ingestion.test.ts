@@ -7,7 +7,7 @@ import { WebhookEventStatus, GatewayProvider } from '@prisma/client';
 
 describe('Stage 9 — Integration: Webhook Ingestion & Deduplication Engine', () => {
   const env = getEnv();
-  const secretKey = env.PAYSTACK_SECRET_KEY;
+  const secretKey = env.PAYSTACK_WEBHOOK_SECRET || env.PAYSTACK_SECRET_KEY;
 
   function signPayload(body: string): string {
     return crypto

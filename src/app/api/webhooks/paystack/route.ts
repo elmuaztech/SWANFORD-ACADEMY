@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { ingestWebhookEvent, processPendingWebhookEvents, WebhookVerificationError } from "@/lib/paystack";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * Requirements:
  * 1. Fast response: validates HMAC-SHA512 signature, persists event, returns HTTP 200 promptly.
  * 2. Does NOT perform heavy financial processing synchronously in this request.
- * 3. Triggers background worker execution non-blockingly.
+ * 3. Triggers background worker execution non-blockingly using Next.js after() to survive serverless freeze.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -28,9 +28,20 @@ export async function POST(req: NextRequest) {
     const result = await ingestWebhookEvent(rawBody, signature);
 
     // Kicks the durable worker asynchronously without blocking the HTTP 200 response
-    processPendingWebhookEvents(10).catch((err) => {
-      console.error("[Paystack Webhook Worker Async Error]:", err);
-    });
+    // Using Next.js after() ensures the serverless runtime on Vercel does not freeze execution mid-flight
+    if (typeof after === "function") {
+      after(async () => {
+        try {
+          await processPendingWebhookEvents(10);
+        } catch (err) {
+          console.error("[Paystack Webhook Worker Async Error]:", err);
+        }
+      });
+    } else {
+      processPendingWebhookEvents(10).catch((err) => {
+        console.error("[Paystack Webhook Worker Async Error]:", err);
+      });
+    }
 
     return NextResponse.json(
       {

@@ -462,6 +462,10 @@ describe('Stage 11 — Integration: Parent Portal Child Isolation, Results & Fin
     await prisma.academicSession.deleteMany({
       where: { id: academicSessionId },
     });
+    await prisma.academicSession.updateMany({
+      where: { name: '2026/2027' },
+      data: { isCurrent: true, status: 'ACTIVE' },
+    });
     await prisma.guardian.deleteMany({
       where: { id: { in: [parent1GuardianId, parent2GuardianId] } },
     });

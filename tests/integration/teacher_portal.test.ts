@@ -311,6 +311,10 @@ describe('Stage 11 — Integration: Teacher Scope, Attendance & Assessment Lifec
     await prisma.academicSession.deleteMany({
       where: { id: { in: [academicSessionId, otherSessionId] } },
     });
+    await prisma.academicSession.updateMany({
+      where: { name: '2026/2027' },
+      data: { isCurrent: true, status: 'ACTIVE' },
+    });
     await prisma.teacher.deleteMany({
       where: { id: { in: [teacherAProfileId, teacherBProfileId] } },
     });

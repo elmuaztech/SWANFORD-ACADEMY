@@ -7,6 +7,7 @@ export default defineConfig({
     globals: true,
     include: ["tests/**/*.test.ts"],
     fileParallelism: false,
+    maxWorkers: 1,
   },
   resolve: {
     alias: {

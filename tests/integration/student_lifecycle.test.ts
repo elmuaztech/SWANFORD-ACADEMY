@@ -145,6 +145,10 @@ describe('Stage 6 — Integration: Student Lifecycle & Multi-Programme Enrollmen
     await prisma.schoolClass.deleteMany({ where: { id: { in: [primaryClass1Id, primaryClass2Id, tahfeezClassId] } } });
     await prisma.academicTerm.deleteMany({ where: { id: { in: [term1Id, term2Session2Id] } } });
     await prisma.academicSession.deleteMany({ where: { id: { in: [academicSession1Id, academicSession2Id] } } });
+    await prisma.academicSession.updateMany({
+      where: { name: '2026/2027' },
+      data: { isCurrent: true, status: 'ACTIVE' },
+    });
   });
 
   it('creates student with server-generated admission number, and admission number remains immutable', async () => {

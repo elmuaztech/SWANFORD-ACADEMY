@@ -34,7 +34,7 @@ export function verifyPaystackSignature(
   }
 
   const env = getEnv();
-  const secretKey = secretKeyOverride || env.PAYSTACK_SECRET_KEY;
+  const secretKey = secretKeyOverride || process.env.PAYSTACK_WEBHOOK_SECRET || env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
     return false;
   }

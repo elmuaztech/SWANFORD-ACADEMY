@@ -247,6 +247,10 @@ describe('Stage 6 — Integration: Student Authorization & Scope Boundary Tests'
     await prisma.schoolClass.deleteMany({ where: { id: { in: [schoolClassId, otherClassId] } } });
     await prisma.academicTerm.deleteMany({ where: { id: academicTermId } });
     await prisma.academicSession.deleteMany({ where: { id: academicSessionId } });
+    await prisma.academicSession.updateMany({
+      where: { name: '2026/2027' },
+      data: { isCurrent: true, status: 'ACTIVE' },
+    });
   });
 
   it('rejects student creation by a user without STUDENT_CREATE permission', async () => {

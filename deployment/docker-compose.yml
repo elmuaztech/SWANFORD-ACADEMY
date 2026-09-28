@@ -15,7 +15,7 @@ services:
     container_name: swanford_app
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3001:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -42,7 +42,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-swanford}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - swanford_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swanford} -d ${POSTGRES_DB:-swanford_prod}"]
       interval: 10s
@@ -56,5 +56,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  swanford_postgres_data:
     driver: local

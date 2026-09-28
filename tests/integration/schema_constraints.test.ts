@@ -22,7 +22,10 @@ describe("Swanford Stage 2C Admission Lifecycle, Business Rules & Schema Constra
     const firstTerm = await prisma.academicTerm.findFirstOrThrow({
       where: { academicSessionId: session.id, termCode: "FIRST" },
     });
-    const cycle = await prisma.admissionCycle.findUniqueOrThrow({ where: { code: "ADM-2026-MAIN" } });
+    const cycle = await prisma.admissionCycle.update({
+      where: { code: "ADM-2026-MAIN" },
+      data: { status: "OPEN" },
+    });
     const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
     const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
     const pri4Class = await prisma.schoolClass.findUniqueOrThrow({ where: { code: "PRIMARY_4" } });
@@ -213,6 +216,20 @@ describe("Swanford Stage 2C Admission Lifecycle, Business Rules & Schema Constra
     await prisma.application.deleteMany({ where: { applicationNumber: "APP-2026-00001" } });
     await prisma.studentProgrammeEnrollment.deleteMany({ where: { student: { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } } } });
     await prisma.guardianStudentRelationship.deleteMany({ where: { student: { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } } } });
+
+    const studentIds = (await prisma.student.findMany({
+      where: { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } },
+      select: { id: true },
+    })).map(s => s.id);
+
+    if (studentIds.length > 0) {
+      await prisma.paymentAllocation.deleteMany({ where: { invoice: { studentId: { in: studentIds } } } });
+      await prisma.receipt.deleteMany({ where: { invoice: { studentId: { in: studentIds } } } });
+      await prisma.payment.deleteMany({ where: { studentId: { in: studentIds } } });
+      await prisma.invoiceItem.deleteMany({ where: { invoice: { studentId: { in: studentIds } } } });
+      await prisma.invoice.deleteMany({ where: { studentId: { in: studentIds } } });
+    }
+
     await prisma.student.deleteMany({ where: { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } } });
     await prisma.guardian.deleteMany({ where: { email: { in: ["muhammad.sani.parent@swanford.example.com", "aisha.sani.mother@swanford.example.com"] } } });
     await prisma.$disconnect();
@@ -627,5 +644,19 @@ describe("Swanford Stage 2C Admission Lifecycle, Business Rules & Schema Constra
     const tahfeezEnrollment = ahmed.programmeEnrollments.find((e) => e.enrollmentType === EnrollmentType.ADDITIONAL_PROGRAMME);
     expect(tahfeezEnrollment?.programme.code).toBe("TAHFEEZ");
     expect(tahfeezEnrollment?.schoolClass.code).toBe("TAHFEEZ_GROUP_A");
+  });
+
+  afterAll(async () => {
+    const cycle = await prisma.admissionCycle.findUnique({ where: { code: "ADM-2026-MAIN" } });
+    if (cycle) {
+      await prisma.admissionCycle.update({
+        where: { id: cycle.id },
+        data: { status: "OPEN" },
+      });
+      await prisma.admissionCycleProgramme.updateMany({
+        where: { admissionCycleId: cycle.id },
+        data: { status: "OPEN" },
+      });
+    }
   });
 });

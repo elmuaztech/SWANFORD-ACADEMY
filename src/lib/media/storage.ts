@@ -10,6 +10,8 @@ import path from 'path';
 
 const BASE_STORAGE_DIR = process.env.MEDIA_STORAGE_DIR
   ? path.resolve(process.env.MEDIA_STORAGE_DIR)
+  : process.env.VERCEL
+  ? path.resolve('/tmp', 'swanford-media')
   : path.resolve(process.cwd(), 'storage', 'media');
 
 /**

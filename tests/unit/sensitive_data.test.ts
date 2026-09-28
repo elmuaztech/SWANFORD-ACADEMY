@@ -243,6 +243,10 @@ describe('Stage 6 — Unit: Sensitive Data Field-Level Visibility & Projections'
     await prisma.schoolClass.deleteMany({ where: { id: schoolClassId } });
     await prisma.academicTerm.deleteMany({ where: { id: academicTermId } });
     await prisma.academicSession.deleteMany({ where: { id: academicSessionId } });
+    await prisma.academicSession.updateMany({
+      where: { name: '2026/2027' },
+      data: { isCurrent: true, status: 'ACTIVE' },
+    });
   });
 
   it('Super Admin sees full medical profile, confidential clinic notes, and emergency contacts', async () => {

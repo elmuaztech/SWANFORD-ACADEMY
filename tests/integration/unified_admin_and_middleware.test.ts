@@ -8,32 +8,52 @@ import { PermissionCode } from '@/lib/auth/permissions';
 
 describe('Unified Admin Portal, Role Detection & Hardened Authentication', () => {
   beforeAll(async () => {
-    await prisma.user.updateMany({
-      where: {
-        email: {
-          in: [
-            'superadmin@swanfordacademy.edu.ng',
-            'admin@swanfordacademy.edu.ng',
-            'accountant@swanfordacademy.edu.ng',
-            'teacher@swanfordacademy.edu.ng',
-            'parent@swanfordacademy.edu.ng',
-          ],
-        },
-      },
-      data: {
-        failedLoginAttempts: 0,
-        lockedUntil: null,
-      },
+    // Ensure bootstrap demo accounts are purged so only genuine admin exists
+    const demoEmails = [
+      'superadmin@swanfordacademy.edu.ng',
+      'admin@swanfordacademy.edu.ng',
+      'accountant@swanfordacademy.edu.ng',
+      'teacher@swanfordacademy.edu.ng',
+      'parent@swanfordacademy.edu.ng',
+    ];
+    const demoUsers = await prisma.user.findMany({
+      where: { email: { in: demoEmails } },
+      select: { id: true },
     });
-
-    const superAdmin = await prisma.user.findUnique({ where: { email: 'superadmin@swanfordacademy.edu.ng' } });
-    const superAdminRole = await prisma.role.findUnique({ where: { code: RoleCode.SUPER_ADMIN } });
-    if (superAdmin && superAdminRole) {
-      await prisma.userRole.upsert({
-        where: { userId_roleId: { userId: superAdmin.id, roleId: superAdminRole.id } },
-        update: {},
-        create: { userId: superAdmin.id, roleId: superAdminRole.id },
+    const userIds = demoUsers.map((u) => u.id);
+    if (userIds.length > 0) {
+      const teachers = await prisma.teacher.findMany({
+        where: { userId: { in: userIds } },
+        select: { id: true },
       });
+      const teacherIds = teachers.map((t) => t.id);
+      if (teacherIds.length > 0) {
+        await prisma.teacherScope.deleteMany({ where: { teacherId: { in: teacherIds } } });
+        await prisma.teacherAssignmentHistory.deleteMany({ where: { teacherId: { in: teacherIds } } });
+        await prisma.staffDocument.deleteMany({ where: { teacherId: { in: teacherIds } } });
+        await prisma.staffProbationRecord.deleteMany({ where: { teacherId: { in: teacherIds } } });
+        await prisma.attendanceRecord.deleteMany({ where: { recordedByTeacherId: { in: teacherIds } } });
+        await prisma.teacher.deleteMany({ where: { id: { in: teacherIds } } });
+      }
+
+      const guardians = await prisma.guardian.findMany({
+        where: { userId: { in: userIds } },
+        select: { id: true },
+      });
+      const guardianIds = guardians.map((g) => g.id);
+      if (guardianIds.length > 0) {
+        await prisma.guardianStudentRelationship.deleteMany({ where: { guardianId: { in: guardianIds } } });
+        await prisma.guardian.deleteMany({ where: { id: { in: guardianIds } } });
+      }
+
+      await prisma.userRole.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.session.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.passwordReset.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.emailVerification.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.notificationPreference.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.userNotificationRead.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.auditLog.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.user.deleteMany({ where: { id: { in: userIds } } });
     }
   });
 

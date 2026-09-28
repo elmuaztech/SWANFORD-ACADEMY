@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
 
       setInfoMessage(data.message || 'If an account exists, a 4-digit code has been sent.');
       setStep('VERIFY_OTP');
-      setSecondsRemaining(120); // exactly 2 minutes
+      setSecondsRemaining(300); // 5 minutes
       setIsTimerActive(true);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Unable to request code.');

@@ -155,6 +155,10 @@ describe("Integration Tests: Work Package C - Admin Portal Operations", () => {
     await prisma.schoolClass.deleteMany({ where: { id: schoolClass.id } });
     await prisma.academicTerm.deleteMany({ where: { id: academicTerm.id } });
     await prisma.academicSession.deleteMany({ where: { id: academicSession.id } });
+    await prisma.academicSession.updateMany({
+      where: { name: '2026/2027' },
+      data: { isCurrent: true, status: 'ACTIVE' },
+    });
     await prisma.userRole.deleteMany({ where: { userId: { in: [adminUser.id, teacherUser.id] } } });
     await prisma.user.deleteMany({ where: { id: { in: [adminUser.id, teacherUser.id] } } });
   });

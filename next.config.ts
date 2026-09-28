@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enables standalone output for lightweight containerized production deployments
-  output: "standalone",
+  // Enables standalone output for containerized deployments, while allowing Vercel native optimization
+  output: process.env.VERCEL ? undefined : "standalone",
   poweredByHeader: false,
   devIndicators: false,
   async headers() {
