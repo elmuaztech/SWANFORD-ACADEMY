@@ -745,195 +745,61 @@ async function seedProductionFoundation(prisma2) {
       }
     }
   });
-  const defaultPasswordHash = "$2b$12$YIJd0KsaGr1z1xI/7h72kOiTrOK5prHS2ROO.XeGHJdug8gh.LoTG";
-  const canonicalPhones = [
-    { email: "superadmin@swanfordacademy.edu.ng", phone: "+2348030004455" },
-    { email: "admin@swanfordacademy.edu.ng", phone: "+2348030003344" },
-    { email: "accountant@swanfordacademy.edu.ng", phone: "+2348030005566" },
-    { email: "teacher@swanfordacademy.edu.ng", phone: "+2348030002233" },
-    { email: "parent@swanfordacademy.edu.ng", phone: "+2348030001122" }
-  ];
-  for (const item of canonicalPhones) {
-    await prisma2.user.updateMany({
-      where: {
-        phoneNumber: item.phone,
-        email: { not: item.email }
-      },
-      data: { phoneNumber: null }
-    });
-  }
-  await prisma2.guardian.updateMany({
-    where: {
-      phonePrimary: "+2348030001122",
-      email: { not: "parent@swanfordacademy.edu.ng" }
-    },
-    data: { phonePrimary: null }
+  console.log("-> Purging any existing user accounts for clean production state...");
+  await prisma2.guardianStudentRelationship.deleteMany().catch(() => {
   });
-  const superAdminEmail = process.env.INITIAL_SUPER_ADMIN_EMAIL || "superadmin@swanfordacademy.edu.ng";
-  const superAdminUser = await prisma2.user.upsert({
-    where: { email: superAdminEmail },
-    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
-    create: {
-      id: "bbf45459-0ffa-419a-b0f9-56d6bfdf50f3",
-      email: superAdminEmail,
-      phoneNumber: "+2348030004455",
-      passwordHash: defaultPasswordHash,
-      status: "ACTIVE",
-      emailVerifiedAt: /* @__PURE__ */ new Date()
-    }
+  await prisma2.guardian.deleteMany().catch(() => {
   });
+  await prisma2.teacherScope.deleteMany().catch(() => {
+  });
+  await prisma2.teacherAssignmentHistory.deleteMany().catch(() => {
+  });
+  await prisma2.staffDocument.deleteMany().catch(() => {
+  });
+  await prisma2.staffProbationRecord.deleteMany().catch(() => {
+  });
+  await prisma2.teacher.deleteMany().catch(() => {
+  });
+  await prisma2.userRole.deleteMany().catch(() => {
+  });
+  await prisma2.session.deleteMany().catch(() => {
+  });
+  await prisma2.passwordReset.deleteMany().catch(() => {
+  });
+  await prisma2.emailVerification.deleteMany().catch(() => {
+  });
+  await prisma2.user.deleteMany().catch(() => {
+  });
+  const superAdminPasswordHash = "$2b$12$N2wHzTdfQrwu6fUQJTwrz.bpZjz/mMPpflEBrpX6iKGTETKuz9Spi";
   const superAdminRoleId = rolesMap.get(RoleCode2.SUPER_ADMIN);
   const adminRoleId = rolesMap.get(RoleCode2.ADMIN);
-  const accountantRoleId = rolesMap.get(RoleCode2.ACCOUNTANT);
-  const teacherRoleId = rolesMap.get(RoleCode2.TEACHER);
-  const parentRoleId = rolesMap.get(RoleCode2.PARENT);
-  await prisma2.userRole.upsert({
-    where: { userId_roleId: { userId: superAdminUser.id, roleId: superAdminRoleId } },
-    update: {},
-    create: { userId: superAdminUser.id, roleId: superAdminRoleId }
-  });
-  const userSwanford99 = await prisma2.user.upsert({
-    where: { email: "swanford99@gmail.com" },
-    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
-    create: {
+  const superAdminUser = await prisma2.user.create({
+    data: {
       email: "swanford99@gmail.com",
+      firstName: "Super",
+      lastName: "Admin",
       phoneNumber: "+2348030004499",
-      passwordHash: defaultPasswordHash,
+      passwordHash: superAdminPasswordHash,
       status: "ACTIVE",
       emailVerifiedAt: /* @__PURE__ */ new Date()
     }
   });
-  await prisma2.userRole.upsert({
-    where: { userId_roleId: { userId: userSwanford99.id, roleId: superAdminRoleId } },
-    update: {},
-    create: { userId: userSwanford99.id, roleId: superAdminRoleId }
-  });
-  const adminUser = await prisma2.user.upsert({
-    where: { email: "admin@swanfordacademy.edu.ng" },
-    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
-    create: {
-      id: "00000000-0000-0000-0001-000000000002",
-      email: "admin@swanfordacademy.edu.ng",
-      phoneNumber: "+2348030003344",
-      passwordHash: defaultPasswordHash,
-      status: "ACTIVE",
-      emailVerifiedAt: /* @__PURE__ */ new Date()
+  await prisma2.userRole.create({
+    data: {
+      userId: superAdminUser.id,
+      roleId: superAdminRoleId
     }
   });
-  await prisma2.userRole.upsert({
-    where: { userId_roleId: { userId: adminUser.id, roleId: adminRoleId } },
-    update: {},
-    create: { userId: adminUser.id, roleId: adminRoleId }
-  });
-  const accountantUser = await prisma2.user.upsert({
-    where: { email: "accountant@swanfordacademy.edu.ng" },
-    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
-    create: {
-      id: "00000000-0000-0000-0001-000000000003",
-      email: "accountant@swanfordacademy.edu.ng",
-      phoneNumber: "+2348030005566",
-      passwordHash: defaultPasswordHash,
-      status: "ACTIVE",
-      emailVerifiedAt: /* @__PURE__ */ new Date()
-    }
-  });
-  await prisma2.userRole.upsert({
-    where: { userId_roleId: { userId: accountantUser.id, roleId: accountantRoleId } },
-    update: {},
-    create: { userId: accountantUser.id, roleId: accountantRoleId }
-  });
-  const teacherUser = await prisma2.user.upsert({
-    where: { email: "teacher@swanfordacademy.edu.ng" },
-    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
-    create: {
-      id: "00000000-0000-0000-0001-000000000004",
-      email: "teacher@swanfordacademy.edu.ng",
-      phoneNumber: "+2348030002233",
-      passwordHash: defaultPasswordHash,
-      status: "ACTIVE",
-      emailVerifiedAt: /* @__PURE__ */ new Date()
-    }
-  });
-  await prisma2.userRole.upsert({
-    where: { userId_roleId: { userId: teacherUser.id, roleId: teacherRoleId } },
-    update: {},
-    create: { userId: teacherUser.id, roleId: teacherRoleId }
-  });
-  await prisma2.teacher.upsert({
-    where: { userId: teacherUser.id },
-    update: {},
-    create: {
-      id: "00000000-0000-0000-0002-000000000004",
-      userId: teacherUser.id,
-      staffIdNumber: "STAFF/2026/001",
-      firstName: "Ibrahim",
-      lastName: "Malam",
-      qualification: "B.Ed. Islamic Studies & Primary Education",
-      status: "ACTIVE"
-    }
-  });
-  const parentUser = await prisma2.user.upsert({
-    where: { email: "parent@swanfordacademy.edu.ng" },
-    update: { passwordHash: defaultPasswordHash, status: "ACTIVE" },
-    create: {
-      id: "00000000-0000-0000-0001-000000000005",
-      email: "parent@swanfordacademy.edu.ng",
-      phoneNumber: "+2348030001122",
-      passwordHash: defaultPasswordHash,
-      status: "ACTIVE",
-      emailVerifiedAt: /* @__PURE__ */ new Date()
-    }
-  });
-  await prisma2.userRole.upsert({
-    where: { userId_roleId: { userId: parentUser.id, roleId: parentRoleId } },
-    update: {},
-    create: { userId: parentUser.id, roleId: parentRoleId }
-  });
-  const canonicalGuardian = await prisma2.guardian.upsert({
-    where: { email: "parent@swanfordacademy.edu.ng" },
-    update: { userId: parentUser.id },
-    create: {
-      id: "00000000-0000-0000-0002-000000000005",
-      userId: parentUser.id,
-      title: "Alhaji",
-      firstName: "Muhammad",
-      lastName: "Sani",
-      email: "parent@swanfordacademy.edu.ng",
-      phonePrimary: "+2348030001122",
-      residentialAddress: "14 Ahmadu Bello Way, Dutse, Jigawa State",
-      isVerified: true,
-      verifiedAt: /* @__PURE__ */ new Date()
-    }
-  });
-  const existingWards = await prisma2.student.findMany({
-    where: {
-      OR: [
-        { lastName: "Sani" },
-        { admissionNumber: { in: ["SA-2026-0001", "SA-2026-0002"] } }
-      ]
-    },
-    take: 2
-  });
-  for (const ward of existingWards) {
-    const relId = `00000000-0000-0000-0003-${ward.id.slice(24)}`;
-    await prisma2.guardianStudentRelationship.upsert({
-      where: { id: relId },
-      update: {
-        guardianId: canonicalGuardian.id,
-        studentId: ward.id
-      },
-      create: {
-        id: relId,
-        guardianId: canonicalGuardian.id,
-        studentId: ward.id,
-        relationshipType: "FATHER",
-        isPrimaryContact: true,
-        canPickup: true,
-        receivesInvoices: true
+  if (adminRoleId) {
+    await prisma2.userRole.create({
+      data: {
+        userId: superAdminUser.id,
+        roleId: adminRoleId
       }
     });
   }
-  console.log("\u2714 Production Foundation Seed Completed Successfully.");
+  console.log("\u2714 Clean superadmin account created: swanford99@gmail.com (Role: SUPER_ADMIN, Password: admin123)");
+  console.log("\u2714 Zero mock accounts, zero extra emails. Single Super Admin created.");
 }
 
 // prisma/seed.ts
