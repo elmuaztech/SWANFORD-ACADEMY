@@ -20,7 +20,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - APP_URL=${APP_URL}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-swanford}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-swanford_prod}?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swanford}:${POSTGRES_PASSWORD:-SwanfordProd2026!Secure}@postgres:5432/${POSTGRES_DB:-swanford_prod}?schema=public
       - SESSION_SECRET=${SESSION_SECRET}
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY}
@@ -40,14 +40,15 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-swanford_prod}
       POSTGRES_USER: ${POSTGRES_USER:-swanford}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SwanfordProd2026!Secure}
     volumes:
       - swanford_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swanford} -d ${POSTGRES_DB:-swanford_prod}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - swanford_network
 
