@@ -297,7 +297,7 @@ export function AdminSidebar({
           className={`flex items-center gap-2.5 overflow-hidden transition-all duration-300 ${
             isCollapsed ? "justify-center w-full" : ""
           }`}
-          title="Swanford Academy Admin Console"
+          title="Swanford Academy Admin Dashboard"
         >
           <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-lg bg-[#FDF2F4] border border-[#EADBDA]">
             <img
@@ -312,7 +312,7 @@ export function AdminSidebar({
                 Swanford
               </span>
               <span className="text-[10px] text-[#800020] font-bold tracking-wider uppercase leading-tight mt-1 truncate">
-                Admin Console
+                Admin Dashboard
               </span>
             </div>
           )}

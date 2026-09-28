@@ -17,6 +17,7 @@ import {
   LoadingState,
   Badge,
 } from "@/components";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { SCHOOL_PROFILE } from "@/lib/constants";
 
 interface ProgrammeOption {
@@ -66,11 +67,10 @@ export default function AdminStudentEnrollPage() {
     otherNames: "",
     gender: "MALE" as "MALE" | "FEMALE",
     dateOfBirth: "",
-    bloodGroup: "",
-    genotype: "",
     allergies: "",
     medicalNotes: "",
     passportPhotoUrl: "",
+    profilePhotoId: "",
 
     // Parent / Guardian Information
     guardianFirstName: "",
@@ -181,11 +181,10 @@ export default function AdminStudentEnrollPage() {
         otherNames: formData.otherNames.trim() || undefined,
         gender: formData.gender,
         dateOfBirth: formData.dateOfBirth,
-        bloodGroup: formData.bloodGroup || undefined,
-        genotype: formData.genotype || undefined,
         allergies: formData.allergies.trim() || undefined,
         medicalNotes: formData.medicalNotes.trim() || undefined,
         passportPhoto: formData.passportPhotoUrl || undefined,
+        profilePhotoId: formData.profilePhotoId || undefined,
 
         guardianFirstName: formData.guardianFirstName.trim(),
         guardianLastName: formData.guardianLastName.trim(),
@@ -342,14 +341,29 @@ export default function AdminStudentEnrollPage() {
                     onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
                   />
                 </FormGroup>
+              </div>
 
-                <FormGroup label="Passport Photograph URL / Reference">
-                  <Input
-                    placeholder="Image URL or identifier (Optional)"
-                    value={formData.passportPhotoUrl}
-                    onChange={(e) => setFormData({ ...formData, passportPhotoUrl: e.target.value })}
-                  />
-                </FormGroup>
+              {/* Passport Photo Upload with Client-Side Compression */}
+              <div className="pt-2">
+                <ImageUpload
+                  label="Pupil Passport Photograph"
+                  helperText="Take photo with camera or choose from device gallery. Automatically compressed for high clarity and minimal storage."
+                  currentImageUrl={formData.passportPhotoUrl || undefined}
+                  onUploadSuccess={(res) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      passportPhotoUrl: res.url,
+                      profilePhotoId: res.assetId,
+                    }));
+                  }}
+                  onRemove={() => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      passportPhotoUrl: "",
+                      profilePhotoId: "",
+                    }));
+                  }}
+                />
               </div>
 
               {/* Medical Information */}
@@ -357,55 +371,18 @@ export default function AdminStudentEnrollPage() {
                 <p className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3">
                   Medical &amp; Clinical Notes (Optional)
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <FormGroup label="Blood Group">
-                    <select
-                      className="w-full h-11 px-3 rounded-lg border border-stone-300 bg-white text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#800020]"
-                      value={formData.bloodGroup}
-                      onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                    >
-                      <option value="">Unknown / Pending</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                    </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormGroup label="Known Allergies">
+                    <Input
+                      placeholder="e.g. Groundnuts, Penicillin, Dust (or None)"
+                      value={formData.allergies}
+                      onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                    />
                   </FormGroup>
 
-                  <FormGroup label="Genotype">
-                    <select
-                      className="w-full h-11 px-3 rounded-lg border border-stone-300 bg-white text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#800020]"
-                      value={formData.genotype}
-                      onChange={(e) => setFormData({ ...formData, genotype: e.target.value })}
-                    >
-                      <option value="">Unknown / Pending</option>
-                      <option value="AA">AA</option>
-                      <option value="AS">AS</option>
-                      <option value="AC">AC</option>
-                      <option value="SS">SS</option>
-                    </select>
-                  </FormGroup>
-
-                  <div className="sm:col-span-2">
-                    <FormGroup label="Known Allergies">
-                      <Input
-                        placeholder="e.g. Groundnuts, Penicillin, Dust (or None)"
-                        value={formData.allergies}
-                        onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
-                      />
-                    </FormGroup>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <FormGroup label="Additional Medical Notes">
-                    <textarea
-                      className="w-full min-h-[60px] p-2.5 rounded-lg border border-stone-300 bg-white text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#800020]"
-                      placeholder="Any relevant health condition, dietary requirements, or emergency instructions..."
+                  <FormGroup label="Special Clinical / Dietary Notes">
+                    <Input
+                      placeholder="e.g. Asthmatic inhaler required (or None)"
                       value={formData.medicalNotes}
                       onChange={(e) => setFormData({ ...formData, medicalNotes: e.target.value })}
                     />
@@ -690,7 +667,7 @@ export default function AdminStudentEnrollPage() {
                 <h3 className="text-xs font-bold text-[#800020] uppercase tracking-wider border-b border-stone-200 pb-1 mb-2">
                   1. Pupil Identity &amp; Health Particulars
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div>
                     <span className="text-stone-400 block font-medium">Full Name:</span>
                     <span className="font-bold text-stone-900 text-sm">
@@ -704,12 +681,6 @@ export default function AdminStudentEnrollPage() {
                   <div>
                     <span className="text-stone-400 block font-medium">Date of Birth:</span>
                     <span className="font-semibold text-stone-900">{formData.dateOfBirth}</span>
-                  </div>
-                  <div>
-                    <span className="text-stone-400 block font-medium">Blood / Genotype:</span>
-                    <span className="font-semibold text-stone-900">
-                      {formData.bloodGroup || "N/A"} / {formData.genotype || "N/A"}
-                    </span>
                   </div>
                 </div>
                 {(formData.allergies || formData.medicalNotes) && (
@@ -795,11 +766,12 @@ export default function AdminStudentEnrollPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
               size="lg"
+              className="w-full sm:w-auto font-medium min-h-[44px]"
               onClick={() => setStep("FILL")}
               disabled={submitting}
             >
@@ -809,7 +781,7 @@ export default function AdminStudentEnrollPage() {
               type="button"
               variant="primary"
               size="lg"
-              className="min-w-[200px]"
+              className="w-full sm:w-auto sm:min-w-[220px] font-bold min-h-[44px]"
               onClick={handleConfirmSubmit}
               disabled={submitting}
             >
@@ -862,11 +834,10 @@ export default function AdminStudentEnrollPage() {
                     otherNames: "",
                     gender: "MALE",
                     dateOfBirth: "",
-                    bloodGroup: "",
-                    genotype: "",
                     allergies: "",
                     medicalNotes: "",
                     passportPhotoUrl: "",
+                    profilePhotoId: "",
                     guardianFirstName: "",
                     guardianLastName: "",
                     relationshipType: "LEGAL_GUARDIAN",

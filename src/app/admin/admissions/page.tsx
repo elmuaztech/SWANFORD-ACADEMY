@@ -251,10 +251,10 @@ export default function AdminAdmissionsPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-[#FDFCF9] rounded-xl border border-stone-200 text-xs flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-stone-500">Public Announcement Preview:</span>
-              <span className="font-medium text-stone-900">
+          <div className="p-3.5 bg-[#FDFCF9] rounded-xl border border-stone-200 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              <span className="font-semibold text-stone-500 shrink-0">Public Announcement Preview:</span>
+              <span className="font-medium text-stone-900 italic">
                 {isAdmissionsOpen
                   ? `“Admissions for ${sessionName} are now open. Apply today.”`
                   : sessionName
@@ -265,9 +265,12 @@ export default function AdminAdmissionsPage() {
             <Link
               href="/"
               target="_blank"
-              className="text-[#800020] hover:underline font-bold shrink-0"
+              className="inline-flex items-center gap-1 text-[#800020] hover:text-[#5B0612] hover:underline font-bold text-xs shrink-0 self-start sm:self-center"
             >
-              View Public Website &rarr;
+              <span>View Public Website</span>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
             </Link>
           </div>
         </CardContent>

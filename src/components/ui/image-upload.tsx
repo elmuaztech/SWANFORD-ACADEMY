@@ -15,9 +15,77 @@ export interface ImageUploadProps {
   disabled?: boolean;
 }
 
+async function compressImageClientSide(
+  file: File,
+  maxWidth = 800,
+  maxHeight = 800,
+  quality = 0.8
+): Promise<File> {
+  if (typeof window === 'undefined' || !file.type.startsWith('image/')) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+
+      if (width > maxWidth || height > maxHeight) {
+        if (width > height) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        return resolve(file);
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            return resolve(file);
+          }
+          const compressedFile = new File(
+            [blob],
+            file.name.replace(/\.[^.]+$/, '.jpg'),
+            {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            }
+          );
+          resolve(compressedFile);
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 export function ImageUpload({
   label = 'Profile Photo',
-  helperText = 'Clear face photo. JPEG, PNG, or WebP. Max 5 MB (automatically optimized).',
+  helperText = 'Clear face photo. JPEG, PNG, or WebP. Automatically compressed for high clarity and minimal storage.',
   currentImageUrl,
   onUploadSuccess,
   onRemove,
@@ -43,32 +111,25 @@ export function ImageUpload({
 
     setError(null);
 
-    // Client-side size check (5 MB maximum)
-    const MAX_BYTES = 5 * 1024 * 1024;
-    if (file.size > MAX_BYTES) {
-      setError('File is too large. Maximum permitted upload size is 5 MB.');
+    // Client-side file type validation (images only)
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file from camera or gallery.');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    // Client-side file type validation (JPEG, PNG, WebP)
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-    if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
-      setError('Unsupported file type. Please upload a genuine JPEG, PNG, or WebP image.');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    // Immediate local preview while uploading & optimizing
-    const localUrl = URL.createObjectURL(file);
-    setPreviewUrl(localUrl);
     setIsUploading(true);
 
     try {
+      // Client-side compression to avoid consuming VPS storage and mobile bandwidth
+      const uploadFile = await compressImageClientSide(file, 800, 800, 0.8);
+
+      // Local preview while uploading
+      const localUrl = URL.createObjectURL(uploadFile);
+      setPreviewUrl(localUrl);
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', uploadFile);
       Object.entries(extraFormData).forEach(([k, v]) => formData.append(k, v));
 
       const res = await fetch(uploadEndpoint, {
@@ -177,7 +238,7 @@ export function ImageUpload({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/*"
               className="hidden"
               onChange={handleFileChange}
               disabled={disabled || isUploading}

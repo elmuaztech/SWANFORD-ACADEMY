@@ -16,6 +16,8 @@ services:
       - "127.0.0.1:3002:3000"
     volumes:
       - ../scripts:/app/scripts:ro
+    env_file:
+      - ../.env
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -25,16 +27,17 @@ services:
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY}
       - PAYSTACK_WEBHOOK_SECRET=${PAYSTACK_WEBHOOK_SECRET}
-      - NOTIFICATION_PROVIDER=${NOTIFICATION_PROVIDER:-mock}
-      - SMTP_HOST=${SMTP_HOST:-}
+      - NOTIFICATION_PROVIDER=${NOTIFICATION_PROVIDER:-smtp}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - SMTP_PASS=${SMTP_PASS:-}
-      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_USER=${SMTP_USER:-swanford99@gmail.com}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-msik fjvd pejo ndhn}
+      - SMTP_PASS=${SMTP_PASS:-msik fjvd pejo ndhn}
+      - SMTP_FROM=${SMTP_FROM:-swanford99@gmail.com}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Swanford Academy}
-      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-swanford99@gmail.com}
       - SMTP_SECURE=${SMTP_SECURE:-false}
+      - CRON_SECRET=${CRON_SECRET:-swanford_cron_secret_prod_84920481239}
     depends_on:
       postgres:
         condition: service_healthy

@@ -78,11 +78,8 @@ export function AdminShell({
 
           {/* Canonical Admin Footer */}
           <footer className="border-t border-[#EADBDA]/80 bg-white/70 py-4 px-4 sm:px-6 text-center text-xs text-stone-500">
-            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-              <p>© {new Date().getFullYear()} Swanford Academy — Admin Console.</p>
-              <p className="text-[11px] text-stone-400">
-                Powered by: <strong className="text-stone-600">Elmuaz Technologies LTD</strong> &bull; Email: <a href="mailto:info@elmuaztech.com.ng" className="hover:text-stone-700 underline">info@elmuaztech.com.ng</a>
-              </p>
+            <div className="max-w-7xl mx-auto flex items-center justify-center">
+              <p>© {new Date().getFullYear()} Swanford Academy — Admin Dashboard. All rights reserved.</p>
             </div>
           </footer>
         </div>

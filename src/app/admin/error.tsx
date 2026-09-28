@@ -29,7 +29,7 @@ export default function AdminErrorBoundary({
 
         <div className="space-y-2">
           <h2 className="text-xl font-bold text-[#5B0612] tracking-tight">
-            Administrative Console Notice
+            Administrative Dashboard Notice
           </h2>
           <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
             {userFacing.message || "An error occurred while loading this section of the administrative portal."}

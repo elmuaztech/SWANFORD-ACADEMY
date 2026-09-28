@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
         <div>
           <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold tracking-wide mb-3">
             <span className="whitespace-nowrap uppercase">
-              {isSuperAdmin ? "Director & Super Admin Console" : "Operational Admin Console"}
+              {isSuperAdmin ? "Director & Super Admin Dashboard" : "Operational Admin Dashboard"}
             </span>
             {overview.activeSession && (
               <>
@@ -222,7 +222,7 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <h3 className="text-base sm:text-lg font-bold text-[#5B0612] tracking-tight">
-              Welcome to Swanford Academy Console
+              Welcome to Swanford Academy Dashboard
             </h3>
             <p className="text-xs sm:text-sm text-stone-600 max-w-2xl leading-relaxed">
               The operational database is clean and ready. Establish your academic session calendar and activate admissions to begin registering pupils and receiving applications.

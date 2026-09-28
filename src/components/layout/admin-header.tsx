@@ -66,7 +66,7 @@ export function AdminHeader({
 
   // Derive route metadata
   const currentRouteMeta = ROUTE_TITLES[pathname] || {
-    title: pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ").toUpperCase() || "Admin Console",
+    title: pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ").toUpperCase() || "Admin Dashboard",
     section: "Operations",
   };
 
@@ -229,7 +229,7 @@ export function AdminHeader({
 
             {/* Notification Dropdown Panel */}
             {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-[#EADBDA] overflow-hidden z-50 animate-in fade-in-50 zoom-in-95 duration-150">
+              <div className="fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 max-w-sm sm:max-w-none mx-auto sm:mx-0 bg-white rounded-2xl shadow-2xl border border-[#EADBDA] overflow-hidden z-50 animate-in fade-in-50 zoom-in-95 duration-150">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[#EADBDA] bg-[#FDFCF9]">
                   <div className="flex items-center gap-2">
                     <h3 className="text-xs font-bold text-[#5B0612] font-display">Notifications</h3>

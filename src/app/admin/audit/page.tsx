@@ -186,7 +186,7 @@ export default function AdminAuditPage() {
               : () => fetchAuditLogs(page)
           }
         />
-      ) : !data || data.items.length === 0 ? (
+      ) : !data || (data.items || (data as any).logs || []).length === 0 ? (
         <EmptyState
           title="No Audit Records Found"
           description={
@@ -222,10 +222,10 @@ export default function AdminAuditPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.items.map((item, index) => (
+                  {(data.items || (data as any).logs || []).map((item, index) => (
                     <TableRow key={item.id}>
                       <TableCell className="w-14 text-center text-xs font-semibold text-stone-500">
-                        {(page - 1) * data.pageSize + index + 1}
+                        {(page - 1) * (data.pageSize || 20) + index + 1}
                       </TableCell>
                       <TableCell className="w-44 text-xs text-stone-500 whitespace-nowrap font-mono">
                         {new Date(item.createdAt).toLocaleString()}
@@ -276,13 +276,13 @@ export default function AdminAuditPage() {
 
           {/* Mobile Responsive Cards (< 768px) */}
           <div className="block md:hidden space-y-3">
-            {data.items.map((item, index) => (
+            {(data.items || (data as any).logs || []).map((item, index) => (
               <TableMobileCard
                 key={item.id}
                 title={
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
-                      {(page - 1) * data.pageSize + index + 1}
+                      {(page - 1) * (data.pageSize || 20) + index + 1}
                     </span>
                     <Badge variant="brand" size="sm" className="font-mono text-[11px]">
                       {item.action}

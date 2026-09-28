@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
           genotype: body.genotype?.trim() || null,
           allergies: body.allergies?.trim() || null,
           medicalNotes: body.medicalNotes?.trim() || null,
+          profilePhotoId: body.profilePhotoId?.trim() || null,
         },
       });
 

@@ -17,7 +17,49 @@ export async function GET(
     }
 
     const application = await getApplicationById(actor, id);
-    return NextResponse.json(application);
+    const sanitized = JSON.parse(
+      JSON.stringify(application, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      )
+    );
+    sanitized.cycle = application.admissionCycle
+      ? {
+          id: application.admissionCycle.id,
+          name: application.admissionCycle.name,
+          code: application.admissionCycle.code,
+        }
+      : undefined;
+    sanitized.parentGuardians = application.existingGuardian
+      ? [
+          {
+            id: application.existingGuardian.id,
+            relationshipType: application.guardianRelationship,
+            guardian: {
+              firstName: application.existingGuardian.firstName,
+              lastName: application.existingGuardian.lastName,
+              relationshipType: application.guardianRelationship,
+              phonePrimary: application.existingGuardian.phonePrimary,
+              email: application.existingGuardian.email,
+              residentialAddress: application.existingGuardian.residentialAddress,
+            },
+          },
+        ]
+      : [
+          {
+            id: 'primary',
+            relationshipType: application.guardianRelationship,
+            guardian: {
+              firstName: application.guardianFirstName,
+              lastName: application.guardianLastName,
+              relationshipType: application.guardianRelationship,
+              phonePrimary: application.guardianPhone,
+              email: application.guardianEmail,
+              residentialAddress: null,
+            },
+          },
+        ];
+    sanitized.documents = [];
+    return NextResponse.json(sanitized);
   } catch (error: unknown) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });

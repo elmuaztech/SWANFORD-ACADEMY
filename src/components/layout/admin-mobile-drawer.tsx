@@ -130,7 +130,7 @@ export function AdminMobileDrawer({
             </div>
             <div>
               <p className="text-xs font-bold text-stone-900 font-display">Swanford Academy</p>
-              <p className="text-[10px] font-bold text-[#800020] uppercase tracking-wider">Admin Console</p>
+              <p className="text-[10px] font-bold text-[#800020] uppercase tracking-wider">Admin Dashboard</p>
             </div>
           </div>
 

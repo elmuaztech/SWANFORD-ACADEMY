@@ -200,7 +200,7 @@ export default function AdminAcademicPage() {
       {/* Page Header */}
       <PageHeader
         breadcrumbs={[
-          { label: "Admin Console", href: "/admin" },
+          { label: "Admin Dashboard", href: "/admin" },
           { label: "Academic Sessions & Terms" },
         ]}
         title="Academic Sessions & Terms"

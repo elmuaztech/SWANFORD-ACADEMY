@@ -352,7 +352,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {application.programmeSelections.map((ps) => (
+                {(application.programmeSelections || []).map((ps) => (
                   <div
                     key={ps.id}
                     className="p-3 rounded-xl border border-stone-200 bg-stone-50 flex items-center justify-between"
@@ -376,7 +376,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               <CardTitle className="text-base font-bold text-stone-900">Guardian Details</CardTitle>
             </CardHeader>
             <CardContent>
-              {application.parentGuardians.length === 0 ? (
+              {(!application.parentGuardians || application.parentGuardians.length === 0) ? (
                 <p className="text-xs text-stone-500">No guardian contacts submitted.</p>
               ) : (
                 <div className="space-y-3">
@@ -410,11 +410,11 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               <CardTitle className="text-base font-bold text-stone-900">Submitted Documents</CardTitle>
             </CardHeader>
             <CardContent>
-              {application.documents.length === 0 ? (
+              {(!application.documents || application.documents.length === 0) ? (
                 <p className="text-xs text-stone-500">No verification documents attached.</p>
               ) : (
                 <div className="space-y-2">
-                  {application.documents.map((doc) => (
+                  {(application.documents || []).map((doc) => (
                     <div
                       key={doc.id}
                       className="p-3 rounded-xl border border-stone-200 bg-white flex items-center justify-between"
