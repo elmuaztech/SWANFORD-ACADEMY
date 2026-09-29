@@ -64,6 +64,24 @@ export default function ContactPage() {
                       <p className="text-sm font-semibold text-[#1C1A1A]">{SCHOOL_PROFILE.contactPerson}</p>
                     </div>
 
+                    <div className="pt-3 border-t border-[#EADBDA] space-y-2">
+                      <span className="text-xs uppercase tracking-wider text-[#8C827A] font-bold block">
+                        Official School Schedule:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white p-3 rounded-xl border border-[#EADBDA]/80 space-y-1">
+                          <p className="font-bold text-[#5B0612] text-xs pb-1 mb-1 border-b border-stone-100">Conventional Section</p>
+                          <p className="text-stone-700 flex justify-between"><span>Mon &ndash; Thu:</span> <span className="font-bold text-stone-900">7:30am &ndash; 2:00pm</span></p>
+                          <p className="text-stone-700 flex justify-between"><span>Friday:</span> <span className="font-bold text-stone-900">7:30am &ndash; 12:00pm</span></p>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-[#EADBDA]/80 space-y-1">
+                          <p className="font-bold text-[#5B0612] text-xs pb-1 mb-1 border-b border-stone-100">Tahfeez Section</p>
+                          <p className="text-stone-700 flex justify-between"><span>Weekends:</span> <span className="font-bold text-stone-900">8:30am &ndash; 12:00pm</span></p>
+                          <p className="text-stone-700 flex justify-between"><span>Mon &ndash; Wed:</span> <span className="font-bold text-stone-900">2:30pm &ndash; 5:30pm</span></p>
+                        </div>
+                      </div>
+                    </div>
+
 
                   </div>
                 </div>

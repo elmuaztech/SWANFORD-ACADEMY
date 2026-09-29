@@ -58,7 +58,7 @@ export default async function HomePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             {/* Main Rounded Hero Card */}
-            <div className="relative rounded-[28px] sm:rounded-[36px] overflow-hidden bg-gradient-to-b from-[#3B030A] via-[#4D0610] to-[#250105] border border-[#6B1420] text-white shadow-2xl p-6 sm:p-12 lg:p-16 text-center max-w-5xl mx-auto">
+            <div className="relative rounded-[28px] sm:rounded-[36px] overflow-hidden bg-gradient-to-b from-[#3B030A] via-[#4D0610] to-[#250105] border border-[#6B1420] text-white shadow-2xl px-4 py-6 sm:p-12 lg:p-16 text-center max-w-5xl mx-auto">
               
               {/* Subtle authentic student backdrop image with deep dark overlay */}
               <div 
@@ -71,25 +71,25 @@ export default async function HomePage() {
               {/* Foreground Centered Content */}
               <div className="relative z-10 space-y-4 sm:space-y-5">
                 
-                {/* Single Centered "WELCOME TO" Pill: Cream Card with Maroon Text */}
-                <div className="inline-flex items-center justify-center px-6 py-2 sm:py-2.5 rounded-full bg-[#FAF7F2] border border-[#EADBDA] text-[#800020] text-sm sm:text-base font-bold tracking-widest font-heading shadow-md mx-auto animate-welcome-pulse">
+                {/* Single Centered "WELCOME TO" Pill: Cream Background with Maroon Text */}
+                <div className="inline-flex items-center justify-center px-5 sm:px-6 py-1.5 sm:py-2 rounded-full bg-[#F5EBDC] border border-[#DFCBB5] text-[#5B0612] text-xs sm:text-sm font-extrabold tracking-widest font-heading shadow-sm mx-auto animate-welcome-pulse">
                   <span>WELCOME TO</span>
                 </div>
 
                 {/* Institutional School Heading in Pure White (#FFFFFF) */}
                 <div className="space-y-2 sm:space-y-2.5">
                   <h1 
-                    className="text-3xl sm:text-5xl md:text-6xl lg:text-[64px] font-extrabold tracking-tight text-white !text-white text-[#FFFFFF] !text-[#FFFFFF] hero-school-title font-heading leading-[1.12] max-w-4xl mx-auto drop-shadow-sm"
+                    className="text-[20px] min-[360px]:text-[22px] min-[390px]:text-[26px] sm:text-4xl md:text-5xl lg:text-[60px] font-extrabold tracking-tight text-white !text-white text-[#FFFFFF] !text-[#FFFFFF] hero-school-title font-heading leading-tight max-w-4xl mx-auto drop-shadow-sm whitespace-nowrap"
                     style={{ color: '#FFFFFF' }}
                   >
                     SWANFORD ACADEMY
-                    <span className="block text-sm sm:text-lg md:text-xl text-[#F5D061] font-bold mt-2 font-heading tracking-wide uppercase">
-                      Nursery, Primary &amp; Tahfeez School — Dutse
-                    </span>
                   </h1>
+                  <p className="text-[10px] min-[360px]:text-[11.5px] min-[390px]:text-xs sm:text-base md:text-lg text-[#F5D061] font-bold tracking-wider uppercase font-heading leading-relaxed max-w-xl mx-auto">
+                    Nursery, Primary &amp; Tahfeez School &mdash; Dutse
+                  </p>
 
                   {/* Official School Motto (Playfair Display Italic Serif) */}
-                  <p className="text-lg sm:text-xl md:text-2xl text-[#FDFCF9] font-normal italic font-motto pt-1 drop-shadow-xs">
+                  <p className="text-base sm:text-xl md:text-2xl text-[#FDFCF9] font-normal italic font-motto pt-1 drop-shadow-xs">
                     &ldquo;Illuminating the Path to Success&rdquo;
                   </p>
                 </div>
@@ -496,7 +496,7 @@ export default async function HomePage() {
                 </h2>
 
                 <p className="text-sm sm:text-base text-[#524B46] leading-relaxed">
-                  Swanford Academy is located along Dr Nuhu Muhammadu Sanusi Way, Block 85, 06 Housing Unit, Ibrahim Aliyu Bye-Pass, Adjacent to Federal University Dutse, Jigawa State. We welcome you to visit our school and experience our warm and conducive learning environment.
+                  Swanford Academy is located at PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE. We welcome you to visit our school and experience our warm and conducive learning environment.
                 </p>
 
                 {/* Key Facility Highlights */}
@@ -533,22 +533,22 @@ export default async function HomePage() {
                 </div>
               </div>
 
-              {/* Right Column: Real School Entrance Image with Curved Edges */}
-              <div className="lg:col-span-6 relative">
+              {/* Right Column: Real School Entrance Image & Official Timing Card */}
+              <div className="lg:col-span-6 space-y-6">
                 <div className="relative mx-auto max-w-lg lg:max-w-none">
                   
                   {/* Floating Location Badge */}
-                  <div className="absolute -bottom-4 -left-2 sm:-bottom-5 sm:left-4 z-10 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl border border-[#EADBDA] shadow-md">
-                    <p className="text-xs font-bold text-[#800020] font-display">
-                      Dutse, Jigawa State
+                  <div className="absolute -bottom-4 left-2 sm:-bottom-5 sm:left-4 z-10 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-2xl border border-[#EADBDA] shadow-md max-w-[280px] sm:max-w-none">
+                    <p className="text-xs font-bold text-[#800020] font-display flex items-center gap-1.5">
+                      <span>📍</span> Plot 212, Dr Nuhu Muhammadu Sanusi Way
                     </p>
-                    <p className="text-[11px] text-[#524B46]">
-                      Campus Visits: Mon–Thu 8am–3:30pm
+                    <p className="text-[11px] text-[#524B46] font-medium">
+                      Dutse, Jigawa State &bull; Main Campus
                     </p>
                   </div>
 
                   {/* Real School Gate Photo */}
-                  <div className="curved-image overflow-hidden aspect-[4/3] bg-stone-100 group">
+                  <div className="curved-image overflow-hidden aspect-[4/3] bg-stone-100 group shadow-md">
                     <img
                       src="/images/school-gate.jpg"
                       alt="Swanford Academy campus entrance gate and school tower in Dutse"
@@ -558,6 +558,63 @@ export default async function HomePage() {
 
                   {/* Subtle Accent Backdrop Glow */}
                   <div className="absolute -inset-4 bg-gradient-to-tr from-[#800020]/10 to-amber-500/5 rounded-3xl -z-10 blur-xl pointer-events-none" />
+                </div>
+
+                {/* Official School Timing / Schedule Box */}
+                <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-2xl p-4 sm:p-5 shadow-xs text-left">
+                  <div className="flex items-center justify-between gap-2 mb-3.5 pb-2.5 border-b border-[#EADBDA]">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#800020]" />
+                      <h3 className="text-xs sm:text-sm font-bold text-[#5B0612] uppercase tracking-wider font-display">
+                        Official School Schedule &amp; Timings
+                      </h3>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-[#800020] bg-[#FAF2F4] px-2 py-0.5 rounded-md border border-[#EADBDA]">
+                      Active Schedule
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Conventional Section */}
+                    <div className="bg-white rounded-xl p-3.5 border border-[#EADBDA]/80 shadow-2xs">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-100">
+                        <span className="font-bold text-xs text-[#5B0612] font-display">Conventional Section</span>
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          Academic
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 text-xs text-[#524B46]">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-medium text-stone-600">Monday &ndash; Thursday:</span>
+                          <span className="font-bold text-stone-900 whitespace-nowrap">7:30am &ndash; 2:00pm</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-medium text-stone-600">Friday:</span>
+                          <span className="font-bold text-stone-900 whitespace-nowrap">7:30am &ndash; 12:00pm</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tahfeez Section */}
+                    <div className="bg-white rounded-xl p-3.5 border border-[#EADBDA]/80 shadow-2xs">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-100">
+                        <span className="font-bold text-xs text-[#5B0612] font-display">Tahfeez Section</span>
+                        <span className="text-[10px] font-bold text-[#800020] bg-[#FAF2F4] px-2 py-0.5 rounded-full border border-[#EADBDA]">
+                          Quranic
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 text-xs text-[#524B46]">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-medium text-stone-600">Weekends:</span>
+                          <span className="font-bold text-stone-900 whitespace-nowrap">8:30am &ndash; 12:00pm</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-medium text-stone-600">Monday &ndash; Wednesday:</span>
+                          <span className="font-bold text-stone-900 whitespace-nowrap">2:30pm &ndash; 5:30pm</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

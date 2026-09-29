@@ -58,8 +58,8 @@ export function Navbar({
               <span className="text-sm sm:text-base lg:text-base xl:text-xl font-extrabold text-[#5B0612] tracking-tight leading-tight whitespace-nowrap font-sans">
                 {SCHOOL_PROFILE.name}
               </span>
-              <span className="text-[9px] sm:text-[10px] lg:text-[10px] xl:text-xs text-[#800020] font-bold tracking-wider xl:tracking-widest uppercase leading-tight mt-0.5 whitespace-nowrap font-sans">
-                NURSERY, PRIMARY &amp; TAHFEEZ
+              <span className="text-[8px] min-[360px]:text-[8.5px] min-[390px]:text-[9.5px] sm:text-[10px] xl:text-xs text-[#800020] font-bold tracking-tight min-[390px]:tracking-wider xl:tracking-widest uppercase leading-tight mt-0.5 whitespace-nowrap font-sans">
+                NURSERY, PRIMARY &amp; TAHFEEZ SCHOOL
               </span>
             </div>
           </Link>

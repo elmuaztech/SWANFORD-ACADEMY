@@ -72,8 +72,8 @@ export function MobileNav({
               <span className="text-base font-extrabold text-[#5B0612] tracking-tight leading-tight truncate font-sans">
                 {SCHOOL_PROFILE.name}
               </span>
-              <span className="text-[10px] text-[#800020] font-bold tracking-wider uppercase leading-tight mt-0.5 font-sans">
-                NURSERY, PRIMARY &amp; TAHFEEZ
+              <span className="text-[9.5px] text-[#800020] font-bold tracking-tight uppercase leading-tight mt-0.5 font-sans whitespace-nowrap">
+                NURSERY, PRIMARY &amp; TAHFEEZ SCHOOL
               </span>
             </div>
           </div>

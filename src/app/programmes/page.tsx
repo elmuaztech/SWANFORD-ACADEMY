@@ -170,9 +170,10 @@ export default function ProgrammesPage() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   <div className="bg-white p-4 rounded-xl border border-[#EADBDA] space-y-1">
-                    <h4 className="font-bold text-[#5B0612] text-sm">Flexible Enrollment</h4>
-                    <p className="text-xs text-[#524B46]">
-                      May be taken as a standalone programme or combined alongside conventional primary enrollment.
+                    <h4 className="font-bold text-[#5B0612] text-sm">Flexible Enrollment &amp; Sessions</h4>
+                    <p className="text-xs text-[#524B46] leading-relaxed">
+                      <strong>Weekends:</strong> 8:30am &ndash; 12:00pm<br />
+                      <strong>Mon &ndash; Wed:</strong> 2:30pm &ndash; 5:30pm
                     </p>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-[#EADBDA] space-y-1">
