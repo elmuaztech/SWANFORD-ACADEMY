@@ -135,7 +135,7 @@ export default async function HomePage() {
             </div>
 
             {/* Featured Authentic Pupils & Teachers Image */}
-            <div className="mt-10 sm:mt-14 relative max-w-4xl mx-auto animate-fade-in">
+            <div className="mt-10 sm:mt-14 relative max-w-4xl mx-auto" data-reveal="fade-up">
               {/* Floating Accent Tag */}
               <div className="absolute -top-4 -right-2 sm:-top-5 sm:right-6 z-10 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl border border-[#EADBDA] shadow-md transform rotate-2">
                 <span className="text-xs font-bold text-[#800020] font-sans flex items-center gap-1.5">
@@ -157,7 +157,7 @@ export default async function HomePage() {
             </div>
 
             {/* 3 Centered Value Badges */}
-            <div className="mt-8 pt-6 grid grid-cols-3 gap-3 border-t border-[#EADBDA]/80 max-w-xl mx-auto">
+            <div className="mt-8 pt-6 grid grid-cols-3 gap-3 border-t border-[#EADBDA]/80 max-w-xl mx-auto" data-reveal="fade-up" data-delay="100">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-center sm:text-left">
                 <div className="w-8 h-8 rounded-lg bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -197,7 +197,7 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
               
               {/* Left Column Description */}
-              <div className="lg:col-span-5 space-y-5">
+              <div className="lg:col-span-5 space-y-5" data-reveal="fade-left">
                 <div className="inline-block px-3 py-1 bg-[#F5F0EB] text-[#5B0612] rounded-lg text-xs font-bold uppercase tracking-wider font-display">
                   Why Choose Swanford
                 </div>
@@ -220,7 +220,7 @@ export default async function HomePage() {
               <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 
                 {/* 1. Experienced Teachers */}
-                <div className="card-curved bg-[#FDFBF7] p-6 space-y-3">
+                <div className="card-curved bg-[#FDFBF7] p-6 space-y-3" data-reveal="fade-up" data-delay="50">
                   <div className="w-11 h-11 rounded-xl bg-[#FDF2F4] text-[#800020] flex items-center justify-center">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -233,7 +233,7 @@ export default async function HomePage() {
                 </div>
 
                 {/* 2. Conducive Learning Environment */}
-                <div className="card-curved bg-[#FDFBF7] p-6 space-y-3">
+                <div className="card-curved bg-[#FDFBF7] p-6 space-y-3" data-reveal="fade-up" data-delay="150">
                   <div className="w-11 h-11 rounded-xl bg-[#FDF2F4] text-[#800020] flex items-center justify-center">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -246,7 +246,7 @@ export default async function HomePage() {
                 </div>
 
                 {/* 3. Moral & Islamic Values */}
-                <div className="card-curved bg-[#FDFBF7] p-6 space-y-3">
+                <div className="card-curved bg-[#FDFBF7] p-6 space-y-3" data-reveal="fade-up" data-delay="250">
                   <div className="w-11 h-11 rounded-xl bg-[#FDF2F4] text-[#800020] flex items-center justify-center">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -259,7 +259,7 @@ export default async function HomePage() {
                 </div>
 
                 {/* 4. Holistic Development */}
-                <div className="card-curved bg-[#FDFBF7] p-6 space-y-3">
+                <div className="card-curved bg-[#FDFBF7] p-6 space-y-3" data-reveal="fade-up" data-delay="350">
                   <div className="w-11 h-11 rounded-xl bg-[#FDF2F4] text-[#800020] flex items-center justify-center">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -283,7 +283,7 @@ export default async function HomePage() {
         <section id="our-programmes" className="py-16 sm:py-24 bg-[#FDFBF7] border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16 space-y-3">
+            <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16 space-y-3" data-reveal="fade-up">
               <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded-lg text-xs font-bold uppercase tracking-wider font-display">
                 Our Programmes
               </div>
@@ -298,7 +298,7 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               
               {/* Card 1: Early Years (Real Classroom Image) */}
-              <div className="card-curved bg-white overflow-hidden shadow-xs hover:border-[#800020] flex flex-col justify-between group">
+              <div className="card-curved bg-white overflow-hidden shadow-xs hover:border-[#800020] flex flex-col justify-between group" data-reveal="fade-up" data-delay="50">
                 <div>
                   <div className="h-52 w-full overflow-hidden bg-stone-100 relative border-b border-[#EADBDA]">
                     <img
@@ -330,7 +330,7 @@ export default async function HomePage() {
               </div>
 
               {/* Card 2: Primary School (Real Students Parade/Drill Image) */}
-              <div className="card-curved bg-white overflow-hidden shadow-xs hover:border-[#800020] flex flex-col justify-between group">
+              <div className="card-curved bg-white overflow-hidden shadow-xs hover:border-[#800020] flex flex-col justify-between group" data-reveal="fade-up" data-delay="150">
                 <div>
                   <div className="h-52 w-full overflow-hidden bg-stone-100 relative border-b border-[#EADBDA]">
                     <img
@@ -362,7 +362,7 @@ export default async function HomePage() {
               </div>
 
               {/* Card 3: Tahfeez Programme (Tahfeez Student Image) */}
-              <div className="card-curved bg-white overflow-hidden shadow-xs hover:border-[#800020] flex flex-col justify-between group">
+              <div className="card-curved bg-white overflow-hidden shadow-xs hover:border-[#800020] flex flex-col justify-between group" data-reveal="fade-up" data-delay="250">
                 <div>
                   <div className="h-52 w-full bg-gradient-to-br from-[#3B030A] via-[#5B0612] to-[#45050E] relative border-b border-[#EADBDA] flex flex-col items-center justify-center p-6 text-center text-white overflow-hidden group-hover:from-[#45050E] group-hover:to-[#5B0612] transition-colors">
                     <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#F5D061_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
@@ -414,7 +414,7 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               
               {/* 3 Values on Left */}
-              <div className="lg:col-span-6 grid grid-cols-3 gap-4 text-center">
+              <div className="lg:col-span-6 grid grid-cols-3 gap-4 text-center" data-reveal="fade-left">
                 <div className="space-y-2.5">
                   <div className="w-12 h-12 mx-auto rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -450,7 +450,7 @@ export default async function HomePage() {
               </div>
 
               {/* Call to Action on Right */}
-              <div className="lg:col-span-6 lg:border-l lg:border-white/20 lg:pl-10 space-y-4">
+              <div className="lg:col-span-6 lg:border-l lg:border-white/20 lg:pl-10 space-y-4" data-reveal="fade-right">
                 <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display">
                   Be Part of Their Journey
                 </h2>
@@ -486,7 +486,7 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
               
               {/* Left Column: Campus Information */}
-              <div className="lg:col-span-6 space-y-6">
+              <div className="lg:col-span-6 space-y-6" data-reveal="fade-left">
                 <div className="inline-block px-3 py-1 bg-[#F5F0EB] text-[#5B0612] rounded-lg text-xs font-bold uppercase tracking-wider font-display">
                   Our Campus
                 </div>
@@ -535,7 +535,7 @@ export default async function HomePage() {
 
               {/* Right Column: Real School Entrance Image & Official Timing Card */}
               <div className="lg:col-span-6 space-y-6">
-                <div className="relative mx-auto max-w-lg lg:max-w-none">
+                <div className="relative mx-auto max-w-lg lg:max-w-none" data-reveal="fade-right">
                   
                   {/* Floating Location Badge */}
                   <div className="absolute -bottom-4 left-2 sm:-bottom-5 sm:left-4 z-10 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-2xl border border-[#EADBDA] shadow-md max-w-[280px] sm:max-w-none">
@@ -561,7 +561,7 @@ export default async function HomePage() {
                 </div>
 
                 {/* Official School Timing / Schedule Box */}
-                <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-2xl p-4 sm:p-5 shadow-xs text-left">
+                <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-2xl p-4 sm:p-5 shadow-xs text-left" data-reveal="fade-up" data-delay="100">
                   <div className="flex items-center justify-between gap-2 mb-3.5 pb-2.5 border-b border-[#EADBDA]">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#800020]" />
@@ -627,7 +627,7 @@ export default async function HomePage() {
         {/* ========================================================= */}
         <section className="py-16 sm:py-20 bg-[#FAF7F2] border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8" data-reveal="fade-up">
               <div className="space-y-2">
                 <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded-full text-xs font-bold uppercase tracking-wider font-display">
                   Campus Life
@@ -648,7 +648,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#EADBDA] text-center space-y-4">
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#EADBDA] text-center space-y-4" data-reveal="fade-up" data-delay="100">
               <p className="text-sm text-stone-600 max-w-lg mx-auto">
                 Explore authentic photographs of our learning spaces, campus events, and student milestones in our curated school gallery.
               </p>
@@ -666,7 +666,7 @@ export default async function HomePage() {
         {/* ========================================================= */}
         <section className="py-16 sm:py-20 bg-white border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-[#FAF7F2] p-8 sm:p-12 rounded-3xl border border-[#EADBDA] shadow-xs">
+            <div className="bg-[#FAF7F2] p-8 sm:p-12 rounded-3xl border border-[#EADBDA] shadow-xs" data-reveal="fade-up">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                 <div className="lg:col-span-8 space-y-3">
                   <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded-lg text-xs font-bold uppercase tracking-wider font-display">

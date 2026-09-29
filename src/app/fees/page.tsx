@@ -45,7 +45,7 @@ export default function FeesPage() {
       <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {/* Page Banner */}
         <section className="bg-[#FAF7F2] border-b border-[#EADBDA] py-12 sm:py-16 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3" data-reveal="fade-in">
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded-full text-xs font-bold uppercase tracking-wider">
               Financial Information &amp; Policy
             </div>
@@ -82,7 +82,7 @@ export default function FeesPage() {
             {data && (
               <div className="space-y-10">
                 {/* 1. Official Policy Banner */}
-                <div className="rounded-3xl border-2 border-[#5B0612]/20 bg-gradient-to-br from-[#FAF7F2] via-white to-[#FDF8F0] p-6 sm:p-10 shadow-sm space-y-6">
+                <div className="rounded-3xl border-2 border-[#5B0612]/20 bg-gradient-to-br from-[#FAF7F2] via-white to-[#FDF8F0] p-6 sm:p-10 shadow-sm space-y-6" data-reveal="fade-up">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#EADBDA] pb-6">
                     <div className="space-y-1">
                       <span className="text-xs uppercase tracking-wider font-bold text-[#800020] block">
@@ -122,7 +122,7 @@ export default function FeesPage() {
                 </div>
 
                 {/* 2. Step-by-Step Admissions & Invoicing Process */}
-                <div className="space-y-6">
+                <div className="space-y-6" data-reveal="fade-up">
                   <div className="border-b border-[#EADBDA] pb-3">
                     <h2 className="text-lg sm:text-xl font-bold text-[#5B0612]">
                       How the Invoicing &amp; Payment Process Works
@@ -134,7 +134,7 @@ export default function FeesPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {/* Step 1 */}
-                    <Card className="bg-[#FAF7F2] border-[#EADBDA]">
+                    <Card className="bg-[#FAF7F2] border-[#EADBDA]" data-reveal="fade-up" data-delay="50">
                       <CardContent className="p-6 space-y-3">
                         <div className="w-8 h-8 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center">
                           01
@@ -149,7 +149,7 @@ export default function FeesPage() {
                     </Card>
 
                     {/* Step 2 */}
-                    <Card className="bg-[#FAF7F2] border-[#EADBDA]">
+                    <Card className="bg-[#FAF7F2] border-[#EADBDA]" data-reveal="fade-up" data-delay="120">
                       <CardContent className="p-6 space-y-3">
                         <div className="w-8 h-8 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center">
                           02
@@ -164,7 +164,7 @@ export default function FeesPage() {
                     </Card>
 
                     {/* Step 3 */}
-                    <Card className="bg-[#FAF7F2] border-[#EADBDA]">
+                    <Card className="bg-[#FAF7F2] border-[#EADBDA]" data-reveal="fade-up" data-delay="190">
                       <CardContent className="p-6 space-y-3">
                         <div className="w-8 h-8 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center">
                           03

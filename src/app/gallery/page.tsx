@@ -67,7 +67,7 @@ export default function PublicGalleryPage() {
       <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {/* Page Banner */}
         <section className="bg-[#FAF7F2] border-b border-[#EADBDA] py-12 sm:py-16 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3" data-reveal="fade-in">
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded-full text-xs font-bold uppercase tracking-wider">
               Life at Swanford Academy
             </div>
@@ -84,7 +84,7 @@ export default function PublicGalleryPage() {
         <section className="py-10 sm:py-16 bg-white overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             {/* Category Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 table-scrollbar scroll-smooth">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 table-scrollbar scroll-smooth" data-reveal="fade-up">
               {CATEGORIES.map((cat) => {
                 const isActive = selectedCategory === cat.value;
                 return (
@@ -159,10 +159,12 @@ export default function PublicGalleryPage() {
             {/* Responsive Photo Grid */}
             {!loading && !error && photos.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                {photos.map((photo) => (
+                {photos.map((photo, idx) => (
                   <article
                     key={photo.id}
                     onClick={() => setActivePhoto(photo)}
+                    data-reveal="scale"
+                    data-delay={(idx % 6) * 60 + 50}
                     className="group flex flex-col overflow-hidden rounded-2xl border border-[#EADBDA] bg-white shadow-2xs hover:shadow-md transition-all duration-200 cursor-pointer"
                   >
                     {/* Image Container with Consistent Ratio & Distortion Prevention */}

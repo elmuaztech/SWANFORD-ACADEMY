@@ -16,7 +16,7 @@ export default function ProgrammesPage() {
       <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {/* Page Banner */}
         <section className="bg-[#FDFBF7] border-b border-[#EADBDA] py-12 sm:py-16 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3" data-reveal="fade-in">
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
               Educational Offerings
             </div>
@@ -33,7 +33,7 @@ export default function ProgrammesPage() {
         <section id="early-years" className="py-16 sm:py-20 bg-white border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              <div className="lg:col-span-5 space-y-4">
+              <div className="lg:col-span-5 space-y-4" data-reveal="fade-left">
                 <div className="inline-block px-3 py-1 bg-[#F5F0EB] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
                   Stage 01
                 </div>
@@ -56,8 +56,8 @@ export default function ProgrammesPage() {
                 </div>
               </div>
 
-              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
+              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4" data-reveal="fade-right">
+                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs" data-reveal="fade-up" data-delay="50">
                   <CardContent className="p-6 space-y-2">
                     <h3 className="font-bold text-base text-[#5B0612]">Creche</h3>
                     <p className="text-xs text-[#524B46] leading-relaxed">
@@ -66,7 +66,7 @@ export default function ProgrammesPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
+                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs" data-reveal="fade-up" data-delay="120">
                   <CardContent className="p-6 space-y-2">
                     <h3 className="font-bold text-base text-[#5B0612]">Pre-Scholars</h3>
                     <p className="text-xs text-[#524B46] leading-relaxed">
@@ -75,7 +75,7 @@ export default function ProgrammesPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
+                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs" data-reveal="fade-up" data-delay="190">
                   <CardContent className="p-6 space-y-2">
                     <h3 className="font-bold text-base text-[#5B0612]">Pre-Nursery</h3>
                     <p className="text-xs text-[#524B46] leading-relaxed">
@@ -84,7 +84,7 @@ export default function ProgrammesPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
+                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs" data-reveal="fade-up" data-delay="260">
                   <CardContent className="p-6 space-y-2">
                     <h3 className="font-bold text-base text-[#5B0612]">Nursery 1 &amp; Nursery 2</h3>
                     <p className="text-xs text-[#524B46] leading-relaxed">
@@ -101,7 +101,7 @@ export default function ProgrammesPage() {
         <section id="primary" className="py-16 sm:py-20 bg-[#FDFBF7] border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              <div className="lg:col-span-5 space-y-4">
+              <div className="lg:col-span-5 space-y-4" data-reveal="fade-left">
                 <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
                   Stage 02
                 </div>
@@ -124,8 +124,8 @@ export default function ProgrammesPage() {
                 </div>
               </div>
 
-              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-white p-6 rounded-xl border border-[#EADBDA] shadow-xs space-y-2">
+              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4" data-reveal="fade-right">
+                <div className="bg-white p-6 rounded-xl border border-[#EADBDA] shadow-xs space-y-2" data-reveal="fade-up" data-delay="80">
                   <span className="text-xs font-bold text-[#5B0612]">Grades 1 &ndash; 3</span>
                   <h3 className="font-bold text-base text-[#5B0612]">Lower Primary</h3>
                   <p className="text-xs text-[#524B46] leading-relaxed">
@@ -133,7 +133,7 @@ export default function ProgrammesPage() {
                   </p>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl border border-[#EADBDA] shadow-xs space-y-2">
+                <div className="bg-white p-6 rounded-xl border border-[#EADBDA] shadow-xs space-y-2" data-reveal="fade-up" data-delay="160">
                   <span className="text-xs font-bold text-[#5B0612]">Grades 4 &ndash; 6</span>
                   <h3 className="font-bold text-base text-[#5B0612]">Upper Primary</h3>
                   <p className="text-xs text-[#524B46] leading-relaxed">
@@ -148,7 +148,7 @@ export default function ProgrammesPage() {
         {/* Section 3: Tahfeez Programme (Standalone) */}
         <section id="tahfeez" className="py-16 sm:py-20 bg-white border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto bg-[#FDFBF7] p-8 sm:p-12 rounded-2xl border-2 border-[#5B0612] space-y-6">
+            <div className="max-w-4xl mx-auto bg-[#FDFBF7] p-8 sm:p-12 rounded-2xl border-2 border-[#5B0612] space-y-6 shadow-xs" data-reveal="fade-up">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EADBDA] pb-6">
                 <div>
                   <div className="inline-block px-3 py-1 bg-[#5B0612] text-white rounded text-xs font-bold uppercase tracking-wider mb-2">
@@ -203,7 +203,7 @@ export default function ProgrammesPage() {
 
         {/* Bottom CTA */}
         <section className="py-16 bg-[#FDFBF7] text-center overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4" data-reveal="fade-up">
             <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">Ready to Apply?</h2>
             <p className="text-sm text-[#524B46] max-w-xl mx-auto">
               Admissions are currently open for the active academic cycle. Complete the online admission form in minutes.

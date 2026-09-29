@@ -25,7 +25,7 @@ export default function ContactPage() {
       <main className="flex-1">
         {/* Page Banner */}
         <section className="bg-[#FDFBF7] border-b border-[#EADBDA] py-12 sm:py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3" data-reveal="fade-in">
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
               Get in Touch
             </div>
@@ -43,7 +43,7 @@ export default function ContactPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
               {/* Left Column: School Information */}
-              <div className="lg:col-span-6 space-y-8">
+              <div className="lg:col-span-6 space-y-8" data-reveal="fade-left">
                 <div>
                   <h2 className="text-2xl font-bold text-[#5B0612] mb-4">
                     School Location &amp; Administration
@@ -89,7 +89,7 @@ export default function ContactPage() {
               </div>
 
               {/* Right Column: Send an Inquiry */}
-              <div className="lg:col-span-6">
+              <div className="lg:col-span-6" data-reveal="fade-right">
                 <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
                   <CardContent className="p-6 sm:p-8 space-y-6">
                     <div>

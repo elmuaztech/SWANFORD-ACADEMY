@@ -16,7 +16,7 @@ export default function AboutPage() {
       <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {/* Header Banner */}
         <section className="bg-[#FDFBF7] border-b border-[#EADBDA] py-12 sm:py-16 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3" data-reveal="fade-in">
             <div className="inline-block px-3 py-1 bg-[#EADBDA] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
               About Swanford Academy
             </div>
@@ -34,30 +34,34 @@ export default function AboutPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
               {/* Vision */}
-              <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
-                <CardContent className="p-8 space-y-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#5B0612] text-white flex items-center justify-center font-bold">
-                    V
-                  </div>
-                  <h2 className="text-2xl font-bold text-[#5B0612]">Our Vision</h2>
-                  <p className="text-sm sm:text-base text-[#524B46] leading-relaxed">
-                    {SCHOOL_PROFILE.vision}
-                  </p>
-                </CardContent>
-              </Card>
+              <div data-reveal="fade-left">
+                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs h-full">
+                  <CardContent className="p-8 space-y-4">
+                    <div className="w-10 h-10 rounded-lg bg-[#5B0612] text-white flex items-center justify-center font-bold">
+                      V
+                    </div>
+                    <h2 className="text-2xl font-bold text-[#5B0612]">Our Vision</h2>
+                    <p className="text-sm sm:text-base text-[#524B46] leading-relaxed">
+                      {SCHOOL_PROFILE.vision}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Mission */}
-              <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs">
-                <CardContent className="p-8 space-y-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#5B0612] text-white flex items-center justify-center font-bold">
-                    M
-                  </div>
-                  <h2 className="text-2xl font-bold text-[#5B0612]">Our Mission</h2>
-                  <p className="text-sm sm:text-base text-[#524B46] leading-relaxed">
-                    {SCHOOL_PROFILE.mission}
-                  </p>
-                </CardContent>
-              </Card>
+              <div data-reveal="fade-right">
+                <Card className="bg-[#FDFBF7] border-[#EADBDA] shadow-xs h-full">
+                  <CardContent className="p-8 space-y-4">
+                    <div className="w-10 h-10 rounded-lg bg-[#5B0612] text-white flex items-center justify-center font-bold">
+                      M
+                    </div>
+                    <h2 className="text-2xl font-bold text-[#5B0612]">Our Mission</h2>
+                    <p className="text-sm sm:text-base text-[#524B46] leading-relaxed">
+                      {SCHOOL_PROFILE.mission}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </section>
@@ -65,7 +69,7 @@ export default function AboutPage() {
         {/* Core Values */}
         <section className="py-16 sm:py-20 bg-[#FDFBF7] border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
+            <div className="text-center max-w-3xl mx-auto mb-12 space-y-3" data-reveal="fade-up">
               <h2 className="text-2xl sm:text-4xl font-bold text-[#5B0612] tracking-tight">
                 Our Core Values
               </h2>
@@ -78,6 +82,8 @@ export default function AboutPage() {
               {SCHOOL_PROFILE.coreValues.map((value, i) => (
                 <div
                   key={value}
+                  data-reveal="fade-up"
+                  data-delay={(i % 4) * 80 + 50}
                   className="bg-white p-6 rounded-xl border border-[#EADBDA] shadow-xs space-y-2 hover:border-[#5B0612] transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-[#EADBDA] text-[#5B0612] text-xs font-bold flex items-center justify-center">
@@ -96,7 +102,7 @@ export default function AboutPage() {
         {/* Curriculum & Academic Approach */}
         <section className="py-16 sm:py-20 bg-white border-b border-[#EADBDA] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto space-y-6">
+            <div className="max-w-3xl mx-auto space-y-6" data-reveal="fade-up">
               <div className="inline-block px-3 py-1 bg-[#F5F0EB] text-[#5B0612] rounded text-xs font-bold uppercase tracking-wider">
                 Academic Standard
               </div>
@@ -130,7 +136,7 @@ export default function AboutPage() {
         {/* Administration & Leadership */}
         <section className="py-16 sm:py-20 bg-[#FDFBF7] overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center space-y-6">
+            <div className="max-w-3xl mx-auto text-center space-y-6" data-reveal="fade-up">
               <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">
                 School Administration
               </h2>
