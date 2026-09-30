@@ -11,7 +11,7 @@ echo "1. Pulling latest code from GitHub..."
 git pull origin main
 
 echo "2. Applying container updates..."
-docker compose -f deployment/docker-compose.yml up -d
+docker compose -f deployment/docker-compose.yml up -d --build
 
 echo "3. Synchronizing database state and superadmin..."
 docker compose -f deployment/docker-compose.yml exec -T app node /app/scripts/bootstrap.mjs
