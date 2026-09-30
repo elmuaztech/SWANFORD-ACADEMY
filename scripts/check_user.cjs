@@ -1,5 +1,4 @@
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
@@ -16,9 +15,9 @@ async function check() {
 
   console.log(`Total users in system: ${users.length}`);
   for (const u of users) {
-    const isMatch = bcrypt.compareSync('admin123', u.passwordHash);
     const roles = u.userRoles.map((r) => r.role.code).join(', ');
-    console.log(`User: ${u.email} | Status: ${u.status} | Roles: [${roles}] | Password 'admin123' Match: ${isMatch}`);
+    const hasValidHash = Boolean(u.passwordHash && u.passwordHash.startsWith('$2'));
+    console.log(`User: ${u.email} | Status: ${u.status} | Roles: [${roles}] | Password Configured: ${hasValidHash}`);
   }
 }
 
