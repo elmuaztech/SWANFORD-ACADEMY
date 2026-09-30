@@ -773,8 +773,13 @@ async function seedProductionFoundation(prisma2) {
   const superAdminPasswordHash = "$2b$12$N2wHzTdfQrwu6fUQJTwrz.bpZjz/mMPpflEBrpX6iKGTETKuz9Spi";
   const superAdminRoleId = rolesMap.get(RoleCode2.SUPER_ADMIN);
   const adminRoleId = rolesMap.get(RoleCode2.ADMIN);
-  const superAdminUser = await prisma2.user.create({
-    data: {
+  const superAdminUser = await prisma2.user.upsert({
+    where: { email: "swanford99@gmail.com" },
+    update: {
+      passwordHash: superAdminPasswordHash,
+      status: "ACTIVE",
+    },
+    create: {
       email: "swanford99@gmail.com",
       firstName: "Super",
       lastName: "Admin",
@@ -784,15 +789,29 @@ async function seedProductionFoundation(prisma2) {
       emailVerifiedAt: /* @__PURE__ */ new Date()
     }
   });
-  await prisma2.userRole.create({
-    data: {
+  await prisma2.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: superAdminUser.id,
+        roleId: superAdminRoleId
+      }
+    },
+    update: {},
+    create: {
       userId: superAdminUser.id,
       roleId: superAdminRoleId
     }
   });
   if (adminRoleId) {
-    await prisma2.userRole.create({
-      data: {
+    await prisma2.userRole.upsert({
+      where: {
+        userId_roleId: {
+          userId: superAdminUser.id,
+          roleId: adminRoleId
+        }
+      },
+      update: {},
+      create: {
         userId: superAdminUser.id,
         roleId: adminRoleId
       }
