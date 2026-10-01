@@ -91,7 +91,16 @@ export function toUserFacingError(error: unknown): TranslatedMessage {
     };
   }
 
-  // 4. Authentication / Session Expiration
+  // 4. Payment Session Expiration (Public / Checkout)
+  if (/payment session/i.test(rawMessage)) {
+    return {
+      title: "Checkout Unavailable",
+      message: "This payment session has timed out. Please refresh the page to restart your payment.",
+      actionText: "Refresh Page",
+    };
+  }
+
+  // 5. Authentication / Session Expiration
   if (/session/i.test(rawMessage) || /unauthorized/i.test(rawMessage) || /jwt/i.test(rawMessage) || /token/i.test(rawMessage)) {
     return {
       title: "Session Expired",

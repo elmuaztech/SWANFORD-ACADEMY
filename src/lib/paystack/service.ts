@@ -70,10 +70,6 @@ export async function initializeApplicationPayment(
   const session = await verifyPaymentSessionToken({
     token: sessionToken,
     targetType: PaymentTargetType.APPLICATION_FEE,
-    targetId: "", // Will be extracted from session
-  }).catch(async () => {
-    // If targetId was empty, load by token directly
-    return verifyPaymentSessionTokenByTokenOnly(sessionToken, PaymentTargetType.APPLICATION_FEE);
   });
 
   const applicationId = session.applicationId;
@@ -157,7 +153,10 @@ export async function initializeInvoicePayment(params: InitializeInvoicePaymentP
   const { sessionToken, callbackUrl } = params;
 
   // 1. Verify session token
-  const session = await verifyPaymentSessionTokenByTokenOnly(sessionToken, PaymentTargetType.INVOICE);
+  const session = await verifyPaymentSessionToken({
+    token: sessionToken,
+    targetType: PaymentTargetType.INVOICE,
+  });
   const invoiceId = session.invoiceId;
   if (!invoiceId) {
     throw new AuthorizationError("Session is not linked to an invoice.", 400, "INVALID_SESSION");
@@ -880,18 +879,8 @@ async function verifyPaymentSessionTokenByTokenOnly(
   token: string,
   targetType: PaymentTargetType
 ) {
-  const session = await prisma.paymentSession.findFirst({
-    where: {
-      targetType,
-      usedAt: null,
-    },
-    include: { application: true, invoice: true },
-  });
-
-  // Check using full verification method
   return verifyPaymentSessionToken({
     token,
     targetType,
-    targetId: session?.applicationId || session?.invoiceId || "",
   });
 }

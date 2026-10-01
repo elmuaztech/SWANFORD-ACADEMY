@@ -29,7 +29,7 @@ export interface CreatePaymentSessionParams {
 export interface VerifySessionTokenParams {
   token: string;
   targetType: PaymentTargetType;
-  targetId: string; // applicationId or invoiceId
+  targetId?: string; // applicationId or invoiceId (optional if identifying via cryptographically secure token)
   client?: Prisma.TransactionClient | typeof prisma;
 }
 
@@ -135,10 +135,12 @@ export async function verifyPaymentSessionToken(params: VerifySessionTokenParams
     throw new AuthorizationError("Payment session target type mismatch.", 403, "SESSION_TARGET_MISMATCH");
   }
 
-  // Check target ID
-  const expectedId = targetType === PaymentTargetType.APPLICATION_FEE ? session.applicationId : session.invoiceId;
-  if (expectedId !== targetId) {
-    throw new AuthorizationError("Payment session is not authorized for the requested entity.", 403, "SESSION_ENTITY_MISMATCH");
+  // Check target ID if explicitly provided
+  if (targetId && targetId.trim().length > 0) {
+    const expectedId = targetType === PaymentTargetType.APPLICATION_FEE ? session.applicationId : session.invoiceId;
+    if (expectedId !== targetId.trim()) {
+      throw new AuthorizationError("Payment session is not authorized for the requested entity.", 403, "SESSION_ENTITY_MISMATCH");
+    }
   }
 
   // Check expiration
