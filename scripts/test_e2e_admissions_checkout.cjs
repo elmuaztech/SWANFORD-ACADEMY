@@ -25,17 +25,17 @@ async function testFlow() {
   const application = await prisma.application.create({
     data: {
       applicationNumber: testNumber,
+      academicSessionId: cycle.academicSessionId,
       admissionCycleId: cycle.id,
-      programmeId: prog.id,
       applicantFirstName: 'Test',
       applicantLastName: 'Applicant',
-      dateOfBirth: new Date('2020-01-01'),
+      applicantDob: new Date('2020-01-01'),
       applicantGender: 'MALE',
-      guardianName: 'Test Parent',
+      guardianFirstName: 'Test',
+      guardianLastName: 'Parent',
       guardianEmail: 'test.parent@swanfordacademy.com.ng',
       guardianPhone: '08012345678',
-      guardianAddress: '123 Test Street, Abuja',
-      stateOfOrigin: 'FCT',
+      guardianRelationship: 'FATHER',
       totalAmountKobo: BigInt(500000),
       paymentStatus: ApplicationPaymentStatus.PAYMENT_PENDING
     }
