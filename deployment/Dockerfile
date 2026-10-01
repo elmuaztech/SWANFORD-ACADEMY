@@ -48,6 +48,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
+# Create persistent media storage directory with full nextjs permissions
+RUN mkdir -p /app/storage/media/profile-photos /app/storage/media/gallery-photos && \
+    chown -R nextjs:nodejs /app/storage && \
+    chmod -R 775 /app/storage
+
 USER nextjs
 
 EXPOSE 3000
