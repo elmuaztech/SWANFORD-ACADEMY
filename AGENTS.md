@@ -23,3 +23,4 @@ The application must be designed and implemented as a professional production so
 6. **Accessible forms & tables**: Human-readable errors adjacent to fields; transform tables to responsive cards or scrolling containers with visible indicators on small screens.
 7. **Loading, empty, and error states**: Never leave a screen blank during data fetching. Provide skeletons, friendly empty states, and actionable error states.
 8. **Frontend quality gate**: Inspect rendered interfaces visually at mobile and desktop sizes in addition to running `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`.
+9. **Continuous Git Sync**: Automatically pull, commit with clear descriptive messages, and push verified changes to GitHub (`origin/main`) after completing any fix or feature without waiting to be prompted.
