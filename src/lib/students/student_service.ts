@@ -1,4 +1,4 @@
-import { Gender, StudentStatus, RoleCode, Prisma } from '@prisma/client';
+import { Gender, StudentStatus, RoleCode, Prisma, EnrollmentType, EnrollmentStatus } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requirePermission, AuthorizationError, getUserRoles, getUserPermissions } from '@/lib/auth/authorization';
@@ -451,6 +451,21 @@ export async function listStudents(
         currentStatus: true,
         createdAt: true,
         updatedAt: true,
+        programmeEnrollments: {
+          where: { enrollmentStatus: 'ACTIVE' },
+          select: {
+            programme: { select: { code: true } },
+            schoolClass: { select: { id: true, name: true } },
+          },
+        },
+        guardianLinks: {
+          where: { status: 'ACTIVE' },
+          select: {
+            guardian: {
+              select: { firstName: true, lastName: true, phonePrimary: true },
+            },
+          },
+        },
         // Notice: NO medicalNotes, bloodGroup, genotype, allergies, or emergency contacts projected here!
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
@@ -459,11 +474,26 @@ export async function listStudents(
     }),
   ]);
 
+  const mappedStudents = students.map((s) => {
+    const primaryEnrollment = s.programmeEnrollments?.find((pe) => pe.programme.code !== 'TAHFEEZ');
+    const tahfeezEnrollment = s.programmeEnrollments?.find((pe) => pe.programme.code === 'TAHFEEZ');
+    return {
+      ...s,
+      status: s.currentStatus,
+      middleName: s.otherNames,
+      primaryClass: primaryEnrollment ? primaryEnrollment.schoolClass : null,
+      tahfeezClass: tahfeezEnrollment ? tahfeezEnrollment.schoolClass : null,
+      guardians: (s.guardianLinks || []).map((gl) => ({
+        guardian: gl.guardian,
+      })),
+    };
+  });
+
   return {
     total,
     limit,
     offset,
-    students,
+    students: mappedStudents,
   };
 }
 
@@ -516,4 +546,459 @@ export async function transitionStudentStatus(
   });
 
   return updated;
+}
+
+export const UpdateStudentDossierSchema = z.object({
+  firstName: z.string().min(2, 'First name must be at least 2 characters').trim().optional(),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters').trim().optional(),
+  otherNames: z.string().trim().nullable().optional(),
+  preferredName: z.string().trim().nullable().optional(),
+  gender: z.nativeEnum(Gender).optional(),
+  dateOfBirth: z.coerce.date().refine((d) => d < new Date(), {
+    message: 'Date of birth must be in the past',
+  }).optional(),
+  currentStatus: z.nativeEnum(StudentStatus).optional(),
+  bloodGroup: z.string().trim().nullable().optional(),
+  genotype: z.string().trim().nullable().optional(),
+  medicalNotes: z.string().trim().nullable().optional(),
+  allergies: z.string().trim().nullable().optional(),
+  medicalConditions: z.string().trim().nullable().optional(),
+  emergencyContactName: z.string().trim().nullable().optional(),
+  emergencyContactPhone: z.string().trim().nullable().optional(),
+  emergencyContactRelationship: z.string().trim().nullable().optional(),
+  primaryClassId: z.string().uuid().nullable().optional(),
+  tahfeezClassId: z.string().uuid().nullable().optional(),
+});
+
+export type UpdateStudentDossierInput = z.infer<typeof UpdateStudentDossierSchema>;
+
+/**
+ * Retrieves full comprehensive student dossier for administrative management.
+ * Guarantees all relation arrays (guardians, programmeEnrollments, attendanceRecords, invoices)
+ * and resolved classes are populated, preventing frontend undefined errors.
+ */
+export async function getAdminStudentDossier(actor: SafeUser, studentId: string) {
+  const roles = await getUserRoles(actor.id);
+  const permissions = await getUserPermissions(actor.id);
+  const isSuperAdmin = roles.includes(RoleCode.SUPER_ADMIN);
+  const isAdmin = roles.includes(RoleCode.ADMIN);
+  const isAccountant = roles.includes(RoleCode.ACCOUNTANT);
+
+  if (!isSuperAdmin && !isAdmin && !isAccountant) {
+    await requirePermission(actor, PermissionCode.STUDENT_VIEW);
+  }
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    include: {
+      guardianLinks: {
+        where: { status: 'ACTIVE' },
+        include: {
+          guardian: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              phonePrimary: true,
+              email: true,
+              residentialAddress: true,
+            },
+          },
+        },
+      },
+      programmeEnrollments: {
+        where: { enrollmentStatus: 'ACTIVE' },
+        include: {
+          programme: { select: { id: true, name: true, code: true } },
+          schoolClass: { select: { id: true, name: true, code: true } },
+        },
+      },
+      attendanceRecords: {
+        take: 30,
+        orderBy: { date: 'desc' },
+        include: {
+          schoolClass: { select: { id: true, name: true } },
+        },
+      },
+      invoices: {
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          totalAmountKobo: true,
+          amountPaidKobo: true,
+          status: true,
+        },
+      },
+    },
+  });
+
+  if (!student) {
+    throw new AuthorizationError('Student not found.', 404, 'STUDENT_NOT_FOUND');
+  }
+
+  // Derive primaryClass (main academic) and tahfeezClass
+  const primaryEnrollment = student.programmeEnrollments.find(
+    (pe) => pe.programme.code !== 'TAHFEEZ'
+  );
+  const tahfeezEnrollment = student.programmeEnrollments.find(
+    (pe) => pe.programme.code === 'TAHFEEZ'
+  );
+
+  const primaryClass = primaryEnrollment
+    ? { id: primaryEnrollment.schoolClass.id, name: primaryEnrollment.schoolClass.name }
+    : null;
+
+  const tahfeezClass = tahfeezEnrollment
+    ? { id: tahfeezEnrollment.schoolClass.id, name: tahfeezEnrollment.schoolClass.name }
+    : null;
+
+  // Format guardians
+  const guardians = (student.guardianLinks || []).map((gl) => ({
+    id: gl.id,
+    relationshipType: gl.relationshipType,
+    isPrimaryPayer: gl.receivesInvoices || gl.isPrimaryContact,
+    isEmergencyContact: gl.isPrimaryContact,
+    guardian: {
+      id: gl.guardian.id,
+      firstName: gl.guardian.firstName,
+      lastName: gl.guardian.lastName,
+      phonePrimary: gl.guardian.phonePrimary || '',
+      email: gl.guardian.email || null,
+      residentialAddress: gl.guardian.residentialAddress || null,
+    },
+  }));
+
+  // Format programme enrollments
+  const programmeEnrollments = (student.programmeEnrollments || []).map((pe) => ({
+    id: pe.id,
+    programme: { id: pe.programme.id, name: pe.programme.name, code: pe.programme.code },
+    schoolClass: { id: pe.schoolClass.id, name: pe.schoolClass.name },
+    status: pe.enrollmentStatus,
+  }));
+
+  // Format attendance records
+  const attendanceRecords = (student.attendanceRecords || []).map((ar) => ({
+    id: ar.id,
+    date: ar.date.toISOString(),
+    status: ar.status,
+    remarks: ar.remarks,
+    schoolClass: { name: ar.schoolClass.name },
+  }));
+
+  // Format invoices
+  const invoices = (student.invoices || []).map((inv) => {
+    const total = BigInt(inv.totalAmountKobo);
+    const paid = BigInt(inv.amountPaidKobo);
+    const balance = total > paid ? total - paid : BigInt(0);
+    return {
+      id: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      totalAmountKobo: total.toString(),
+      amountPaidKobo: paid.toString(),
+      outstandingBalanceKobo: balance.toString(),
+      status: inv.status,
+    };
+  });
+
+  // Sensitive medical projection
+  const canViewMedical = isSuperAdmin || permissions.has(PermissionCode.STUDENT_MEDICAL_VIEW);
+
+  return {
+    id: student.id,
+    admissionNumber: student.admissionNumber,
+    firstName: student.firstName,
+    lastName: student.lastName,
+    otherNames: student.otherNames,
+    middleName: student.otherNames,
+    preferredName: student.preferredName,
+    gender: student.gender,
+    dob: student.dateOfBirth.toISOString(),
+    dateOfBirth: student.dateOfBirth.toISOString(),
+    admissionDate: student.admissionDate.toISOString(),
+    status: student.currentStatus,
+    currentStatus: student.currentStatus,
+    profilePhotoId: student.profilePhotoId,
+    primaryClass,
+    tahfeezClass,
+    guardians,
+    programmeEnrollments,
+    attendanceRecords,
+    invoices,
+    assessmentScores: [],
+    reportReleases: [],
+    // Sensitive data
+    bloodGroup: canViewMedical ? student.bloodGroup : null,
+    genotype: canViewMedical ? student.genotype : null,
+    medicalNotes: canViewMedical ? student.medicalNotes : null,
+    allergies: canViewMedical ? student.allergies : null,
+    medicalConditions: canViewMedical ? student.medicalConditions : null,
+    emergencyContactName: student.emergencyContactName,
+    emergencyContactPhone: student.emergencyContactPhone,
+    emergencyContactRelationship: student.emergencyContactRelationship,
+    createdAt: student.createdAt.toISOString(),
+    updatedAt: student.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * Super Admin exclusive: Updates a student's dossier and class assignments.
+ */
+export async function updateStudentAdminDossier(
+  actor: SafeUser,
+  studentId: string,
+  input: UpdateStudentDossierInput
+) {
+  const roles = await getUserRoles(actor.id);
+  const isSuperAdmin = roles.includes(RoleCode.SUPER_ADMIN);
+  if (!isSuperAdmin) {
+    throw new AuthorizationError(
+      'Access denied: Only Super Administrators have authority to modify student dossiers.',
+      403,
+      'SUPER_ADMIN_REQUIRED'
+    );
+  }
+
+  const validated = UpdateStudentDossierSchema.parse(input);
+
+  const existing = await prisma.student.findUnique({
+    where: { id: studentId },
+    include: {
+      programmeEnrollments: {
+        where: { enrollmentStatus: 'ACTIVE' },
+        include: { programme: true, schoolClass: true },
+      },
+    },
+  });
+
+  if (!existing) {
+    throw new AuthorizationError('Student not found.', 404, 'STUDENT_NOT_FOUND');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Update Student Table
+    const updated = await tx.student.update({
+      where: { id: studentId },
+      data: {
+        ...(validated.firstName && { firstName: validated.firstName }),
+        ...(validated.lastName && { lastName: validated.lastName }),
+        ...(validated.otherNames !== undefined && { otherNames: validated.otherNames }),
+        ...(validated.preferredName !== undefined && { preferredName: validated.preferredName }),
+        ...(validated.gender && { gender: validated.gender }),
+        ...(validated.dateOfBirth && { dateOfBirth: validated.dateOfBirth }),
+        ...(validated.currentStatus && { currentStatus: validated.currentStatus }),
+        ...(validated.bloodGroup !== undefined && { bloodGroup: validated.bloodGroup }),
+        ...(validated.genotype !== undefined && { genotype: validated.genotype }),
+        ...(validated.medicalNotes !== undefined && { medicalNotes: validated.medicalNotes }),
+        ...(validated.allergies !== undefined && { allergies: validated.allergies }),
+        ...(validated.medicalConditions !== undefined && { medicalConditions: validated.medicalConditions }),
+        ...(validated.emergencyContactName !== undefined && { emergencyContactName: validated.emergencyContactName }),
+        ...(validated.emergencyContactPhone !== undefined && { emergencyContactPhone: validated.emergencyContactPhone }),
+        ...(validated.emergencyContactRelationship !== undefined && { emergencyContactRelationship: validated.emergencyContactRelationship }),
+      },
+    });
+
+    // 2. Handle Primary Class Assignment
+    if (validated.primaryClassId !== undefined && validated.primaryClassId !== null) {
+      const targetClass = await tx.schoolClass.findUnique({
+        where: { id: validated.primaryClassId },
+        include: { programme: true },
+      });
+
+      if (targetClass) {
+        const activePrimaryEnrollment = existing.programmeEnrollments.find(
+          (pe) => pe.programme.code !== 'TAHFEEZ'
+        );
+
+        if (activePrimaryEnrollment) {
+          if (activePrimaryEnrollment.schoolClassId !== targetClass.id) {
+            await tx.studentProgrammeEnrollment.update({
+              where: { id: activePrimaryEnrollment.id },
+              data: {
+                schoolClassId: targetClass.id,
+                programmeId: targetClass.programmeId,
+              },
+            });
+          }
+        } else {
+          const currentSession = await tx.academicSession.findFirst({
+            where: { isCurrent: true },
+            include: { terms: { where: { isCurrent: true }, take: 1 } },
+          });
+
+          if (currentSession && currentSession.terms[0]) {
+            await tx.studentProgrammeEnrollment.create({
+              data: {
+                studentId,
+                programmeId: targetClass.programmeId,
+                schoolClassId: targetClass.id,
+                academicSessionId: currentSession.id,
+                academicTermId: currentSession.terms[0].id,
+                enrollmentType: EnrollmentType.MAIN_ACADEMIC,
+                enrollmentStatus: EnrollmentStatus.ACTIVE,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // 3. Handle Tahfeez Class Assignment
+    if (validated.tahfeezClassId !== undefined) {
+      const activeTahfeezEnrollment = existing.programmeEnrollments.find(
+        (pe) => pe.programme.code === 'TAHFEEZ'
+      );
+
+      if (validated.tahfeezClassId) {
+        const targetTahfeezClass = await tx.schoolClass.findUnique({
+          where: { id: validated.tahfeezClassId },
+          include: { programme: true },
+        });
+
+        if (targetTahfeezClass) {
+          if (activeTahfeezEnrollment) {
+            if (activeTahfeezEnrollment.schoolClassId !== targetTahfeezClass.id) {
+              await tx.studentProgrammeEnrollment.update({
+                where: { id: activeTahfeezEnrollment.id },
+                data: { schoolClassId: targetTahfeezClass.id },
+              });
+            }
+          } else {
+            const currentSession = await tx.academicSession.findFirst({
+              where: { isCurrent: true },
+              include: { terms: { where: { isCurrent: true }, take: 1 } },
+            });
+            if (currentSession && currentSession.terms[0]) {
+              await tx.studentProgrammeEnrollment.create({
+                data: {
+                  studentId,
+                  programmeId: targetTahfeezClass.programmeId,
+                  schoolClassId: targetTahfeezClass.id,
+                  academicSessionId: currentSession.id,
+                  academicTermId: currentSession.terms[0].id,
+                  enrollmentType: EnrollmentType.ADDITIONAL_PROGRAMME,
+                  enrollmentStatus: EnrollmentStatus.ACTIVE,
+                },
+              });
+            }
+          }
+        }
+      } else if (validated.tahfeezClassId === null && activeTahfeezEnrollment) {
+        await tx.studentProgrammeEnrollment.update({
+          where: { id: activeTahfeezEnrollment.id },
+          data: { enrollmentStatus: EnrollmentStatus.WITHDRAWN },
+        });
+      }
+    }
+
+    // 4. Audit Log
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'STUDENT_UPDATE',
+        entityType: 'student',
+        entityId: studentId,
+        oldValues: {
+          firstName: existing.firstName,
+          lastName: existing.lastName,
+          currentStatus: existing.currentStatus,
+        },
+        newValues: {
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          currentStatus: updated.currentStatus,
+        },
+      },
+    });
+
+    return updated;
+  });
+}
+
+/**
+ * Super Admin exclusive: Permanently deletes a student record and all cascading associations.
+ */
+export async function deleteStudent(actor: SafeUser, studentId: string) {
+  const roles = await getUserRoles(actor.id);
+  const isSuperAdmin = roles.includes(RoleCode.SUPER_ADMIN);
+  if (!isSuperAdmin) {
+    throw new AuthorizationError(
+      'Access denied: Only Super Administrators have authority to permanently delete student records.',
+      403,
+      'SUPER_ADMIN_REQUIRED'
+    );
+  }
+
+  const existing = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { id: true, admissionNumber: true, firstName: true, lastName: true },
+  });
+
+  if (!existing) {
+    throw new AuthorizationError('Student record not found.', 404, 'STUDENT_NOT_FOUND');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Guardian relationships
+    await tx.guardianStudentRelationship.deleteMany({ where: { studentId } });
+
+    // 2. Programme enrollments
+    await tx.studentProgrammeEnrollment.deleteMany({ where: { studentId } });
+
+    // 3. Attendance records
+    await tx.attendanceRecord.deleteMany({ where: { studentId } });
+
+    // 4. Assessment scores
+    await tx.assessmentScore.deleteMany({ where: { studentId } });
+
+    // 5. Report releases
+    await tx.reportRelease.deleteMany({ where: { studentId } });
+
+    // 6. Student import rows
+    await tx.studentImportRow.deleteMany({ where: { studentId } });
+
+    // 7. Unlink admissions applications
+    await tx.application.updateMany({
+      where: { admittedStudentId: studentId },
+      data: { admittedStudentId: null },
+    });
+
+    // 8. Delete invoices and payments safely
+    await tx.paymentAllocation.deleteMany({
+      where: { invoice: { studentId } },
+    });
+    const payments = await tx.payment.findMany({
+      where: { studentId },
+      select: { id: true },
+    });
+    const paymentIds = payments.map((p) => p.id);
+    if (paymentIds.length > 0) {
+      await tx.receipt.deleteMany({ where: { paymentId: { in: paymentIds } } });
+      await tx.paymentTransaction.deleteMany({ where: { schoolPaymentId: { in: paymentIds } } });
+      await tx.paymentAllocation.deleteMany({ where: { paymentId: { in: paymentIds } } });
+      await tx.payment.deleteMany({ where: { id: { in: paymentIds } } });
+    }
+    await tx.invoiceItem.deleteMany({ where: { invoice: { studentId } } });
+    await tx.invoice.deleteMany({ where: { studentId } });
+
+    // 9. Delete student
+    const deleted = await tx.student.delete({ where: { id: studentId } });
+
+    // 10. Audit Log
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'STUDENT_DELETE',
+        entityType: 'student',
+        entityId: studentId,
+        oldValues: {
+          admissionNumber: existing.admissionNumber,
+          name: `${existing.firstName} ${existing.lastName}`,
+        },
+      },
+    });
+
+    return deleted;
+  });
 }

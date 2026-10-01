@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/request_auth';
 import { uploadAndStoreProfilePhoto } from '@/lib/media/media_service';
-import { ImageValidationError } from '@/lib/media/image_processor';
+import { ImageValidationError, isImageValidationError } from '@/lib/media/image_processor';
 
 /**
  * Swanford Academy — Shared Media Upload Endpoint
@@ -52,15 +52,21 @@ export async function POST(request: NextRequest) {
       mimeType: asset.mimeType,
     });
   } catch (error: unknown) {
-    if (error instanceof ImageValidationError) {
+    console.error('[Media Upload Error]', error);
+
+    if (isImageValidationError(error)) {
       return NextResponse.json(
-        { error: error.message, code: error.code },
+        { error: error.message, code: (error as ImageValidationError).code || 'IMAGE_VALIDATION_ERROR' },
         { status: 400 }
       );
     }
 
+    const message = error instanceof Error && error.message.startsWith('Access denied')
+      ? error.message
+      : 'Failed to process and store media upload.';
+
     return NextResponse.json(
-      { error: 'Failed to process and store media upload.' },
+      { error: message },
       { status: 500 }
     );
   }

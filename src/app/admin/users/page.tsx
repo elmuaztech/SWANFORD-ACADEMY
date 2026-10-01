@@ -34,6 +34,8 @@ interface UserItem {
   status: UserStatus;
   createdAt: string;
   lastLoginAt: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   roles: Array<{ role: { id: string; name: string; code: string } }>;
   teacher: { firstName: string; lastName: string; staffId: string } | null;
   guardian: { firstName: string; lastName: string } | null;
@@ -47,6 +49,10 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+
+  // Authenticated User
+  const [currentUser, setCurrentUser] = useState<{ id: string; email: string; roles?: string[] } | null>(null);
+  const isSuperAdmin = Boolean(currentUser?.roles?.includes("SUPER_ADMIN"));
 
   // Create User Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -62,6 +68,34 @@ export default function AdminUsersPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [bannerNotice, setBannerNotice] = useState<string | null>(null);
 
+  // Edit User Modal State (Super Admin Exclusive)
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editStatus, setEditStatus] = useState<UserStatus>(UserStatus.ACTIVE);
+  const [editRoles, setEditRoles] = useState<RoleCode[]>([]);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Delete User Modal State (Super Admin Exclusive)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<UserItem | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) setCurrentUser(d.user);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (showCreateModal && availableClasses.length === 0) {
       fetch("/api/admin/classes")
@@ -74,6 +108,61 @@ export default function AdminUsersPage() {
         .catch(() => {});
     }
   }, [showCreateModal, availableClasses.length]);
+
+  const fetchUsers = () => {
+    setLoading(true);
+    setError(null);
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (statusFilter) params.append("status", statusFilter);
+    if (roleFilter) params.append("role", roleFilter);
+
+    fetch(`/api/super-admin/users?${params.toString()}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json.error || "Failed to load user accounts.");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setUsers(data.users || []);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to load user accounts.");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, [statusFilter, roleFilter]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchUsers();
+  };
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setRoleFilter("");
+    setLoading(true);
+    fetch("/api/super-admin/users")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to reload users.");
+        return res.json();
+      })
+      .then((data) => {
+        setUsers(data.users || []);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to reload users.");
+        setLoading(false);
+      });
+  };
 
   const handleCreateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,63 +221,104 @@ export default function AdminUsersPage() {
     }
   };
 
-  const fetchUsers = () => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams();
-    if (search) params.append("search", search);
-    if (statusFilter) params.append("status", statusFilter);
-    if (roleFilter) params.append("role", roleFilter);
-
-    let url = "/api/super-admin/users";
-    if (params.toString()) url += `?${params.toString()}`;
-
-    fetch(url)
-      .then(async (res) => {
-        if (res.status === 403) throw new Error("ACCESS_RESTRICTED");
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error || "Failed to load user directory.");
-        }
-        return res.json();
-      })
-      .then((json) => {
-        setUsers(json.users || json);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Error retrieving users.");
-        setLoading(false);
-      });
+  const handleOpenEditModal = (u: UserItem) => {
+    setEditingUserId(u.id);
+    const firstName = u.firstName || u.teacher?.firstName || u.guardian?.firstName || u.student?.firstName || "";
+    const lastName = u.lastName || u.teacher?.lastName || u.guardian?.lastName || u.student?.lastName || "";
+    setEditFirstName(firstName);
+    setEditLastName(lastName);
+    setEditEmail(u.email);
+    setEditPhone(u.phoneNumber || "");
+    setEditStatus(u.status);
+    setEditRoles(u.roles.map((r) => r.role.code as RoleCode));
+    setEditError(null);
+    setShowEditModal(true);
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, [statusFilter, roleFilter]);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    fetchUsers();
+    if (!editingUserId) return;
+
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      setEditError("First name and last name are required.");
+      return;
+    }
+
+    if (!editEmail.trim()) {
+      setEditError("Email address is required.");
+      return;
+    }
+
+    if (editRoles.length === 0) {
+      setEditError("At least one system role must remain assigned to this user.");
+      return;
+    }
+
+    setEditSubmitting(true);
+    setEditError(null);
+
+    try {
+      const res = await fetch(`/api/super-admin/users/${editingUserId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: editFirstName.trim(),
+          lastName: editLastName.trim(),
+          email: editEmail.trim().toLowerCase(),
+          phoneNumber: editPhone.trim() || null,
+          status: editStatus,
+          roles: editRoles,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user profile.");
+
+      setShowEditModal(false);
+      setBannerNotice(`Account details updated successfully for ${data.user?.email || editEmail}.`);
+      fetchUsers();
+    } catch (err: unknown) {
+      setEditError(err instanceof Error ? err.message : "Failed to update user.");
+    } finally {
+      setEditSubmitting(false);
+    }
   };
 
-  const handleClearFilters = () => {
-    setSearch("");
-    setStatusFilter("");
-    setRoleFilter("");
-    setLoading(true);
-    fetch("/api/super-admin/users")
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to reload users.");
-        return res.json();
-      })
-      .then((json) => {
-        setUsers(json.users || json);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Error retrieving users.");
-        setLoading(false);
+  const handleOpenDeleteModal = (u: UserItem) => {
+    setDeletingUser(u);
+    setDeleteConfirmation("");
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deletingUser) return;
+
+    if (deleteConfirmation.trim().toLowerCase() !== deletingUser.email.toLowerCase()) {
+      setDeleteError(`Please type "${deletingUser.email}" exactly to confirm permanent deletion.`);
+      return;
+    }
+
+    setDeleteSubmitting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch(`/api/super-admin/users/${deletingUser.id}`, {
+        method: "DELETE",
       });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete user account.");
+
+      setShowDeleteModal(false);
+      setBannerNotice(`User account ${deletingUser.email} has been permanently deleted.`);
+      fetchUsers();
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete user account.");
+    } finally {
+      setDeleteSubmitting(false);
+    }
   };
 
   const isFiltered = Boolean(search || statusFilter || roleFilter);
@@ -196,25 +326,27 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="User Directory & Access Control"
-        description="Authoritative registry of all system accounts, security states, and role assignments."
-        badge={<Badge variant="brand" size="sm">Super Admin Governance</Badge>}
+        title="User Accounts & Governance"
+        description="Enterprise identity management, RBAC assignments, credential recovery, and account audits."
         breadcrumbs={[
           { label: "Dashboard", href: "/admin" },
-          { label: "Users" },
+          { label: "User Accounts" },
         ]}
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setCreateError(null);
-              setShowCreateModal(true);
-            }}
-            className="font-bold inline-flex items-center gap-2"
-          >
-            <span>+ Add New User</span>
-          </Button>
+          isSuperAdmin ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setShowCreateModal(true)}
+              className="font-bold min-h-[44px]"
+            >
+              + Create New User
+            </Button>
+          ) : (
+            <Badge variant="neutral" size="sm" className="py-1 px-2.5 text-xs text-stone-500">
+              Super Admin Privilege Required for User Provisioning
+            </Badge>
+          )
         }
       />
 
@@ -230,7 +362,7 @@ export default function AdminUsersPage() {
           <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full">
             <div className="flex-1 min-w-[200px]">
               <Input
-                placeholder="Search email, phone, or name..."
+                placeholder="Search email, name, or phone number..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full"
@@ -251,7 +383,7 @@ export default function AdminUsersPage() {
               </Select>
             </div>
 
-            <div className="w-full md:w-40 shrink-0">
+            <div className="w-full md:w-44 shrink-0">
               <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -265,11 +397,11 @@ export default function AdminUsersPage() {
               </Select>
             </div>
 
-            <Button type="submit" variant="primary" size="md" className="font-bold whitespace-nowrap shrink-0">
+            <Button type="submit" variant="primary" size="md" className="font-bold whitespace-nowrap shrink-0 min-h-[44px]">
               Search
             </Button>
             {isFiltered && (
-              <Button type="button" variant="outline" size="md" onClick={handleClearFilters} className="whitespace-nowrap shrink-0">
+              <Button type="button" variant="outline" size="md" onClick={handleClearFilters} className="whitespace-nowrap shrink-0 min-h-[44px]">
                 Clear
               </Button>
             )}
@@ -277,26 +409,17 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
 
+      {/* Main Table or States */}
       {loading ? (
         <div className="py-12">
-          <LoadingState message="Querying global identity directory..." />
+          <LoadingState message="Loading registered accounts and role assignments..." />
         </div>
       ) : error ? (
         <ErrorState
-          title={error === "ACCESS_RESTRICTED" ? "Access Restricted" : "User Directory Unavailable"}
-          message={
-            error === "ACCESS_RESTRICTED"
-              ? "User account provisioning, security roles, and credential management are restricted exclusively to Super Administrators."
-              : error
-          }
-          actionLabel={error === "ACCESS_RESTRICTED" ? "Return to Operations Dashboard" : "Retry"}
-          onAction={
-            error === "ACCESS_RESTRICTED"
-              ? () => {
-                  window.location.href = "/admin";
-                }
-              : fetchUsers
-          }
+          title="User Accounts Unavailable"
+          message={error}
+          actionLabel="Retry"
+          onAction={fetchUsers}
         />
       ) : users.length === 0 ? (
         isFiltered ? (
@@ -322,13 +445,13 @@ export default function AdminUsersPage() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableHeaderCell className="w-14 text-center font-semibold text-stone-700">S/N</TableHeaderCell>
-                    <TableHeaderCell className="min-w-[200px] text-left font-semibold text-stone-700">Account / Identity</TableHeaderCell>
-                    <TableHeaderCell className="min-w-[160px] text-left font-semibold text-stone-700">Linked Profile</TableHeaderCell>
-                    <TableHeaderCell className="min-w-[150px] text-left font-semibold text-stone-700">Assigned Roles</TableHeaderCell>
-                    <TableHeaderCell className="w-32 text-left font-semibold text-stone-700">Status</TableHeaderCell>
-                    <TableHeaderCell className="w-36 text-left font-semibold text-stone-700">Last Sign In</TableHeaderCell>
-                    <TableHeaderCell className="w-32 text-right font-semibold text-stone-700">Action</TableHeaderCell>
+                    <TableHeaderCell className="w-12 text-center font-semibold text-stone-700">S/N</TableHeaderCell>
+                    <TableHeaderCell className="min-w-[180px] text-left font-semibold text-stone-700">Account / Identity</TableHeaderCell>
+                    <TableHeaderCell className="min-w-[150px] text-left font-semibold text-stone-700">Linked Profile</TableHeaderCell>
+                    <TableHeaderCell className="min-w-[140px] text-left font-semibold text-stone-700">Assigned Roles</TableHeaderCell>
+                    <TableHeaderCell className="w-28 text-left font-semibold text-stone-700">Status</TableHeaderCell>
+                    <TableHeaderCell className="w-32 text-left font-semibold text-stone-700">Last Sign In</TableHeaderCell>
+                    <TableHeaderCell className="min-w-[180px] text-right font-semibold text-stone-700">Actions</TableHeaderCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -340,23 +463,27 @@ export default function AdminUsersPage() {
                         ? `${u.guardian.firstName} ${u.guardian.lastName} (Guardian)`
                         : u.student
                         ? `${u.student.firstName} ${u.student.lastName} (Student)`
+                        : u.firstName && u.lastName
+                        ? `${u.firstName} ${u.lastName}`
                         : "Administrator";
+
+                    const isSelf = currentUser?.id === u.id;
 
                     return (
                       <TableRow key={u.id}>
-                        <TableCell className="w-14 text-center text-xs font-semibold text-stone-500">
+                        <TableCell className="w-12 text-center text-xs font-semibold text-stone-500">
                           {index + 1}
                         </TableCell>
-                        <TableCell className="min-w-[200px]">
+                        <TableCell className="min-w-[180px]">
                           <div className="font-bold text-stone-900 break-words">{u.email}</div>
                           {u.phoneNumber && (
                             <span className="text-xs font-mono text-stone-500">{u.phoneNumber}</span>
                           )}
                         </TableCell>
-                        <TableCell className="min-w-[160px] text-xs text-stone-700 break-words">
+                        <TableCell className="min-w-[150px] text-xs text-stone-700 break-words">
                           {profileName}
                         </TableCell>
-                        <TableCell className="min-w-[150px]">
+                        <TableCell className="min-w-[140px]">
                           <div className="flex flex-wrap gap-1">
                             {u.roles.map((r) => (
                               <Badge key={r.role.id} variant="neutral" size="sm">
@@ -365,7 +492,7 @@ export default function AdminUsersPage() {
                             ))}
                           </div>
                         </TableCell>
-                        <TableCell className="w-32">
+                        <TableCell className="w-28">
                           <Badge
                             variant={
                               u.status === "ACTIVE"
@@ -379,15 +506,39 @@ export default function AdminUsersPage() {
                             {u.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="w-36 text-xs text-stone-500">
+                        <TableCell className="w-32 text-xs text-stone-500">
                           {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "Never"}
                         </TableCell>
-                        <TableCell className="w-32 text-right">
-                          <Link href={`/admin/users/${u.id}`}>
-                            <Button variant="secondary" size="sm" className="bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold whitespace-nowrap min-h-[36px]">
-                              Governance
-                            </Button>
-                          </Link>
+                        <TableCell className="min-w-[180px] text-right">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            <Link href={`/admin/users/${u.id}`}>
+                              <Button variant="secondary" size="sm" className="bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold whitespace-nowrap min-h-[36px]">
+                                Governance
+                              </Button>
+                            </Link>
+                            {isSuperAdmin && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenEditModal(u)}
+                                  className="whitespace-nowrap min-h-[36px]"
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  disabled={isSelf}
+                                  onClick={() => handleOpenDeleteModal(u)}
+                                  className="whitespace-nowrap min-h-[36px]"
+                                  title={isSelf ? "Cannot delete own active account" : "Delete user"}
+                                >
+                                  Delete
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -407,7 +558,11 @@ export default function AdminUsersPage() {
                   ? `${u.guardian.firstName} ${u.guardian.lastName} (Guardian)`
                   : u.student
                   ? `${u.student.firstName} ${u.student.lastName} (Student)`
+                  : u.firstName && u.lastName
+                  ? `${u.firstName} ${u.lastName}`
                   : "Administrator";
+
+              const isSelf = currentUser?.id === u.id;
 
               return (
                 <TableMobileCard
@@ -453,15 +608,34 @@ export default function AdminUsersPage() {
                     },
                   ]}
                   actions={
-                    <Link href={`/admin/users/${u.id}`} className="w-full">
-                      <Button
-                        variant="secondary"
-                        size="md"
-                        className="w-full bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold min-h-[44px]"
-                      >
-                        Governance & Permissions
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2 pt-2 border-t border-stone-100 w-full justify-end flex-wrap">
+                      <Link href={`/admin/users/${u.id}`} className="flex-1 sm:flex-none">
+                        <Button variant="secondary" size="sm" className="w-full bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold min-h-[44px]">
+                          Governance
+                        </Button>
+                      </Link>
+                      {isSuperAdmin && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenEditModal(u)}
+                            className="min-h-[44px]"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            disabled={isSelf}
+                            onClick={() => handleOpenDeleteModal(u)}
+                            className="min-h-[44px]"
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   }
                 />
               );
@@ -470,11 +644,185 @@ export default function AdminUsersPage() {
         </div>
       )}
 
+      {/* Edit User Modal (Super Admin Exclusive) */}
+      {showEditModal && (
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title="Edit User Account Details"
+        >
+          <form onSubmit={handleEditUserSubmit} className="space-y-4 pt-2">
+            {editError && (
+              <Alert variant="danger" onClose={() => setEditError(null)}>
+                {editError}
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <FormGroup label="First Name" required>
+                <Input
+                  value={editFirstName}
+                  onChange={(e) => setEditFirstName(e.target.value)}
+                  required
+                />
+              </FormGroup>
+              <FormGroup label="Last Name" required>
+                <Input
+                  value={editLastName}
+                  onChange={(e) => setEditLastName(e.target.value)}
+                  required
+                />
+              </FormGroup>
+            </div>
+
+            <FormGroup label="Email Address" required>
+              <Input
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                required
+              />
+            </FormGroup>
+
+            <FormGroup label="Phone Number">
+              <Input
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="e.g. 08031234567"
+              />
+            </FormGroup>
+
+            <FormGroup label="Account Status" required>
+              <Select
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value as UserStatus)}
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="PENDING_VERIFICATION">Pending Verification</option>
+                <option value="SUSPENDED">Suspended</option>
+                <option value="DEACTIVATED">Deactivated</option>
+              </Select>
+            </FormGroup>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-2">Assigned Roles</label>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {[RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.TEACHER, RoleCode.PARENT].map((role) => (
+                  <label
+                    key={role}
+                    className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                      editRoles.includes(role)
+                        ? "border-[#800020] bg-[#FAF7F2] font-semibold text-[#5B0612]"
+                        : "border-stone-200 hover:bg-stone-50 text-stone-700"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={editRoles.includes(role)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setEditRoles([...editRoles, role]);
+                        } else {
+                          setEditRoles(editRoles.filter((r) => r !== role));
+                        }
+                      }}
+                      className="rounded border-stone-300 text-[#800020] focus:ring-[#800020]"
+                    />
+                    <span>{role.replace("_", " ")}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-stone-200">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowEditModal(false)}
+                className="min-h-[44px]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={editSubmitting}
+                className="font-bold min-h-[44px]"
+              >
+                {editSubmitting ? "Saving..." : "Save Account Details"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Delete User Modal (Super Admin Exclusive) */}
+      {showDeleteModal && deletingUser && (
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Permanently Delete User Account"
+        >
+          <form onSubmit={handleDeleteUserSubmit} className="space-y-4 pt-2">
+            <Alert variant="danger">
+              <p className="font-bold text-sm">Permanent Action Warning</p>
+              <p className="text-xs mt-1">
+                Permanently deleting this user account removes all active login sessions, security tokens,
+                RBAC permissions, and unlinks associated profiles.
+              </p>
+            </Alert>
+
+            {deleteError && (
+              <Alert variant="danger" onClose={() => setDeleteError(null)}>
+                {deleteError}
+              </Alert>
+            )}
+
+            <div>
+              <p className="text-xs text-stone-700 mb-2">
+                To confirm permanent deletion of account{" "}
+                <span className="font-mono font-bold text-[#800020] bg-stone-100 px-1 py-0.5 rounded">
+                  {deletingUser.email}
+                </span>
+                , please enter their email address below:
+              </p>
+              <Input
+                placeholder={`Type "${deletingUser.email}" to confirm`}
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                required
+                className="font-mono text-xs"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-stone-200">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowDeleteModal(false)}
+                className="min-h-[44px]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="danger"
+                disabled={deleteSubmitting || deleteConfirmation.trim().toLowerCase() !== deletingUser.email.toLowerCase()}
+                className="font-bold min-h-[44px]"
+              >
+                {deleteSubmitting ? "Deleting Account..." : "Confirm Permanent Deletion"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
       {/* Create User Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New System User"
+        title="Provision User Account"
       >
         <form onSubmit={handleCreateUserSubmit} className="space-y-4 pt-2">
           {createError && (
@@ -482,13 +830,6 @@ export default function AdminUsersPage() {
               {createError}
             </Alert>
           )}
-
-          <div className="p-3 rounded-xl bg-[#FAF2F4] border border-[#EADBDA] text-xs text-stone-700">
-            <p className="font-bold text-[#800020] mb-0.5">🔒 Official Provisioning &amp; Security Policy</p>
-            <p>
-              The user account will be created with an initial temporary credential, and an official Swanford Academy welcome email will be dispatched. Upon their first login, the user will be required to change their password to their own confidential password.
-            </p>
-          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <FormGroup label="First Name" required>
@@ -579,6 +920,7 @@ export default function AdminUsersPage() {
               type="button"
               variant="outline"
               onClick={() => setShowCreateModal(false)}
+              className="min-h-[44px]"
             >
               Cancel
             </Button>
@@ -586,7 +928,7 @@ export default function AdminUsersPage() {
               type="submit"
               variant="primary"
               disabled={createSubmitting || !createEmail.trim() || !createFirstName.trim() || !createLastName.trim() || !createPhone.trim()}
-              className="font-bold"
+              className="font-bold min-h-[44px]"
             >
               {createSubmitting ? "Provisioning..." : "Create User & Dispatch Email"}
             </Button>

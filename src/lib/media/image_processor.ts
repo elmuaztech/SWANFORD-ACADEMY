@@ -38,10 +38,21 @@ export interface ProcessedImageResult {
 }
 
 export class ImageValidationError extends Error {
+  readonly isImageValidationError = true;
   constructor(message: string, public code: string = 'IMAGE_VALIDATION_ERROR') {
     super(message);
     this.name = 'ImageValidationError';
+    Object.setPrototypeOf(this, ImageValidationError.prototype);
   }
+}
+
+export function isImageValidationError(err: unknown): err is ImageValidationError {
+  return (
+    err instanceof ImageValidationError ||
+    (typeof err === 'object' &&
+      err !== null &&
+      ('isImageValidationError' in err || (err as { name?: string }).name === 'ImageValidationError'))
+  );
 }
 
 /**

@@ -59,9 +59,10 @@ async function compressImageClientSide(
           if (!blob) {
             return resolve(file);
           }
+          const baseName = file.name ? file.name.replace(/\.[^.]+$/, '') : 'photo';
           const compressedFile = new File(
             [blob],
-            file.name.replace(/\.[^.]+$/, '.jpg'),
+            `${baseName || 'photo'}.jpg`,
             {
               type: 'image/jpeg',
               lastModified: Date.now(),
@@ -121,8 +122,16 @@ export function ImageUpload({
     setIsUploading(true);
 
     try {
-      // Client-side compression to avoid consuming VPS storage and mobile bandwidth
-      const uploadFile = await compressImageClientSide(file, 800, 800, 0.8);
+      // Client-side compression if file is large (> 1.5MB); otherwise upload original directly to preserve sharp fidelity
+      let uploadFile = file;
+      if (file.size > 1.5 * 1024 * 1024) {
+        try {
+          uploadFile = await compressImageClientSide(file, 1200, 1200, 0.85);
+        } catch (compErr) {
+          console.warn('Client image compression skipped:', compErr);
+          uploadFile = file;
+        }
+      }
 
       // Local preview while uploading
       const localUrl = URL.createObjectURL(uploadFile);

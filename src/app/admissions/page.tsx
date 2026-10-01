@@ -264,7 +264,7 @@ export default function PublicAdmissionPage() {
                 <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
                   <Link href={`/admissions/pay?applicationId=${submittedApp.id}`} className="w-full sm:w-auto">
                     <Button variant="primary" size="lg" className="w-full sm:w-auto">
-                      Proceed to Application Fee Payment ({formatNaira(BigInt(formFeeKobo))}) &rarr;
+                      Proceed to Application Fee Payment ({formatNaira(BigInt(formFeeKobo))})
                     </Button>
                   </Link>
                   <Link href="/admissions/status" className="w-full sm:w-auto">
@@ -302,7 +302,7 @@ export default function PublicAdmissionPage() {
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link href="/contact" className="w-full sm:w-auto">
                     <Button variant="primary" size="md" className="w-full sm:w-auto bg-[#800020] hover:bg-[#5B0612] text-white font-sans">
-                      Contact Admissions Office &rarr;
+                      Contact Admissions Office
                     </Button>
                   </Link>
                   <Link href="/admissions/status" className="w-full sm:w-auto">
@@ -693,7 +693,7 @@ export default function PublicAdmissionPage() {
 
                   {step < 5 ? (
                     <Button variant="primary" size="md" onClick={handleNext}>
-                      Continue &rarr;
+                      Continue
                     </Button>
                   ) : (
                     <Button
@@ -703,7 +703,7 @@ export default function PublicAdmissionPage() {
                       disabled={isSubmitting}
                       className="px-8"
                     >
-                      {isSubmitting ? 'Submitting Application...' : 'Submit Application &rarr;'}
+                      {isSubmitting ? 'Submitting Application...' : 'Submit Application'}
                     </Button>
                   )}
                 </div>

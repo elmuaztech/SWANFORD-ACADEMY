@@ -37,3 +37,5 @@ export async function PUT(
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+
+export const PATCH = PUT;

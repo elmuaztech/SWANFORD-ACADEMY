@@ -143,9 +143,20 @@ export async function POST(request: NextRequest) {
           data: { status: AdmissionCycleStatus.CLOSED },
         });
 
+        // If the cycle's endDate has already passed or is too close, automatically extend it
+        const now = new Date();
+        const updateData: { status: AdmissionCycleStatus; endDate?: Date } = {
+          status: AdmissionCycleStatus.OPEN,
+        };
+        if (cycle.endDate <= now) {
+          updateData.endDate = targetSession!.endDate > now
+            ? targetSession!.endDate
+            : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+        }
+
         cycle = await tx.admissionCycle.update({
           where: { id: cycle.id },
-          data: { status: AdmissionCycleStatus.OPEN },
+          data: updateData,
         });
       }
 

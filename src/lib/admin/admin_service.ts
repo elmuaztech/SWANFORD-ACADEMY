@@ -11,6 +11,7 @@ import {
   NotificationChannel,
   Prisma,
 } from '@prisma/client';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { SafeUser, sanitizeUser } from '@/lib/auth/service';
 import { requirePermission, AuthorizationError, getUserRoles } from '@/lib/auth/authorization';
@@ -1221,6 +1222,281 @@ export async function adminChangeUserEmail(
     newEmail: normalizedNewEmail,
     message: 'User email updated. Security alert dispatched to previous address and verification link sent to new address.',
   };
+}
+
+export const UpdateAdminUserProfileSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').trim().optional(),
+  lastName: z.string().min(1, 'Last name is required').trim().optional(),
+  email: z.string().email('Invalid email address').trim().optional(),
+  phoneNumber: z.string().trim().nullable().optional(),
+  status: z.nativeEnum(UserStatus).optional(),
+  roles: z.array(z.nativeEnum(RoleCode)).optional(),
+});
+
+export type UpdateAdminUserProfileInput = z.infer<typeof UpdateAdminUserProfileSchema>;
+
+/**
+ * Super Admin exclusive: Modifies user account identity, details, status, and role assignments.
+ */
+export async function updateAdminUserProfile(
+  actor: SafeUser,
+  userId: string,
+  input: UpdateAdminUserProfileInput
+) {
+  const actorRoles = await getUserRoles(actor.id);
+  const isSuperAdmin = actorRoles.includes(RoleCode.SUPER_ADMIN);
+  if (!isSuperAdmin) {
+    throw new AuthorizationError(
+      'Access denied: Only Super Administrators have authority to modify user accounts.',
+      403,
+      'SUPER_ADMIN_REQUIRED'
+    );
+  }
+
+  const validated = UpdateAdminUserProfileSchema.parse(input);
+
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      userRoles: { include: { role: true } },
+      teacherProfile: true,
+      guardianProfile: true,
+    },
+  });
+
+  if (!existing) {
+    throw new AuthorizationError('User account not found.', 404, 'USER_NOT_FOUND');
+  }
+
+  // Check email uniqueness if changed
+  if (validated.email && validated.email.toLowerCase() !== existing.email.toLowerCase()) {
+    const emailConflict = await prisma.user.findUnique({
+      where: { email: validated.email.toLowerCase() },
+    });
+    if (emailConflict && emailConflict.id !== userId) {
+      throw new AuthorizationError('An account with this email address already exists.', 400, 'EMAIL_IN_USE');
+    }
+  }
+
+  // Check phone uniqueness if changed
+  if (validated.phoneNumber && validated.phoneNumber !== existing.phoneNumber) {
+    const phoneConflict = await prisma.user.findUnique({
+      where: { phoneNumber: validated.phoneNumber },
+    });
+    if (phoneConflict && phoneConflict.id !== userId) {
+      throw new AuthorizationError('An account with this phone number already exists.', 400, 'PHONE_IN_USE');
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // If roles changed, update role assignments
+    if (validated.roles) {
+      const currentRoleCodes = existing.userRoles.map((ur) => ur.role.code);
+      const isDemotingSuperAdmin =
+        currentRoleCodes.includes(RoleCode.SUPER_ADMIN) &&
+        !validated.roles.includes(RoleCode.SUPER_ADMIN);
+
+      if (isDemotingSuperAdmin) {
+        const superAdminRole = await tx.role.findUnique({ where: { code: RoleCode.SUPER_ADMIN } });
+        if (superAdminRole) {
+          const activeSuperAdminCount = await tx.userRole.count({
+            where: {
+              roleId: superAdminRole.id,
+              user: { status: UserStatus.ACTIVE },
+            },
+          });
+          if (activeSuperAdminCount <= 1) {
+            throw new AuthorizationError(
+              'Security invariant violation: Cannot revoke Super Administrator from the school’s sole active Super Administrator.',
+              400,
+              'SOLE_SUPER_ADMIN_PROTECTED'
+            );
+          }
+        }
+      }
+
+      // Sync roles
+      await tx.userRole.deleteMany({ where: { userId } });
+      const targetRoles = await tx.role.findMany({
+        where: { code: { in: validated.roles } },
+      });
+      for (const role of targetRoles) {
+        await tx.userRole.create({
+          data: { userId, roleId: role.id },
+        });
+      }
+    }
+
+    // Update User record
+    const updated = await tx.user.update({
+      where: { id: userId },
+      data: {
+        ...(validated.firstName !== undefined && { firstName: validated.firstName }),
+        ...(validated.lastName !== undefined && { lastName: validated.lastName }),
+        ...(validated.email && { email: validated.email.toLowerCase() }),
+        ...(validated.phoneNumber !== undefined && { phoneNumber: validated.phoneNumber || null }),
+        ...(validated.status && { status: validated.status }),
+      },
+      include: {
+        userRoles: { include: { role: true } },
+      },
+    });
+
+    // Synchronize linked Teacher Profile
+    if (existing.teacherProfile) {
+      await tx.teacher.update({
+        where: { id: existing.teacherProfile.id },
+        data: {
+          ...(validated.firstName && { firstName: validated.firstName }),
+          ...(validated.lastName && { lastName: validated.lastName }),
+        },
+      });
+    }
+
+    // Synchronize linked Guardian Profile
+    if (existing.guardianProfile) {
+      await tx.guardian.update({
+        where: { id: existing.guardianProfile.id },
+        data: {
+          ...(validated.firstName && { firstName: validated.firstName }),
+          ...(validated.lastName && { lastName: validated.lastName }),
+          ...(validated.email && { email: validated.email.toLowerCase() }),
+          ...(validated.phoneNumber !== undefined && { phonePrimary: validated.phoneNumber || null }),
+        },
+      });
+    }
+
+    // Audit log
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'USER_UPDATED',
+        entityType: 'User',
+        entityId: userId,
+        oldValues: {
+          email: existing.email,
+          status: existing.status,
+          firstName: existing.firstName,
+          lastName: existing.lastName,
+        },
+        newValues: {
+          email: updated.email,
+          status: updated.status,
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+        },
+      },
+    });
+
+    return updated;
+  });
+}
+
+/**
+ * Super Admin exclusive: Permanently deletes a user account with all dependent references handled safely.
+ */
+export async function deleteAdminUser(actor: SafeUser, userId: string) {
+  const actorRoles = await getUserRoles(actor.id);
+  const isSuperAdmin = actorRoles.includes(RoleCode.SUPER_ADMIN);
+  if (!isSuperAdmin) {
+    throw new AuthorizationError(
+      'Access denied: Only Super Administrators have authority to permanently delete user accounts.',
+      403,
+      'SUPER_ADMIN_REQUIRED'
+    );
+  }
+
+  if (actor.id === userId) {
+    throw new AuthorizationError(
+      'Security violation: Cannot delete your own active administrator account.',
+      400,
+      'SELF_DELETION_REJECTED'
+    );
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      teacherProfile: { select: { id: true } },
+      guardianProfile: { select: { id: true } },
+    },
+  });
+
+  if (!targetUser) {
+    throw new AuthorizationError('User account not found.', 404, 'USER_NOT_FOUND');
+  }
+
+  // Prevent deleting the last active Super Admin
+  const targetRoles = await getUserRoles(userId);
+  if (targetRoles.includes(RoleCode.SUPER_ADMIN)) {
+    const superAdminRole = await prisma.role.findUnique({ where: { code: RoleCode.SUPER_ADMIN } });
+    if (superAdminRole) {
+      const activeSuperAdminCount = await prisma.userRole.count({
+        where: {
+          roleId: superAdminRole.id,
+          user: { status: UserStatus.ACTIVE },
+        },
+      });
+      if (activeSuperAdminCount <= 1) {
+        throw new AuthorizationError(
+          'Security invariant violation: Cannot delete the school’s sole active Super Administrator.',
+          400,
+          'SOLE_SUPER_ADMIN_PROTECTED'
+        );
+      }
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Delete user sessions, tokens, notifications
+    await tx.session.deleteMany({ where: { userId } });
+    await tx.passwordReset.deleteMany({ where: { userId } });
+    await tx.emailVerification.deleteMany({ where: { userId } });
+    await tx.notificationPreference.deleteMany({ where: { userId } });
+    await tx.userNotificationRead.deleteMany({ where: { userId } });
+    await tx.userRole.deleteMany({ where: { userId } });
+
+    // 2. Clean up messages & reviews
+    await tx.internalMessage.deleteMany({ where: { senderUserId: userId } });
+    await tx.applicationReview.deleteMany({ where: { reviewerId: userId } });
+
+    // 3. Handle teacher profile if linked
+    if (targetUser.teacherProfile) {
+      const teacherId = targetUser.teacherProfile.id;
+      await tx.attendanceRecord.deleteMany({ where: { recordedByTeacherId: teacherId } });
+      await tx.teacherScope.deleteMany({ where: { teacherId } });
+      await tx.staffDocument.deleteMany({ where: { teacherId } });
+      await tx.staffProbationRecord.deleteMany({ where: { teacherId } });
+      await tx.teacherAssignmentHistory.deleteMany({ where: { teacherId } });
+      await tx.teacher.delete({ where: { id: teacherId } });
+    }
+
+    // 4. Handle guardian profile if linked
+    if (targetUser.guardianProfile) {
+      await tx.guardian.update({
+        where: { id: targetUser.guardianProfile.id },
+        data: { userId: null },
+      });
+    }
+
+    // 5. Delete the User record
+    const deleted = await tx.user.delete({ where: { id: userId } });
+
+    // 6. Audit log
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'USER_DELETED',
+        entityType: 'User',
+        entityId: userId,
+        oldValues: { email: targetUser.email },
+      },
+    });
+
+    return deleted;
+  });
 }
 
 /**

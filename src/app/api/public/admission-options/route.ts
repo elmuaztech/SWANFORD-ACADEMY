@@ -15,16 +15,20 @@ export async function GET() {
     const activeSession = await prisma.academicSession.findFirst({
       where: { isCurrent: true },
       select: { id: true, name: true },
+      orderBy: { startDate: 'desc' },
     });
 
+    const now = new Date();
     const [cycles, programmes, formFeeKobo] = await Promise.all([
       activeSession
         ? prisma.admissionCycle.findMany({
             where: {
               academicSessionId: activeSession.id,
               status: AdmissionCycleStatus.OPEN,
+              endDate: { gt: now },
             },
             select: { id: true, name: true, code: true, startDate: true, endDate: true },
+            orderBy: { endDate: 'desc' },
             take: 5,
           })
         : Promise.resolve([]),
