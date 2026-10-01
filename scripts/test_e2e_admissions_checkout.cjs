@@ -18,7 +18,7 @@ async function testFlow() {
   console.log('Using cycle:', cycle.name, 'Session:', cycle.academicSession.name);
   
   // 2. Find a programme
-  const prog = await prisma.academicProgramme.findFirst();
+  const prog = await prisma.programme.findFirst();
   
   // 3. Create a test application
   const testNumber = 'TEST-' + Date.now().toString().slice(-6);
