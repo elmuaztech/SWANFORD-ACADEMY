@@ -10,14 +10,17 @@ async function check() {
           role: true,
         },
       },
+      teacherProfile: true,
+      guardianProfile: true,
     },
   });
 
   console.log(`Total users in system: ${users.length}`);
   for (const u of users) {
     const roles = u.userRoles.map((r) => r.role.code).join(', ');
-    const hasValidHash = Boolean(u.passwordHash && u.passwordHash.startsWith('$2'));
-    console.log(`User: ${u.email} | Status: ${u.status} | Roles: [${roles}] | Password Configured: ${hasValidHash}`);
+    const isTeacher = Boolean(u.teacherProfile);
+    const isGuardian = Boolean(u.guardianProfile);
+    console.log(`User: ${u.email} | Name: ${u.firstName} ${u.lastName} | Roles: [${roles}] | Teacher: ${isTeacher} | Guardian: ${isGuardian}`);
   }
 }
 
