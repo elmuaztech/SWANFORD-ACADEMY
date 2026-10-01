@@ -30,7 +30,7 @@ async function testFlow() {
       applicantFirstName: 'Test',
       applicantLastName: 'Applicant',
       dateOfBirth: new Date('2020-01-01'),
-      gender: 'MALE',
+      applicantGender: 'MALE',
       guardianName: 'Test Parent',
       guardianEmail: 'test.parent@swanfordacademy.com.ng',
       guardianPhone: '08012345678',
