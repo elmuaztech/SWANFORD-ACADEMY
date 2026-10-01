@@ -3,12 +3,15 @@ set -e
 
 cd /root/swanford-academy
 
-echo "=== 1. Updating Paystack keys in /root/swanford-academy/.env ==="
+echo "=== 1. Updating Paystack keys in .env and deployment/.env ==="
 sed -i 's|^PAYSTACK_SECRET_KEY=.*|PAYSTACK_SECRET_KEY="sk_test_94cafc1b95e0305c77fcab0746fc7d1fdd443ef5"|' .env
 sed -i 's|^PAYSTACK_PUBLIC_KEY=.*|PAYSTACK_PUBLIC_KEY="pk_test_3be32d69ad99be51a7e4dd572046c3ae04b95069"|' .env
 
-echo "=== Verified Paystack keys in .env ==="
-grep "PAYSTACK" .env
+sed -i 's|^PAYSTACK_SECRET_KEY=.*|PAYSTACK_SECRET_KEY="sk_test_94cafc1b95e0305c77fcab0746fc7d1fdd443ef5"|' deployment/.env
+sed -i 's|^PAYSTACK_PUBLIC_KEY=.*|PAYSTACK_PUBLIC_KEY="pk_test_3be32d69ad99be51a7e4dd572046c3ae04b95069"|' deployment/.env
+
+echo "=== Verified Paystack keys in deployment/.env ==="
+grep "PAYSTACK" deployment/.env
 
 echo "=== 2. Pulling latest code from origin main ==="
 git pull origin main
