@@ -16,17 +16,24 @@ async function check() {
   });
 
   console.log(`Total users in system: ${users.length}`);
-  for (const u of users) {
-    console.log(JSON.stringify({
-      id: u.id,
-      email: u.email,
-      firstName: u.firstName,
-      lastName: u.lastName,
-      phoneNumber: u.phoneNumber,
-      createdAt: u.createdAt,
-      userRoles: u.userRoles
-    }, null, 2));
-  }
+  const apps = await prisma.application.findMany({
+    select: {
+      applicationNumber: true,
+      guardianEmail: true,
+      applicantFirstName: true,
+      applicantLastName: true,
+      guardianFirstName: true,
+      guardianLastName: true,
+      status: true
+    }
+  });
+  console.log('Applications in DB:', apps);
+  
+  const teachers = await prisma.teacher.findMany({ include: { user: true } });
+  console.log('Teachers in DB:', teachers.map(t => ({ id: t.id, name: `${t.firstName} ${t.lastName}`, email: t.user?.email })));
+  
+  const guardians = await prisma.guardian.findMany({ include: { user: true } });
+  console.log('Guardians in DB:', guardians.map(g => ({ id: g.id, name: `${g.firstName} ${g.lastName}`, email: g.email, userEmail: g.user?.email })));
 }
 
 check()
