@@ -87,6 +87,31 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   const [selectedProgrammeId, setSelectedProgrammeId] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("");
 
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteApplication = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/admin/admissions/${applicationId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to delete application.");
+      }
+      setShowDeleteModal(false);
+      router.push("/admin/admissions");
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete application.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const fetchApplication = () => {
     setLoading(true);
     setError(null);
@@ -269,6 +294,37 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
                 Matriculate Student
               </Button>
             ) : null}
+
+            {(application.status === "APPROVED" ||
+              application.status === "PARTIALLY_APPROVED" ||
+              application.status === "ENROLLED") && (
+              <Link href={`/admissions/letter/${application.id}`} target="_blank">
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="font-bold border-[#5B0612] text-[#5B0612] hover:bg-[#FDF2F4] flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  </svg>
+                  <span>Admission Letter (A4)</span>
+                </Button>
+              </Link>
+            )}
+
+            {application.status !== "ENROLLED" && (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  setDeleteError(null);
+                  setShowDeleteModal(true);
+                }}
+                className="text-rose-700 border-rose-200 hover:bg-rose-50 font-semibold"
+              >
+                Delete Application
+              </Button>
+            )}
           </div>
         }
       />
@@ -474,13 +530,30 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Review Notes</label>
+            <label className="block text-xs font-bold text-stone-700 mb-1">
+              {reviewDecision === "REJECTED"
+                ? "Reason for Decline (Sent in Applicant Email)"
+                : "Committee Remarks (Optional)"}
+            </label>
             <Textarea
               rows={3}
-              placeholder="Internal review justification or remarks..."
+              placeholder={
+                reviewDecision === "REJECTED"
+                  ? "Detail the reason for rejecting the application (e.g. Assessment test threshold not met, cohort fully subscribed)..."
+                  : "Internal review remarks or acceptance notes..."
+              }
               value={reviewNotes}
               onChange={(e) => setReviewNotes(e.target.value)}
             />
+            {reviewDecision === "REJECTED" ? (
+              <p className="text-[11px] text-amber-800 mt-1">
+                This exact reason will be included in the formal decision email dispatched to the guardian.
+              </p>
+            ) : (
+              <p className="text-[11px] text-emerald-800 mt-1">
+                Approval will immediately email the official branded A4 Admission Letter and child dossier.
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -584,6 +657,53 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
       </Modal>
+
+      {/* Delete Application Modal */}
+      {showDeleteModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => !isDeleting && setShowDeleteModal(false)}
+          title="Delete Admission Application"
+        >
+          <div className="space-y-4 pt-2">
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs space-y-1.5">
+              <p className="font-bold text-rose-900 text-sm">
+                Permanent Deletion: {application.applicationNumber}
+              </p>
+              <p className="text-rose-800">
+                Applicant: <span className="font-bold">{application.applicantFirstName} {application.applicantLastName}</span>
+              </p>
+              <p className="text-stone-600 leading-relaxed pt-1">
+                Are you sure you want to permanently delete this application? All application data, review records, and programme choices will be permanently removed.
+              </p>
+            </div>
+
+            {deleteError && (
+              <Alert variant="danger" onClose={() => setDeleteError(null)}>
+                {deleteError}
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleDeleteApplication}
+                disabled={isDeleting}
+                className="font-bold"
+              >
+                {isDeleting ? "Deleting..." : "Permanently Delete"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -56,13 +56,34 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Aggregate confirmed application fees for this academic session
+    const appPaymentsAgg = await prisma.application.aggregate({
+      where: {
+        academicSessionId: sessionId,
+        paymentStatus: 'PAYMENT_CONFIRMED',
+      },
+      _sum: {
+        amountPaidKobo: true,
+        totalAmountKobo: true,
+      },
+    });
+
+    const appFeeCollectedKobo = appPaymentsAgg._sum.amountPaidKobo || BigInt(0);
+    const appFeeInvoicedKobo = appPaymentsAgg._sum.totalAmountKobo || appFeeCollectedKobo;
+
+    const combinedCollectedKobo = summary.totalCollectedKobo + appFeeCollectedKobo;
+    const combinedInvoicedKobo =
+      summary.totalInvoicedKobo + (appFeeInvoicedKobo > appFeeCollectedKobo ? appFeeInvoicedKobo : appFeeCollectedKobo);
+    const combinedOutstandingKobo =
+      combinedInvoicedKobo > combinedCollectedKobo ? combinedInvoicedKobo - combinedCollectedKobo : BigInt(0);
+
     const totalExpensesKobo = expensesAgg._sum.amountKobo || BigInt(0);
 
     return NextResponse.json({
       ...summary,
-      totalInvoicedKobo: summary.totalInvoicedKobo.toString(),
-      totalCollectedKobo: summary.totalCollectedKobo.toString(),
-      totalOutstandingKobo: summary.totalOutstandingKobo.toString(),
+      totalInvoicedKobo: combinedInvoicedKobo.toString(),
+      totalCollectedKobo: combinedCollectedKobo.toString(),
+      totalOutstandingKobo: combinedOutstandingKobo.toString(),
       totalExpensesKobo: totalExpensesKobo.toString(),
       expenseCount: expensesAgg._count.id,
     });

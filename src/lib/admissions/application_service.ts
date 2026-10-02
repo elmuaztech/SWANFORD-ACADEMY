@@ -3,6 +3,8 @@ import {
   ApplicationPaymentStatus,
   ApplicationStatus,
   Gender,
+  GatewayProvider,
+  GatewayTransactionStatus,
   Prisma,
   ProgrammeSelectionStatus,
   RelationshipType,
@@ -22,12 +24,15 @@ import { matchExistingGuardian } from '@/lib/guardians/guardian_matching';
 import { z } from 'zod';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { NotificationCategory } from '@/lib/notifications/types';
+import { processPendingNotifications } from '@/lib/notifications/worker';
+import { readMediaFile } from '@/lib/media/storage';
 import { createUnactivatedPasswordSentinel } from '@/lib/auth/password';
 import { generateSecureToken } from '@/lib/auth/tokens';
 import {
   renderApplicationSubmittedEmail,
   renderApplicationFeeConfirmedEmail,
   renderAdmissionDecisionEmail,
+  renderOfficialAdmissionLetterEmail,
   renderAccountActivationEmail,
 } from '@/lib/notifications/templates';
 
@@ -502,6 +507,26 @@ export async function confirmApplicationPayment(
       amountKobo: validated.amountPaidKobo,
     });
 
+    // Ensure payment transaction record is created/updated for financial audit & reconciliation
+    await tx.paymentTransaction.upsert({
+      where: { gatewayReference: validated.paymentReference },
+      create: {
+        gatewayReference: validated.paymentReference,
+        gatewayProvider: GatewayProvider.PAYSTACK,
+        applicationId,
+        amountKobo: validated.amountPaidKobo,
+        status: GatewayTransactionStatus.SUCCESS,
+        customerEmail: application.guardianEmail,
+        paidAt: new Date(),
+      },
+      update: {
+        applicationId,
+        amountKobo: validated.amountPaidKobo,
+        status: GatewayTransactionStatus.SUCCESS,
+        paidAt: new Date(),
+      },
+    });
+
     await enqueueNotification(
       {
         idempotencyKey: `FINANCE:APP_FEE_CONFIRMED:${applicationId}:${validated.paymentReference}`,
@@ -523,7 +548,10 @@ export async function confirmApplicationPayment(
     return updated;
   };
 
-  return externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
+  const result = externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
+  // Trigger notification worker immediately so confirmation email is sent without delay
+  processPendingNotifications().catch(() => {});
+  return result;
 }
 
 /**
@@ -548,7 +576,11 @@ export async function reviewProgrammeSelection(
     where: { id: selectionId },
     include: {
       application: {
-        include: { programmeSelections: true },
+        include: {
+          programmeSelections: { include: { programme: true } },
+          admissionCycle: { include: { academicSession: true } },
+          profilePhoto: true,
+        },
       },
       programme: true,
     },
@@ -646,23 +678,86 @@ export async function reviewProgrammeSelection(
       },
     });
 
-    // 4. Enqueue admission decision notification if a terminal or actionable decision has been reached (ADMISSION_DECISION, mandatory)
+    // 4. Enqueue admission decision notification if a terminal or actionable decision has been reached
     if (
       computedAppStatus === ApplicationStatus.APPROVED ||
-      computedAppStatus === ApplicationStatus.PARTIALLY_APPROVED ||
-      computedAppStatus === ApplicationStatus.REJECTED
+      computedAppStatus === ApplicationStatus.PARTIALLY_APPROVED
     ) {
-      const rendered = renderAdmissionDecisionEmail({
+      // Build list of approved programmes
+      const approvedProgrammeNames = allSelections
+        .filter((s) =>
+          s.id === selectionId
+            ? newSelectionStatus === ProgrammeSelectionStatus.APPROVED
+            : s.status === ProgrammeSelectionStatus.APPROVED
+        )
+        .map((s) => {
+          const matched = application.programmeSelections.find((p) => p.id === s.id);
+          return matched?.programme?.name || 'Academic Programme';
+        });
+
+      const programmesList = approvedProgrammeNames.join(', ') || selection.programme.name;
+      const appUrl = process.env.APP_URL || 'http://localhost:3000';
+      const admissionLetterUrl = `${appUrl}/admissions/letter/${application.id}`;
+
+      // Convert applicant photo to base64 Data URI for immediate inline email/letter rendering
+      let profilePhotoDataUri: string | null = null;
+      if (application.profilePhoto?.storageKey) {
+        try {
+          const buffer = await readMediaFile(application.profilePhoto.storageKey);
+          profilePhotoDataUri = `data:${application.profilePhoto.mimeType || 'image/jpeg'};base64,${buffer.toString('base64')}`;
+        } catch {
+          // Gracefully fall back to monogram crest
+        }
+      }
+
+      const letterRendered = renderOfficialAdmissionLetterEmail({
         guardianName: `${application.guardianFirstName} ${application.guardianLastName}`.trim(),
+        guardianPhone: application.guardianPhone,
         applicantName: `${application.applicantFirstName} ${application.applicantLastName}`.trim(),
         applicationNumber: application.applicationNumber,
-        decision: computedAppStatus as 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED',
+        applicantDob: application.applicantDob.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+        applicantGender: application.applicantGender === 'MALE' ? 'Male' : 'Female',
+        programmesList,
+        academicSessionName: application.admissionCycle?.academicSession?.name || '2026/2027 Academic Session',
+        profilePhotoDataUri,
+        admissionLetterUrl,
         notes: validated.decisionNotes || undefined,
       });
 
       await enqueueNotification(
         {
-          idempotencyKey: `ADMISSION_DECISION:${computedAppStatus}:${application.id}`,
+          idempotencyKey: `ADMISSION_LETTER:${computedAppStatus}:${application.id}`,
+          recipientEmail: application.guardianEmail,
+          channel: 'EMAIL',
+          category: NotificationCategory.ADMISSION_DECISION,
+          templateName: 'ADMISSION_DECISION',
+          subject: letterRendered.subject,
+          bodyText: letterRendered.text,
+          htmlBody: letterRendered.html,
+          metadata: {
+            applicationId: application.id,
+            decision: computedAppStatus,
+            letterUrl: admissionLetterUrl,
+          },
+        },
+        tx
+      );
+    } else if (computedAppStatus === ApplicationStatus.REJECTED) {
+      const rendered = renderAdmissionDecisionEmail({
+        guardianName: `${application.guardianFirstName} ${application.guardianLastName}`.trim(),
+        applicantName: `${application.applicantFirstName} ${application.applicantLastName}`.trim(),
+        applicationNumber: application.applicationNumber,
+        decision: 'REJECTED',
+        notes: validated.decisionNotes || undefined,
+      });
+
+      await enqueueNotification(
+        {
+          idempotencyKey: `ADMISSION_DECISION:REJECTED:${application.id}`,
           recipientEmail: application.guardianEmail,
           channel: 'EMAIL',
           category: NotificationCategory.ADMISSION_DECISION,
@@ -673,6 +768,7 @@ export async function reviewProgrammeSelection(
           metadata: {
             applicationId: application.id,
             decision: computedAppStatus,
+            decisionNotes: validated.decisionNotes || null,
           },
         },
         tx
@@ -811,7 +907,10 @@ export async function reviewProgrammeSelection(
     };
   };
 
-  return externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
+  const result = externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
+  // Trigger notification worker immediately so decision/admission letter email is sent without delay
+  processPendingNotifications().catch(() => {});
+  return result;
 }
 
 /**
@@ -891,4 +990,61 @@ export async function listApplications(
     },
     orderBy: { createdAt: 'desc' },
   });
+}
+
+/**
+ * Permanently deletes an admission application record.
+ * Safety rule: Enrolled applications cannot be deleted.
+ */
+export async function deleteApplication(
+  actor: SafeUser,
+  applicationId: string,
+  externalTx?: Prisma.TransactionClient
+) {
+  await requirePermission(actor, PermissionCode.ADMISSION_APPLICATION_REVIEW);
+  const dbClient = externalTx || prisma;
+
+  const application = await dbClient.application.findUnique({
+    where: { id: applicationId },
+    include: {
+      admittedStudent: true,
+    },
+  });
+
+  if (!application) {
+    throw new AuthorizationError('Application not found.', 404, 'APPLICATION_NOT_FOUND');
+  }
+
+  if (application.status === ApplicationStatus.ENROLLED || application.admittedStudentId) {
+    throw new AuthorizationError(
+      'Cannot delete an application for a student who is already enrolled in the institution.',
+      400,
+      'APPLICATION_ALREADY_ENROLLED'
+    );
+  }
+
+  const executeInTx = async (tx: Prisma.TransactionClient) => {
+    // Delete application; cascading handles programme selections, charge items, reviews, sessions
+    await tx.application.delete({
+      where: { id: applicationId },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'APPLICATION_DELETED',
+        entityType: 'application',
+        entityId: applicationId,
+        newValues: {
+          applicationNumber: application.applicationNumber,
+          applicantName: `${application.applicantFirstName} ${application.applicantLastName}`,
+          guardianEmail: application.guardianEmail,
+        },
+      },
+    });
+
+    return { success: true, deletedApplicationId: applicationId };
+  };
+
+  return externalTx ? await executeInTx(externalTx) : await prisma.$transaction(executeInTx);
 }

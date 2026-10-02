@@ -65,7 +65,14 @@ interface AdminDashboardData {
     invoice: {
       student: { firstName: string; lastName: string; admissionNumber: string | null };
       guardian: { firstName: string; lastName: string } | null;
-    };
+    } | null;
+    application?: {
+      applicantFirstName: string;
+      applicantLastName: string;
+      applicationNumber: string;
+      guardianFirstName: string;
+      guardianLastName: string;
+    } | null;
   }>;
   recentAuditLogs?: Array<{
     id: string;
@@ -543,14 +550,28 @@ export default function AdminDashboardPage() {
                       {recentPayments.map((pay) => (
                         <TableRow key={pay.id}>
                           <TableCell className="font-medium text-stone-900">
-                            <div>
-                              {pay.invoice?.student?.firstName} {pay.invoice?.student?.lastName}
-                            </div>
-                            <span className="text-[11px] text-stone-500">
-                              {pay.invoice?.guardian
-                                ? `Payer: ${pay.invoice.guardian.firstName} ${pay.invoice.guardian.lastName}`
-                                : "Direct Payment"}
-                            </span>
+                            {pay.application ? (
+                              <>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{pay.application.applicantFirstName} {pay.application.applicantLastName}</span>
+                                  <Badge variant="info" size="sm">Admission Fee</Badge>
+                                </div>
+                                <span className="text-[11px] text-stone-500 block truncate">
+                                  Payer: {pay.application.guardianFirstName} {pay.application.guardianLastName} ({pay.application.applicationNumber})
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <div>
+                                  {pay.invoice?.student?.firstName} {pay.invoice?.student?.lastName}
+                                </div>
+                                <span className="text-[11px] text-stone-500">
+                                  {pay.invoice?.guardian
+                                    ? `Payer: ${pay.invoice.guardian.firstName} ${pay.invoice.guardian.lastName}`
+                                    : "Direct Payment"}
+                                </span>
+                              </>
+                            )}
                           </TableCell>
                           <TableCell className="font-bold text-emerald-800 text-xs sm:text-sm">
                             {formatNaira(BigInt(pay.amountPaidKobo))}

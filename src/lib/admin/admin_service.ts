@@ -5,6 +5,7 @@ import {
   TeacherStatus,
   AttendanceStatus,
   ApplicationStatus,
+  ApplicationPaymentStatus,
   InvoiceStatus,
   VerificationTokenType,
   NotificationCategory,
@@ -95,17 +96,28 @@ export async function getAdminDashboardMetrics(actor: SafeUser) {
       where: { date: todayDate },
       _count: { _all: true },
     }),
-    // Active term finance aggregates (Super Admin exclusively)
+    // Active term finance aggregates (Super Admin exclusively): Invoices + Confirmed Application Fees
     isSuperAdmin
-      ? prisma.invoice.aggregate({
-          _sum: {
-            totalAmountKobo: true,
-            amountPaidKobo: true,
-          },
-          where: {
-            status: { notIn: [InvoiceStatus.CANCELLED] },
-          },
-        })
+      ? Promise.all([
+          prisma.invoice.aggregate({
+            _sum: {
+              totalAmountKobo: true,
+              amountPaidKobo: true,
+            },
+            where: {
+              status: { notIn: [InvoiceStatus.CANCELLED] },
+            },
+          }),
+          prisma.application.aggregate({
+            _sum: {
+              totalAmountKobo: true,
+              amountPaidKobo: true,
+            },
+            where: {
+              paymentStatus: ApplicationPaymentStatus.PAYMENT_CONFIRMED,
+            },
+          }),
+        ])
       : Promise.resolve(null),
     // Recent admissions
     prisma.application.findMany({
@@ -127,30 +139,50 @@ export async function getAdminDashboardMetrics(actor: SafeUser) {
         },
       },
     }),
-    // Recent payments (Super Admin exclusively)
+    // Recent payments (Super Admin exclusively): Invoices + Confirmed Application Fee Payments
     isSuperAdmin
-      ? prisma.payment.findMany({
-          take: 5,
-          where: { status: 'CONFIRMED' },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            paymentReference: true,
-            amountKobo: true,
-            paymentMethod: true,
-            paidAt: true,
-            receipt: {
-              select: { receiptNumber: true },
-            },
-            invoice: {
-              select: {
-                student: { select: { firstName: true, lastName: true, admissionNumber: true } },
-                guardian: { select: { firstName: true, lastName: true } },
+      ? Promise.all([
+          prisma.payment.findMany({
+            take: 5,
+            where: { status: 'CONFIRMED' },
+            orderBy: { createdAt: 'desc' },
+            select: {
+              id: true,
+              paymentReference: true,
+              amountKobo: true,
+              paymentMethod: true,
+              paidAt: true,
+              createdAt: true,
+              receipt: {
+                select: { receiptNumber: true },
+              },
+              invoice: {
+                select: {
+                  student: { select: { firstName: true, lastName: true, admissionNumber: true } },
+                  guardian: { select: { firstName: true, lastName: true } },
+                },
               },
             },
-          },
-        })
-      : Promise.resolve([]),
+          }),
+          prisma.application.findMany({
+            take: 5,
+            where: { paymentStatus: ApplicationPaymentStatus.PAYMENT_CONFIRMED },
+            orderBy: { updatedAt: 'desc' },
+            select: {
+              id: true,
+              applicationNumber: true,
+              paymentReference: true,
+              amountPaidKobo: true,
+              applicantFirstName: true,
+              applicantLastName: true,
+              guardianFirstName: true,
+              guardianLastName: true,
+              updatedAt: true,
+              createdAt: true,
+            },
+          }),
+        ])
+      : Promise.resolve([[], []]),
     // Recent operational audit logs (Super Admin exclusively)
     isSuperAdmin
       ? prisma.auditLog.findMany({
@@ -186,10 +218,22 @@ export async function getAdminDashboardMetrics(actor: SafeUser) {
     else if (group.status === AttendanceStatus.EXCUSED) attendanceBreakdown.excused = count;
   }
 
-  const totalInvoicedKobo = isSuperAdmin && financeAggregates?._sum?.totalAmountKobo ? financeAggregates._sum.totalAmountKobo : BigInt(0);
-  const totalCollectedKobo = isSuperAdmin && financeAggregates?._sum?.amountPaidKobo ? financeAggregates._sum.amountPaidKobo : BigInt(0);
-  const outstandingKobo =
-    totalInvoicedKobo > totalCollectedKobo ? totalInvoicedKobo - totalCollectedKobo : BigInt(0);
+  let totalInvoicedKobo = BigInt(0);
+  let totalCollectedKobo = BigInt(0);
+  let outstandingKobo = BigInt(0);
+
+  if (isSuperAdmin && financeAggregates) {
+    const [invoiceAgg, appAgg] = financeAggregates;
+    const invInvoiced = invoiceAgg._sum?.totalAmountKobo || BigInt(0);
+    const invCollected = invoiceAgg._sum?.amountPaidKobo || BigInt(0);
+    const appInvoiced = appAgg._sum?.totalAmountKobo || BigInt(0);
+    const appCollected = appAgg._sum?.amountPaidKobo || BigInt(0);
+
+    totalInvoicedKobo = invInvoiced + (appInvoiced > appCollected ? appInvoiced : appCollected);
+    totalCollectedKobo = invCollected + appCollected;
+    outstandingKobo =
+      totalInvoicedKobo > totalCollectedKobo ? totalInvoicedKobo - totalCollectedKobo : BigInt(0);
+  }
 
   return {
     isSuperAdmin,
@@ -223,11 +267,65 @@ export async function getAdminDashboardMetrics(actor: SafeUser) {
       : null,
     recentApplications,
     recentPayments: isSuperAdmin
-      ? recentPayments.map((p) => ({
-          ...p,
-          amountPaidKobo: p.amountKobo,
-          receiptNumber: p.receipt?.receiptNumber || null,
-        }))
+      ? (() => {
+          const [invoicePayments, applicationPayments] = recentPayments as [
+            Array<{
+              id: string;
+              paymentReference: string;
+              amountKobo: bigint;
+              paymentMethod: string;
+              paidAt: Date | null;
+              createdAt: Date;
+              receipt: { receiptNumber: string } | null;
+              invoice: {
+                student: { firstName: string; lastName: string; admissionNumber: string | null } | null;
+                guardian: { firstName: string; lastName: string } | null;
+              } | null;
+            }>,
+            Array<{
+              id: string;
+              applicationNumber: string;
+              paymentReference: string | null;
+              amountPaidKobo: bigint;
+              applicantFirstName: string;
+              applicantLastName: string;
+              guardianFirstName: string;
+              guardianLastName: string;
+              updatedAt: Date;
+              createdAt: Date;
+            }>,
+          ];
+
+          const mappedInvoicePayments = (invoicePayments || []).map((p) => ({
+            id: p.id,
+            paymentReference: p.paymentReference,
+            amountPaidKobo: p.amountKobo,
+            receiptNumber: p.receipt?.receiptNumber || null,
+            paidAt: p.paidAt || p.createdAt,
+            invoice: p.invoice,
+            application: null,
+          }));
+
+          const mappedAppPayments = (applicationPayments || []).map((app) => ({
+            id: app.id,
+            paymentReference: app.paymentReference || `APP-PAY-${app.id.slice(0, 8)}`,
+            amountPaidKobo: app.amountPaidKobo,
+            receiptNumber: `REC-${app.applicationNumber}`,
+            paidAt: app.updatedAt || app.createdAt,
+            invoice: null,
+            application: {
+              applicantFirstName: app.applicantFirstName,
+              applicantLastName: app.applicantLastName,
+              applicationNumber: app.applicationNumber,
+              guardianFirstName: app.guardianFirstName,
+              guardianLastName: app.guardianLastName,
+            },
+          }));
+
+          return [...mappedInvoicePayments, ...mappedAppPayments]
+            .sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())
+            .slice(0, 5);
+        })()
       : [],
     recentAuditLogs: isSuperAdmin ? recentAuditLogs : [],
   };

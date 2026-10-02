@@ -12,6 +12,7 @@ import {
   Input,
   Select,
   Alert,
+  Modal,
   LoadingState,
   ErrorState,
   EmptyState,
@@ -65,6 +66,32 @@ export default function AdminAdmissionsPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [statusSuccessMessage, setStatusSuccessMessage] = useState<string | null>(null);
+
+  // Deletion modal state
+  const [applicationToDelete, setApplicationToDelete] = useState<ApplicationItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteApplication = async () => {
+    if (!applicationToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/admin/admissions/${applicationToDelete.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to delete application.");
+      }
+      setApplicationToDelete(null);
+      fetchApplications();
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete application.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const fetchAdmissionsStatus = useCallback(async () => {
     try {
@@ -404,16 +431,34 @@ export default function AdminAdmissionsPage() {
                           {app.status || "—"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="w-32 text-right">
-                        <Link href={`/admin/admissions/${app.id}`}>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold whitespace-nowrap min-h-[36px]"
-                          >
-                            View Profile
-                          </Button>
-                        </Link>
+                      <TableCell className="w-36 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Link href={`/admin/admissions/${app.id}`}>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold whitespace-nowrap min-h-[36px]"
+                            >
+                              View Profile
+                            </Button>
+                          </Link>
+                          {app.status !== "ENROLLED" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setDeleteError(null);
+                                setApplicationToDelete(app);
+                              }}
+                              className="text-stone-400 hover:text-rose-700 hover:bg-rose-50 min-h-[36px] px-2"
+                              title="Delete Application"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                              </svg>
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -475,20 +520,85 @@ export default function AdminAdmissionsPage() {
                   },
                 ]}
                 actions={
-                  <Link href={`/admin/admissions/${app.id}`} className="w-full">
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      className="w-full bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold min-h-[44px]"
-                    >
-                      View Profile
-                    </Button>
-                  </Link>
+                  <div className="flex items-center gap-2 w-full">
+                    <Link href={`/admin/admissions/${app.id}`} className="flex-1">
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        className="w-full bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold min-h-[44px]"
+                      >
+                        View Profile
+                      </Button>
+                    </Link>
+                    {app.status !== "ENROLLED" && (
+                      <Button
+                        variant="outline"
+                        size="md"
+                        onClick={() => {
+                          setDeleteError(null);
+                          setApplicationToDelete(app);
+                        }}
+                        className="text-rose-700 border-rose-200 hover:bg-rose-50 min-h-[44px] px-3 shrink-0"
+                        title="Delete Application"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                      </Button>
+                    )}
+                  </div>
                 }
               />
             ))}
           </div>
         </div>
+      )}
+
+      {/* Delete Application Confirmation Modal */}
+      {applicationToDelete && (
+        <Modal
+          isOpen={true}
+          onClose={() => !isDeleting && setApplicationToDelete(null)}
+          title="Delete Admission Application"
+        >
+          <div className="space-y-4 pt-2">
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs space-y-1.5">
+              <p className="font-bold text-rose-900 text-sm">
+                Permanent Deletion: {applicationToDelete.applicationNumber}
+              </p>
+              <p className="text-rose-800">
+                Applicant: <span className="font-bold">{applicationToDelete.applicantFirstName} {applicationToDelete.applicantLastName}</span>
+              </p>
+              <p className="text-stone-600 leading-relaxed pt-1">
+                Are you sure you want to permanently delete this application? This action will remove the candidate dossier and screening records. Enrolled students cannot be deleted.
+              </p>
+            </div>
+
+            {deleteError && (
+              <Alert variant="danger" onClose={() => setDeleteError(null)}>
+                {deleteError}
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
+              <Button
+                variant="outline"
+                onClick={() => setApplicationToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleDeleteApplication}
+                disabled={isDeleting}
+                className="font-bold"
+              >
+                {isDeleting ? "Deleting..." : "Permanently Delete"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

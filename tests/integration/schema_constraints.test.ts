@@ -24,7 +24,11 @@ describe("Swanford Stage 2C Admission Lifecycle, Business Rules & Schema Constra
     });
     const cycle = await prisma.admissionCycle.update({
       where: { code: "ADM-2026-MAIN" },
-      data: { status: "OPEN" },
+      data: {
+        status: "OPEN",
+        startDate: new Date("2026-08-01T07:00:00.000Z"),
+        endDate: new Date("2026-09-30T22:59:59.999Z"),
+      },
     });
     const primaryProg = await prisma.programme.findUniqueOrThrow({ where: { code: "PRIMARY" } });
     const tahfeezProg = await prisma.programme.findUniqueOrThrow({ where: { code: "TAHFEEZ" } });
@@ -467,6 +471,7 @@ describe("Swanford Stage 2C Admission Lifecycle, Business Rules & Schema Constra
     const session = await prisma.academicSession.findUniqueOrThrow({ where: { name: "2026/2027" } });
 
     // Parent started draft
+    await prisma.application.deleteMany({ where: { applicationNumber: "APP-2026-DRAFT-TEST" } });
     const draftApp = await prisma.application.create({
       data: {
         applicationNumber: "APP-2026-DRAFT-TEST",

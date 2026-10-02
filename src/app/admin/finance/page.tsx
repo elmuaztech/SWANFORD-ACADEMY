@@ -55,6 +55,7 @@ interface PaymentItem {
   student: { firstName: string; lastName: string; admissionNumber: string | null };
   payerGuardian: { firstName: string; lastName: string } | null;
   invoice: { invoiceNumber: string } | null;
+  type?: 'TUITION' | 'APPLICATION_FEE';
 }
 
 interface ExpenseItem {
@@ -1297,7 +1298,17 @@ export default function AdminFinancePage() {
                           {p.paymentReference}
                         </TableCell>
                         <TableCell className="min-w-[180px] font-bold text-stone-900 break-words">
-                          {p.student.firstName} {p.student.lastName}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{p.student.firstName} {p.student.lastName}</span>
+                            {p.type === 'APPLICATION_FEE' && (
+                              <Badge variant="info" size="sm">Admission Fee</Badge>
+                            )}
+                          </div>
+                          {p.student.admissionNumber && (
+                            <span className="text-[10px] font-mono text-stone-500 block">
+                              {p.student.admissionNumber}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="min-w-[160px] text-xs text-stone-600 break-words">
                           {p.payerGuardian ? `${p.payerGuardian.firstName} ${p.payerGuardian.lastName}` : "Direct Deposit"}
@@ -1355,8 +1366,18 @@ export default function AdminFinancePage() {
                     </div>
                   }
                   subtitle={
-                    <div className="text-sm font-bold text-stone-900 mt-1">
-                      {p.student.firstName} {p.student.lastName}
+                    <div>
+                      <div className="text-sm font-bold text-stone-900 mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span>{p.student.firstName} {p.student.lastName}</span>
+                        {p.type === 'APPLICATION_FEE' && (
+                          <Badge variant="info" size="sm">Admission Fee</Badge>
+                        )}
+                      </div>
+                      {p.student.admissionNumber && (
+                        <span className="text-[11px] font-mono text-stone-500 block">
+                          {p.student.admissionNumber}
+                        </span>
+                      )}
                     </div>
                   }
                   badge={
