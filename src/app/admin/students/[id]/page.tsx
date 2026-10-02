@@ -268,10 +268,10 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to update student dossier.");
+      if (!res.ok) throw new Error(json.error || "Failed to update student details.");
 
       setShowEditModal(false);
-      setActionSuccess("Student dossier and academic assignments updated successfully.");
+      setActionSuccess("Student details and academic assignments updated successfully.");
       fetchStudent();
     } catch (err: unknown) {
       setEditError(err instanceof Error ? err.message : "Failed to update student profile.");
@@ -344,7 +344,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       <div className="py-8">
         <ErrorState
           title="Student Record Unavailable"
-          message={error || "Could not find student dossier."}
+          message={error || "Could not find student record."}
           actionLabel="Return to Students"
           onAction={() => router.push("/admin/students")}
         />
@@ -393,7 +393,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   onClick={handleOpenEditModal}
                   className="font-bold min-h-[44px]"
                 >
-                  ✏️ Edit Student Dossier
+                  ✏️ Edit Student Details
                 </Button>
                 <Button
                   variant="danger"
@@ -745,7 +745,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         <Modal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
-          title={`Edit Student Dossier — ${student.admissionNumber}`}
+          title={`Edit Student Details — ${student.admissionNumber}`}
         >
           <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
             {editError && (
@@ -918,7 +918,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 disabled={editSubmitting}
                 className="font-bold min-h-[44px]"
               >
-                {editSubmitting ? "Saving Changes..." : "Save Student Dossier"}
+                {editSubmitting ? "Saving Changes..." : "Save Student Details"}
               </Button>
             </div>
           </form>
@@ -930,14 +930,14 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         <Modal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
-          title="Permanently Delete Student Dossier"
+          title="Permanently Delete Student Record"
         >
           <form onSubmit={handleDeleteSubmit} className="space-y-4 pt-2">
             <Alert variant="danger">
               <p className="font-bold text-sm">Action cannot be reversed!</p>
               <p className="text-xs mt-1">
                 Permanently deleting this student removes their student profile, guardian relationships,
-                active and historical programme enrollments, attendance roll-calls, and academic dossiers.
+                active and historical programme enrollments, attendance roll-calls, and academic records.
               </p>
             </Alert>
 

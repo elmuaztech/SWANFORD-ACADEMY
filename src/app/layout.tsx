@@ -6,6 +6,15 @@ import { ScrollObserver } from "@/components";
 export const metadata: Metadata = {
   title: `${SCHOOL_PROFILE.name} - ${SCHOOL_PROFILE.subtitle}`,
   description: `${SCHOOL_PROFILE.name}, Dutse, Jigawa State. ${SCHOOL_PROFILE.motto}. Operating Nursery, Primary and Tahfeez programmes.`,
+  icons: {
+    icon: [
+      { url: "/images/swanford-logo.jpg", type: "image/jpeg" },
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    shortcut: "/images/swanford-logo.jpg",
+    apple: "/images/swanford-logo.jpg",
+  },
 };
 
 export const viewport: Viewport = {
@@ -25,6 +34,8 @@ export default function RootLayout({
       className="h-full antialiased font-sans overflow-x-hidden max-w-full"
     >
       <head>
+        <link rel="icon" type="image/jpeg" href="/images/swanford-logo.jpg" />
+        <link rel="apple-touch-icon" href="/images/swanford-logo.jpg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

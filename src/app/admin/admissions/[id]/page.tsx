@@ -203,7 +203,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   if (loading) {
     return (
       <div className="py-12">
-        <LoadingState message="Loading applicant dossier..." />
+        <LoadingState message="Loading applicant details..." />
       </div>
     );
   }

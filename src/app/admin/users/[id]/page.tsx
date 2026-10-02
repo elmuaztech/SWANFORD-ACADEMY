@@ -65,6 +65,7 @@ interface UserDetail {
 const ALL_ROLES: RoleCode[] = [
   RoleCode.SUPER_ADMIN,
   RoleCode.ADMIN,
+  RoleCode.ACCOUNTANT,
   RoleCode.TEACHER,
   RoleCode.PARENT,
 ];
@@ -664,11 +665,43 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <div className="py-1.5">
                 <span className="text-stone-500 block mb-1">Active Roles</span>
                 <div className="flex flex-wrap gap-1">
-                  {user.roles.map((r) => (
-                    <Badge key={r.role.id} variant="brand" size="sm">
-                      {r.role.name}
-                    </Badge>
-                  ))}
+                  {user.roles.length > 0 ? (
+                    user.roles.map((r, idx) => {
+                      const code = r.role.code || "";
+                      const name = r.role.name || "";
+                      const normalized = (code || name).toUpperCase().replace(/[\s\-_]/g, "");
+
+                      let variant: "brand" | "success" | "info" | "warning" | "neutral" | "danger" = "neutral";
+                      let className = "bg-stone-100 text-stone-700 border border-stone-200 font-medium";
+
+                      if (normalized.includes("SUPERADMIN")) {
+                        variant = "brand";
+                        className = "bg-[#5B0612] text-white border border-[#5B0612] font-semibold shadow-xs";
+                      } else if (normalized.includes("ADMIN")) {
+                        variant = "brand";
+                        className = "bg-burgundy-50 text-burgundy-900 border border-burgundy-200 font-semibold";
+                      } else if (normalized.includes("TEACHER")) {
+                        variant = "success";
+                        className = "bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold";
+                      } else if (normalized.includes("PARENT") || normalized.includes("GUARDIAN")) {
+                        variant = "info";
+                        className = "bg-sky-50 text-sky-800 border border-sky-200 font-semibold";
+                      } else if (normalized.includes("ACCOUNTANT") || normalized.includes("FINANCE")) {
+                        variant = "warning";
+                        className = "bg-amber-50 text-amber-800 border border-amber-200 font-semibold";
+                      }
+
+                      return (
+                        <Badge key={r.role.id || idx} variant={variant} size="sm" className={className}>
+                          {name}
+                        </Badge>
+                      );
+                    })
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 text-stone-500 border border-dashed border-stone-300">
+                      No Role Assigned
+                    </span>
+                  )}
                 </div>
               </div>
             </CardContent>

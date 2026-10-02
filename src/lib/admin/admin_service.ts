@@ -392,12 +392,45 @@ export async function listAdminUsers(
     }),
   ]);
 
-  const mappedUsers = users.map((u) => ({
-    ...u,
-    roles: u.userRoles || [],
-    teacher: u.teacherProfile ? { firstName: u.teacherProfile.firstName, lastName: u.teacherProfile.lastName, staffId: u.teacherProfile.staffIdNumber } : null,
-    guardian: u.guardianProfile ? { firstName: u.guardianProfile.firstName, lastName: u.guardianProfile.lastName } : null,
-  }));
+  const userEmails = users.map((u) => u.email);
+  const matchedApplications = await prisma.application.findMany({
+    where: {
+      guardianEmail: { in: userEmails, mode: 'insensitive' },
+    },
+    select: { guardianEmail: true },
+  });
+  const applicantGuardianEmails = new Set(
+    matchedApplications.map((a) => a.guardianEmail.toLowerCase())
+  );
+
+  const mappedUsers = users.map((u) => {
+    const roles = [...(u.userRoles || [])];
+    const emailLower = u.email.toLowerCase();
+    const hasRole = (code: string) => roles.some((r) => r.role?.code === code);
+
+    if (u.teacherProfile && !hasRole(RoleCode.TEACHER)) {
+      roles.push({
+        role: { id: `auto-teacher-${u.id}`, code: RoleCode.TEACHER, name: 'Teacher' },
+      });
+    }
+
+    if (u.guardianProfile && !hasRole(RoleCode.PARENT)) {
+      roles.push({
+        role: { id: `auto-parent-${u.id}`, code: RoleCode.PARENT, name: 'Parent / Guardian' },
+      });
+    } else if (applicantGuardianEmails.has(emailLower) && !hasRole(RoleCode.PARENT)) {
+      roles.push({
+        role: { id: `auto-applicant-parent-${u.id}`, code: RoleCode.PARENT, name: 'Parent / Guardian' },
+      });
+    }
+
+    return {
+      ...u,
+      roles,
+      teacher: u.teacherProfile ? { firstName: u.teacherProfile.firstName, lastName: u.teacherProfile.lastName, staffId: u.teacherProfile.staffIdNumber } : null,
+      guardian: u.guardianProfile ? { firstName: u.guardianProfile.firstName, lastName: u.guardianProfile.lastName } : null,
+    };
+  });
 
   return { total, limit, offset, users: mappedUsers };
 }
@@ -470,9 +503,34 @@ export async function getAdminUserDetails(actor: SafeUser, userId: string) {
     throw new AuthorizationError('User account not found.', 404, 'USER_NOT_FOUND');
   }
 
+  const userRoles = [...(user.userRoles || [])];
+  const hasRole = (code: string) => userRoles.some((r) => r.role?.code === code);
+
+  if (user.teacherProfile && !hasRole(RoleCode.TEACHER)) {
+    userRoles.push({
+      role: { id: `auto-teacher-${user.id}`, code: RoleCode.TEACHER, name: 'Teacher', description: 'Assigned via Faculty Profile' },
+    });
+  }
+
+  if (user.guardianProfile && !hasRole(RoleCode.PARENT)) {
+    userRoles.push({
+      role: { id: `auto-parent-${user.id}`, code: RoleCode.PARENT, name: 'Parent / Guardian', description: 'Assigned via Guardian Profile' },
+    });
+  } else {
+    const hasApp = await prisma.application.findFirst({
+      where: { guardianEmail: { equals: user.email, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    if (hasApp && !hasRole(RoleCode.PARENT)) {
+      userRoles.push({
+        role: { id: `auto-applicant-parent-${user.id}`, code: RoleCode.PARENT, name: 'Parent / Guardian', description: 'Registered Admission Applicant Guardian' },
+      });
+    }
+  }
+
   return {
     ...user,
-    roles: user.userRoles || [],
+    roles: userRoles,
     sessions: user.sessions || [],
     auditLogs: user.auditLogs || [],
   };

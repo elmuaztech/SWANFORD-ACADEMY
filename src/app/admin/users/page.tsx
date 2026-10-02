@@ -221,6 +221,93 @@ export default function AdminUsersPage() {
     }
   };
 
+  const renderRoleBadges = (u: UserItem) => {
+    const roleBadges: React.ReactNode[] = [];
+
+    const getRoleBadgeProps = (code?: string, name?: string) => {
+      const normalized = (code || name || "").toUpperCase().replace(/[\s\-_]/g, "");
+      if (normalized.includes("SUPERADMIN")) {
+        return {
+          variant: "brand" as const,
+          label: name || "Super Administrator",
+          className: "bg-[#5B0612] text-white border border-[#5B0612] font-semibold shadow-xs",
+        };
+      }
+      if (normalized.includes("ADMIN")) {
+        return {
+          variant: "brand" as const,
+          label: name || "School Administrator",
+          className: "bg-burgundy-50 text-burgundy-900 border border-burgundy-200 font-semibold",
+        };
+      }
+      if (normalized.includes("TEACHER")) {
+        return {
+          variant: "success" as const,
+          label: name || "Teacher",
+          className: "bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold",
+        };
+      }
+      if (normalized.includes("PARENT") || normalized.includes("GUARDIAN")) {
+        return {
+          variant: "info" as const,
+          label: name || "Parent / Guardian",
+          className: "bg-sky-50 text-sky-800 border border-sky-200 font-semibold",
+        };
+      }
+      if (normalized.includes("ACCOUNTANT") || normalized.includes("FINANCE")) {
+        return {
+          variant: "warning" as const,
+          label: name || "Accountant",
+          className: "bg-amber-50 text-amber-800 border border-amber-200 font-semibold",
+        };
+      }
+      return {
+        variant: "neutral" as const,
+        label: name || "User",
+        className: "bg-stone-100 text-stone-700 border border-stone-200 font-medium",
+      };
+    };
+
+    if (u.roles && u.roles.length > 0) {
+      u.roles.forEach((r, idx) => {
+        const { variant, label, className } = getRoleBadgeProps(r.role?.code, r.role?.name);
+        roleBadges.push(
+          <Badge key={r.role?.id || idx} variant={variant} size="sm" className={className}>
+            {label}
+          </Badge>
+        );
+      });
+    } else {
+      if (u.teacher) {
+        roleBadges.push(
+          <Badge key="teacher-fallback" variant="success" size="sm" className="bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
+            Teacher
+          </Badge>
+        );
+      }
+      if (u.guardian) {
+        roleBadges.push(
+          <Badge key="guardian-fallback" variant="info" size="sm" className="bg-sky-50 text-sky-800 border border-sky-200 font-semibold">
+            Parent / Guardian
+          </Badge>
+        );
+      }
+    }
+
+    if (roleBadges.length === 0) {
+      roleBadges.push(
+        <span
+          key="no-role"
+          className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 text-stone-500 border border-dashed border-stone-300"
+        >
+          No Role Assigned
+        </span>
+      );
+    }
+
+    return <div className="flex flex-wrap gap-1 items-center">{roleBadges}</div>;
+  };
+
   const handleOpenEditModal = (u: UserItem) => {
     setEditingUserId(u.id);
     const firstName = u.firstName || u.teacher?.firstName || u.guardian?.firstName || u.student?.firstName || "";
@@ -230,7 +317,13 @@ export default function AdminUsersPage() {
     setEditEmail(u.email);
     setEditPhone(u.phoneNumber || "");
     setEditStatus(u.status);
-    setEditRoles(u.roles.map((r) => r.role.code as RoleCode));
+
+    let initialRoles = u.roles.map((r) => r.role.code as RoleCode);
+    if (initialRoles.length === 0) {
+      if (u.teacher) initialRoles = [RoleCode.TEACHER];
+      else if (u.guardian) initialRoles = [RoleCode.PARENT];
+    }
+    setEditRoles(initialRoles);
     setEditError(null);
     setShowEditModal(true);
   };
@@ -484,13 +577,7 @@ export default function AdminUsersPage() {
                           {profileName}
                         </TableCell>
                         <TableCell className="min-w-[140px]">
-                          <div className="flex flex-wrap gap-1">
-                            {u.roles.map((r) => (
-                              <Badge key={r.role.id} variant="neutral" size="sm">
-                                {r.role.name}
-                              </Badge>
-                            ))}
-                          </div>
+                          {renderRoleBadges(u)}
                         </TableCell>
                         <TableCell className="w-28">
                           <Badge
@@ -600,7 +687,7 @@ export default function AdminUsersPage() {
                     { label: "Phone", value: u.phoneNumber || "—" },
                     {
                       label: "Roles",
-                      value: u.roles.map((r) => r.role.name).join(", ") || "None",
+                      value: renderRoleBadges(u),
                     },
                     {
                       label: "Last Sign In",
@@ -708,7 +795,7 @@ export default function AdminUsersPage() {
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-2">Assigned Roles</label>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                {[RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.TEACHER, RoleCode.PARENT].map((role) => (
+                {[RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.ACCOUNTANT, RoleCode.TEACHER, RoleCode.PARENT].map((role) => (
                   <label
                     key={role}
                     className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
@@ -879,6 +966,7 @@ export default function AdminUsersPage() {
                 onChange={(e) => setCreateRole(e.target.value as RoleCode)}
               >
                 <option value="ADMIN">Admin</option>
+                <option value="ACCOUNTANT">Accountant</option>
                 <option value="TEACHER">Teacher</option>
                 <option value="PARENT">Parent</option>
               </Select>

@@ -72,7 +72,7 @@ export async function DELETE(
     const deleted = await deleteStudent(actor, id);
     return NextResponse.json({
       success: true,
-      message: `Student dossier for admission #${deleted.admissionNumber} permanently deleted.`,
+      message: `Student record for admission #${deleted.admissionNumber} permanently deleted.`,
     });
   } catch (error: unknown) {
     if (error instanceof AuthorizationError) {
