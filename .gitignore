@@ -46,6 +46,7 @@ scratch/
 *.tar
 *.tar.gz
 *.sql
+!prisma/migrations/**/*.sql
 *.dump
 *.bak
 
