@@ -63,6 +63,7 @@ export default function ParentDashboardPage() {
 
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [admissions, setAdmissions] = useState<any[]>([]);
 
   // 1. Load Parent Profile & Linked Children
   useEffect(() => {
@@ -85,6 +86,14 @@ export default function ParentDashboardPage() {
         setError(err.message);
         setIsLoadingProfile(false);
       });
+
+    // Also fetch admission applications for status tracking
+    fetch("/api/parent/admissions")
+      .then((res) => (res.ok ? res.json() : { admissions: [] }))
+      .then((data) => {
+        setAdmissions(data.admissions || data.applications || []);
+      })
+      .catch(() => setAdmissions([]));
   }, []);
 
   const selectedChild = profile?.children[selectedChildIndex] || null;
@@ -166,10 +175,89 @@ export default function ParentDashboardPage() {
           title={`Welcome, ${profile.guardian.fullName}`}
           subtitle="Swanford Academy Guardian & Parent Portal"
         />
-        <EmptyState
-          title="No Linked Children Found"
-          description="Your guardian profile currently has no active student relationships registered with the academy. If your child recently completed admissions, please allow time for administrative matriculation or contact the school office."
-        />
+
+        {admissions.length > 0 ? (
+          <div className="space-y-6">
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900">
+                  Admissions Status
+                </span>
+                <h3 className="text-base font-bold text-amber-950">
+                  You have {admissions.length} admission application{admissions.length > 1 ? "s" : ""} on file
+                </h3>
+                <p className="text-xs sm:text-sm text-amber-800 max-w-2xl">
+                  Once your child’s entrance application is reviewed and formally matriculated by administration, active term attendance, report cards, and fee invoices will automatically populate your dashboard.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <Link href="/parent/admissions" className="w-full sm:w-auto">
+                  <Button className="w-full bg-[#800020] hover:bg-[#600018] text-white min-h-[44px]">
+                    Track Applications
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Applications List */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-stone-900 tracking-tight">Your Submitted Applications</h2>
+                <Link href="/admissions">
+                  <Button variant="outline" size="sm" className="min-h-[40px]">
+                    Apply for New Child
+                  </Button>
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {admissions.map((app) => (
+                  <Card key={app.id} className="bg-white border-stone-200 shadow-xs hover:border-stone-300 transition-colors">
+                    <CardContent className="p-5 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-xs font-bold text-stone-700">{app.applicationNumber}</span>
+                        <Badge
+                          variant={
+                            app.status === "ACCEPTED" || app.status === "ENROLLED"
+                              ? "success"
+                              : app.status === "UNDER_REVIEW"
+                              ? "info"
+                              : app.status === "SHORTLISTED"
+                              ? "brand"
+                              : app.status === "REJECTED"
+                              ? "danger"
+                              : "warning"
+                          }
+                        >
+                          {app.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <div>
+                        <h4 className="text-base font-bold text-[#800020]">{app.studentName}</h4>
+                        <p className="text-xs text-stone-600 mt-0.5">
+                          Programme: <span className="font-semibold text-stone-800">{app.programmeName}</span>
+                          {app.targetClassName && <span> • Class: {app.targetClassName}</span>}
+                        </p>
+                      </div>
+                      <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
+                        <span>Submitted {new Date(app.submittedAt || app.createdAt).toLocaleDateString("en-NG", { dateStyle: "medium" })}</span>
+                        <Link href="/parent/admissions" className="text-[#800020] font-semibold hover:underline">
+                          View Details &rarr;
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <EmptyState
+            title="No Linked Children Found"
+            description="Your guardian profile currently has no active student relationships registered with the academy. If your child recently completed admissions, please allow time for administrative matriculation or contact the school office."
+            actionLabel="Apply for Admission"
+            actionHref="/admissions"
+          />
+        )}
       </div>
     );
   }

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     }
 
     const admissions = await getParentAdmissions(user.id);
-    return NextResponse.json({ admissions });
+    return NextResponse.json({ admissions, applications: admissions });
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });

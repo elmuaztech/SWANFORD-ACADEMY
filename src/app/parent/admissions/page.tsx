@@ -41,7 +41,7 @@ export default function ParentAdmissionsPage() {
           throw new Error(body.error || "Failed to load admission applications");
         }
         const data = await res.json();
-        setApplications(data.applications || []);
+        setApplications(data.applications || data.admissions || []);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to load applications");
       } finally {

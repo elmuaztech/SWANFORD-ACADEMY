@@ -16,6 +16,13 @@ async function check() {
   });
 
   console.log(`Total users in system: ${users.length}`);
+  console.log(users.map(u => ({
+    id: u.id,
+    email: u.email,
+    roles: u.userRoles.map(ur => ur.role.name),
+    hasGuardian: !!u.guardianProfile,
+    guardianId: u.guardianProfile?.id
+  })));
   const apps = await prisma.application.findMany({
     select: {
       applicationNumber: true,

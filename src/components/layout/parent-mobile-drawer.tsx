@@ -42,6 +42,7 @@ export function ParentMobileDrawer({
   const items = [
     { label: "Dashboard", href: "/parent", exact: true },
     { label: "My Children", href: "/parent/children" },
+    { label: "Admissions", href: "/parent/admissions" },
     { label: "Attendance", href: "/parent/attendance" },
     { label: "Results", href: "/parent/results" },
     { label: "Fees / Payments", href: "/parent/finance" },

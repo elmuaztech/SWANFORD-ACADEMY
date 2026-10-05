@@ -19,7 +19,7 @@ import { calculateStudentTermResults } from '@/lib/assessment/assessment_service
  * Retrieves the authenticated parent's profile and active linked children.
  */
 export async function getParentProfile(userId: string) {
-  const guardian = await prisma.guardian.findUnique({
+  let guardian = await prisma.guardian.findUnique({
     where: { userId },
     include: {
       user: {
@@ -50,6 +50,100 @@ export async function getParentProfile(userId: string) {
       },
     },
   });
+
+  if (!guardian) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userRoles: {
+          include: { role: true },
+        },
+      },
+    });
+
+    if (user) {
+      // 1. Check if a guardian profile already exists matching the user's email
+      const existingByEmail = await prisma.guardian.findFirst({
+        where: {
+          email: { equals: user.email, mode: 'insensitive' },
+        },
+      });
+
+      if (existingByEmail) {
+        await prisma.guardian.update({
+          where: { id: existingByEmail.id },
+          data: { userId: user.id },
+        });
+      } else {
+        // 2. Check if user submitted any admission applications under this email
+        const app = await prisma.application.findFirst({
+          where: {
+            guardianEmail: { equals: user.email, mode: 'insensitive' },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        const firstName = app?.guardianFirstName?.trim() || 'Parent';
+        const lastName = app?.guardianLastName?.trim() || 'Guardian';
+        const phone = app?.guardianPhone?.trim() || user.phoneNumber || '08000000000';
+
+        const createdGuardian = await prisma.guardian.create({
+          data: {
+            userId: user.id,
+            firstName,
+            lastName,
+            email: user.email.toLowerCase(),
+            phonePrimary: phone,
+            isVerified: true,
+          },
+        });
+
+        // Link existing applications
+        await prisma.application.updateMany({
+          where: {
+            guardianEmail: { equals: user.email, mode: 'insensitive' },
+            existingGuardianId: null,
+          },
+          data: {
+            existingGuardianId: createdGuardian.id,
+          },
+        });
+      }
+
+      // Re-fetch guardian with full includes
+      guardian = await prisma.guardian.findUnique({
+        where: { userId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              phoneNumber: true,
+              status: true,
+              profilePhotoId: true,
+            },
+          },
+          relationships: {
+            where: { status: RelationshipStatus.ACTIVE },
+            include: {
+              student: {
+                include: {
+                  programmeEnrollments: {
+                    where: { enrollmentStatus: 'ACTIVE' },
+                    include: {
+                      programme: true,
+                      schoolClass: true,
+                      academicSession: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+  }
 
   if (!guardian) {
     throw new AuthorizationError(
@@ -367,30 +461,14 @@ export async function getParentChildFinance(userId: string, studentId: string) {
  * Completely strips internal reviewer notes, rankings, and medical evaluations.
  */
 export async function getParentAdmissions(userId: string) {
-  const guardian = await prisma.guardian.findUnique({
-    where: { userId },
-    include: {
-      relationships: {
-        where: { status: RelationshipStatus.ACTIVE },
-        select: { studentId: true },
-      },
-    },
-  });
-
-  if (!guardian) {
-    throw new AuthorizationError(
-      'Access denied: Authenticated user does not have a linked guardian profile.',
-      403,
-      'GUARDIAN_PROFILE_MISSING'
-    );
-  }
-
-  const linkedStudentIds = guardian.relationships.map((r) => r.studentId);
+  const profile = await getParentProfile(userId);
+  const guardianId = profile.guardian.id;
+  const linkedStudentIds = profile.children.map((c) => c.studentId);
 
   const applications = await prisma.application.findMany({
     where: {
       OR: [
-        { existingGuardianId: guardian.id },
+        { existingGuardianId: guardianId },
         { admittedStudentId: { in: linkedStudentIds } },
       ],
     },
@@ -411,12 +489,17 @@ export async function getParentAdmissions(userId: string) {
   return applications.map((app) => ({
     id: app.id,
     applicationNumber: app.applicationNumber,
-    studentName: `${app.applicantFirstName} ${app.applicantLastName}`,
-    sessionName: app.academicSession.name,
-    cycleName: app.admissionCycle.name,
+    studentName: `${app.applicantFirstName} ${app.applicantLastName}`.trim(),
+    sessionName: app.academicSession?.name || 'Current Session',
+    cycleName: app.admissionCycle?.name || 'General Admission',
     status: app.status,
     paymentStatus: app.paymentStatus,
     createdAt: app.createdAt.toISOString(),
+    submittedAt: app.createdAt.toISOString(),
+    programmeName: app.programmeSelections[0]?.programme?.name || 'General Admission',
+    targetClassName: app.programmeSelections[0]?.targetClass
+      ? `${app.programmeSelections[0].targetClass.name}${app.programmeSelections[0].targetClass.arm ? ` (${app.programmeSelections[0].targetClass.arm})` : ''}`
+      : undefined,
     programmes: app.programmeSelections.map((ps) => ({
       programmeName: ps.programme.name,
       className: ps.targetClass ? `${ps.targetClass.name}${ps.targetClass.arm ? ` (${ps.targetClass.arm})` : ''}` : null,
