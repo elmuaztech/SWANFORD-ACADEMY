@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/request_auth';
-import { listPayments } from '@/lib/finance/payment_service';
+import { listPayments, recordManualPayment } from '@/lib/finance/payment_service';
 import { AuthorizationError } from '@/lib/auth/authorization';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -110,5 +110,40 @@ export async function GET(request: NextRequest) {
     }
     const message = error instanceof Error ? error.message : 'Failed to retrieve payments.';
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const actor = await getAuthUser(request);
+    if (!actor) {
+      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const result = await recordManualPayment(actor, body);
+
+    return NextResponse.json(
+      {
+        success: true,
+        payment: {
+          ...result.payment,
+          amountKobo: result.payment.amountKobo.toString(),
+        },
+        receipt: result.receipt
+          ? {
+              ...result.receipt,
+              amountKobo: result.receipt.amountKobo.toString(),
+            }
+          : null,
+      },
+      { status: 201 }
+    );
+  } catch (error: unknown) {
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
+    }
+    const message = error instanceof Error ? error.message : 'Failed to record manual payment.';
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

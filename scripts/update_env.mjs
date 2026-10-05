@@ -10,16 +10,22 @@ if (fs.existsSync(envPath)) {
     !line.startsWith('SMTP_')
   );
 
+  const smtpPass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
+  if (!smtpPass) {
+    console.error('SMTP_PASSWORD environment variable must be set to run this script.');
+    process.exit(1);
+  }
+
   // Append canonical working SMTP settings
   lines.push('NOTIFICATION_PROVIDER=smtp');
   lines.push('SMTP_HOST=smtp.gmail.com');
   lines.push('SMTP_PORT=587');
   lines.push('SMTP_SECURE=false');
-  lines.push('SMTP_USER=swanford99@gmail.com');
-  lines.push('SMTP_PASSWORD=msik fjvd pejo ndhn');
-  lines.push('SMTP_PASS=msik fjvd pejo ndhn');
+  lines.push(`SMTP_USER=${process.env.SMTP_USER || 'swanford99@gmail.com'}`);
+  lines.push(`SMTP_PASSWORD=${smtpPass}`);
+  lines.push(`SMTP_PASS=${smtpPass}`);
   lines.push('SMTP_FROM_NAME="Swanford Academy"');
-  lines.push('SMTP_FROM_EMAIL=swanford99@gmail.com');
+  lines.push(`SMTP_FROM_EMAIL=${process.env.SMTP_FROM_EMAIL || 'swanford99@gmail.com'}`);
   lines.push('SMTP_CONNECTION_TIMEOUT=10000');
   lines.push('SMTP_RETRY_LIMIT=5');
 

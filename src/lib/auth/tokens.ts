@@ -46,11 +46,11 @@ export interface GeneratedOtpPair {
 
 /**
  * Generates a cryptographically secure numeric OTP of exact digit length.
- * For digits=4: covers 0000-9999 and pads with leading zeros (e.g. "0427").
+ * Defaults to 6 digits: covers 000000-999999 and pads with leading zeros (e.g. "042718").
  * Raw OTP is for delivery only; only otpHash (SHA-256) is stored in the database.
  */
-export function generateSecureNumericOtp(digits = 4): GeneratedOtpPair {
-  const max = Math.pow(10, digits); // e.g. 10000 for 4 digits (range 0..9999)
+export function generateSecureNumericOtp(digits = 6): GeneratedOtpPair {
+  const max = Math.pow(10, digits); // e.g. 1000000 for 6 digits (range 0..999999)
   const num = crypto.randomInt(0, max);
   const rawOtp = num.toString().padStart(digits, '0');
   const otpHash = hashToken(rawOtp);

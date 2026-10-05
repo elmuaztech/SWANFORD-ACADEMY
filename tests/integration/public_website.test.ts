@@ -22,6 +22,10 @@ describe('Integration Tests: Work Package D — Public Website & Admissions Expe
       where: { isCurrent: true },
     });
     if (currentSession) {
+      await prisma.academicSession.updateMany({
+        where: { id: { not: currentSession.id } },
+        data: { isCurrent: false },
+      });
       await prisma.academicSession.update({
         where: { id: currentSession.id },
         data: { isCurrent: true },
@@ -47,6 +51,14 @@ describe('Integration Tests: Work Package D — Public Website & Admissions Expe
       }
     }
     if (!cycle) throw new Error('No open admission cycle found in test environment.');
+    cycle = await prisma.admissionCycle.update({
+      where: { id: cycle.id },
+      data: {
+        status: 'OPEN',
+        startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
     openCycleId = cycle.id;
 
     // 2. Fetch programmes

@@ -143,6 +143,15 @@ export async function verifyPaymentSessionToken(params: VerifySessionTokenParams
     }
   }
 
+  // Check single-use replay protection
+  if (session.usedAt) {
+    throw new AuthorizationError(
+      "Payment session has already been used and cannot be replayed.",
+      401,
+      "SESSION_ALREADY_USED"
+    );
+  }
+
   // Check expiration
   if (new Date() > session.expiresAt) {
     throw new AuthorizationError("Payment session has expired. Please initiate a new payment session.", 401, "SESSION_EXPIRED");
@@ -152,14 +161,25 @@ export async function verifyPaymentSessionToken(params: VerifySessionTokenParams
 }
 
 /**
- * Marks a payment session as consumed after checkout completion.
+ * Marks a payment session as consumed after checkout initialization/completion.
+ * Atomically verifies and marks used to eliminate race condition replays.
  */
 export async function markPaymentSessionUsed(
   sessionId: string,
   client: Prisma.TransactionClient | typeof prisma = prisma
 ) {
-  return client.paymentSession.update({
-    where: { id: sessionId },
+  const result = await client.paymentSession.updateMany({
+    where: { id: sessionId, usedAt: null },
     data: { usedAt: new Date() },
   });
+
+  if (result.count === 0) {
+    throw new AuthorizationError(
+      "Payment session has already been consumed or does not exist.",
+      401,
+      "SESSION_ALREADY_USED"
+    );
+  }
+
+  return true;
 }

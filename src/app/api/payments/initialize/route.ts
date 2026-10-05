@@ -5,6 +5,7 @@ import {
 } from "@/lib/paystack";
 import { PaymentTargetType } from "@prisma/client";
 import { toUserFacingError } from "@/lib/ui/error_messages";
+import { getEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -24,26 +25,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const host = req.headers.get("host") || "localhost:3000";
-    const forwardedProto = req.headers.get("x-forwarded-proto");
-    const protocol = forwardedProto || (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
-    const allowedOrigin = `${protocol}://${host}`;
+    const env = getEnv();
+    const configuredAppUrl = new URL(env.APP_URL);
+    const trustedOrigins = new Set<string>([configuredAppUrl.origin]);
+
+    // In local development or testing, also permit standard local origins
+    if (env.NODE_ENV !== "production") {
+      trustedOrigins.add("http://localhost:3000");
+      trustedOrigins.add("http://127.0.0.1:3000");
+      trustedOrigins.add("http://localhost:3002");
+    }
+
+    const canonicalOrigin = configuredAppUrl.origin;
 
     let validatedCallbackUrl: string | undefined = undefined;
     if (callbackUrl && typeof callbackUrl === "string") {
       const trimmed = callbackUrl.trim();
       if (trimmed.startsWith("/")) {
-        validatedCallbackUrl = `${allowedOrigin}${trimmed}`;
+        validatedCallbackUrl = `${canonicalOrigin}${trimmed}`;
       } else {
         try {
           const parsed = new URL(trimmed);
-          const isSameOrigin = parsed.origin === allowedOrigin;
-          const isAppUrlOrigin = process.env.APP_URL ? parsed.origin === new URL(process.env.APP_URL).origin : false;
-          if (isSameOrigin || isAppUrlOrigin) {
+          if (trustedOrigins.has(parsed.origin)) {
             validatedCallbackUrl = parsed.toString();
           } else {
             return NextResponse.json(
-              { error: "Invalid payment callback destination." },
+              { error: "Invalid payment callback destination origin." },
               { status: 400 }
             );
           }
@@ -59,13 +66,13 @@ export async function POST(req: NextRequest) {
     if (targetType === PaymentTargetType.APPLICATION_FEE) {
       const result = await initializeApplicationPayment({
         sessionToken,
-        callbackUrl: validatedCallbackUrl || `${allowedOrigin}/admissions/pay/callback`,
+        callbackUrl: validatedCallbackUrl || `${canonicalOrigin}/admissions/pay/callback`,
       });
       return NextResponse.json(result, { status: 200 });
     } else if (targetType === PaymentTargetType.INVOICE) {
       const result = await initializeInvoicePayment({
         sessionToken,
-        callbackUrl: validatedCallbackUrl || `${allowedOrigin}/finance/pay/callback`,
+        callbackUrl: validatedCallbackUrl || `${canonicalOrigin}/finance/pay/callback`,
       });
       return NextResponse.json(result, { status: 200 });
     } else {

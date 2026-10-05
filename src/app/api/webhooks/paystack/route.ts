@@ -14,13 +14,29 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   try {
-    const signature = req.headers.get("x-paystack-signature");
-    const rawBody = await req.text();
+    const MAX_WEBHOOK_BODY_BYTES = 256 * 1024; // 256 KB max
 
+    const contentLength = req.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_WEBHOOK_BODY_BYTES) {
+      return NextResponse.json(
+        { error: "Webhook payload exceeds maximum size limit (256 KB)." },
+        { status: 413 }
+      );
+    }
+
+    const signature = req.headers.get("x-paystack-signature");
     if (!signature) {
       return NextResponse.json(
         { error: "Missing x-paystack-signature header." },
         { status: 401 }
+      );
+    }
+
+    const rawBody = await req.text();
+    if (rawBody.length > MAX_WEBHOOK_BODY_BYTES) {
+      return NextResponse.json(
+        { error: "Webhook payload exceeds maximum size limit (256 KB)." },
+        { status: 413 }
       );
     }
 

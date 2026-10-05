@@ -74,6 +74,30 @@ describe('Password & OTP Security Policy Unit Tests', () => {
     });
   });
 
+  describe('6-Digit Hardened OTP Generation & Policy (000000–999999)', () => {
+    it('defaults to generating exact 6-digit numeric OTPs padded with leading zeros', () => {
+      for (let i = 0; i < 50; i++) {
+        const { rawOtp, otpHash } = generateSecureNumericOtp();
+        expect(rawOtp).toMatch(/^\d{6}$/);
+        expect(rawOtp.length).toBe(6);
+        expect(otpHash).toHaveLength(64);
+        expect(hashToken(rawOtp)).toBe(otpHash);
+
+        const num = parseInt(rawOtp, 10);
+        expect(num).toBeGreaterThanOrEqual(0);
+        expect(num).toBeLessThanOrEqual(999999);
+      }
+    });
+
+    it('correctly pads leading zeros for numbers under 100000 (e.g. 042718)', () => {
+      const num = 42718;
+      const formatted = num.toString().padStart(6, '0');
+      expect(formatted).toBe('042718');
+      expect(formatted).toHaveLength(6);
+      expect(/^\d{6}$/.test(formatted)).toBe(true);
+    });
+  });
+
   describe('Reset Authorization Ticket Policy (10-Minute Expiry)', () => {
     it('generates high-entropy 256-bit single-use reset tickets', () => {
       const { rawToken, tokenHash } = generateResetAuthorizationTicket();

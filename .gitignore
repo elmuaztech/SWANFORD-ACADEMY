@@ -18,6 +18,8 @@
 # Environment Variables & Secrets (CRITICAL: NEVER COMMIT REAL CREDENTIALS)
 .env*
 !.env.example
+deployment/env.production
+!deployment/env.production.example
 
 # Logs
 npm-debug.log*

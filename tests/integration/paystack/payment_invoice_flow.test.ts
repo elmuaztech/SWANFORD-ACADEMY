@@ -7,6 +7,7 @@ import {
   InvoiceStatus,
   PaymentTargetType,
   ProgrammeCode,
+  ReconciliationStatus,
   RelationshipType,
   RoleCode,
   TermCode,
@@ -214,7 +215,7 @@ describe('Stage 9 — Integration: Invoice Payment Flow, Allocation & Overpaymen
     expect(updatedInvoice.outstandingBalanceKobo).toBe(BigInt(0));
   });
 
-  it('strictly rejects overpayment attempts beyond outstanding balance', async () => {
+  it('safely reconciles overpayment attempts without discarding gateway funds', async () => {
     const overpaymentKobo = BigInt(15000000); // ₦150,000 against ₦100,000 invoice
     const reference = generatePaystackReference(PaymentTargetType.INVOICE, invoiceId);
 
@@ -229,20 +230,37 @@ describe('Stage 9 — Integration: Invoice Payment Flow, Allocation & Overpaymen
       },
     });
 
-    await expect(
-      processVerifiedTransaction(reference, {
-        id: 998811,
-        reference,
-        amount: Number(overpaymentKobo),
-        currency: 'NGN',
-        status: 'success',
-      })
-    ).rejects.toThrow(AuthorizationError);
+    const result = await processVerifiedTransaction(reference, {
+      id: 998811,
+      reference,
+      amount: Number(overpaymentKobo),
+      currency: 'NGN',
+      status: 'success',
+      paid_at: new Date().toISOString(),
+      channel: 'card',
+      customer: { email: 'umar.farouk@example.com' },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.status).toBe(GatewayTransactionStatus.SUCCESS);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({
       where: { id: invoiceId },
     });
-    expect(invoice.status).toBe(InvoiceStatus.ISSUED);
-    expect(invoice.amountPaidKobo).toBe(BigInt(0));
+    expect(invoice.status).toBe(InvoiceStatus.PAID);
+    expect(invoice.outstandingBalanceKobo).toBe(BigInt(0));
+
+    const payment = await prisma.payment.findFirst({
+      where: { invoiceId },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(payment).toBeDefined();
+    expect(payment?.notes).toContain('[OVERPAYMENT:');
+
+    const txRecord = await prisma.paymentTransaction.findUnique({
+      where: { gatewayReference: reference },
+    });
+    expect(txRecord).toBeDefined();
+    expect(txRecord?.reconciliationStatus).toBe(ReconciliationStatus.DISCREPANCY);
   });
 });

@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loginUser } from '@/lib/auth/service';
 import { RoleCode } from '@prisma/client';
+import { checkRateLimit, getClientIp } from '@/lib/security/rate_limiter';
 
 export async function POST(req: NextRequest) {
   try {
+    const clientIp = getClientIp(req);
+    const rateLimit = checkRateLimit(`login_ip:${clientIp}`, {
+      windowMs: 60 * 1000,
+      maxRequests: 20,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many login attempts. Please wait a moment and try again.' },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { email, password, portal } = body;
 
@@ -22,7 +35,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0] || req.headers.get('x-real-ip') || undefined;
+    const ipAddress = clientIp;
     const userAgent = req.headers.get('user-agent') || undefined;
 
     const { user, sessionToken } = await loginUser({

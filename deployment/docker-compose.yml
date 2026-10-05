@@ -23,7 +23,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - APP_URL=${APP_URL:-https://swanfordacademy.com.ng}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-swanford}:${POSTGRES_PASSWORD:-SwanfordProd2026!Secure}@postgres:5432/${POSTGRES_DB:-swanford_prod}?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       - SESSION_SECRET=${SESSION_SECRET}
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY}
@@ -31,14 +31,14 @@ services:
       - NOTIFICATION_PROVIDER=${NOTIFICATION_PROVIDER:-smtp}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-swanford99@gmail.com}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-msik fjvd pejo ndhn}
-      - SMTP_PASS=${SMTP_PASS:-msik fjvd pejo ndhn}
-      - SMTP_FROM=${SMTP_FROM:-swanford99@gmail.com}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Swanford Academy}
-      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-swanford99@gmail.com}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
       - SMTP_SECURE=${SMTP_SECURE:-false}
-      - CRON_SECRET=${CRON_SECRET:-swanford_cron_secret_prod_84920481239}
+      - CRON_SECRET=${CRON_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,13 +51,13 @@ services:
     container_name: swanford_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-swanford_prod}
-      POSTGRES_USER: ${POSTGRES_USER:-swanford}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SwanfordProd2026!Secure}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - swanford_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swanford} -d ${POSTGRES_DB:-swanford_prod}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5

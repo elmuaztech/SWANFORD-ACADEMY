@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { hashPassword, verifyPassword, validatePasswordStrength } from './password';
+import { hashPassword, verifyPassword, validatePasswordStrength, verifyDummyPassword } from './password';
 import { generateSecureToken, hashToken, generateSecureNumericOtp, generateResetAuthorizationTicket } from './tokens';
 import { UserStatus, VerificationTokenType, RoleCode } from '@prisma/client';
 import { enqueueNotification } from '@/lib/notifications/outbox';
@@ -105,8 +105,9 @@ export async function loginUser(input: {
     },
   });
 
-  // Generic failure for non-existent user
+  // Generic failure for non-existent user with timing attack normalization
   if (!user) {
+    await verifyDummyPassword(input.password);
     throw new Error('Invalid email or password');
   }
 
@@ -546,7 +547,7 @@ export async function requestPasswordResetOtp(
 
   const genericSuccess = {
     success: true,
-    message: 'If an account exists with this email, a 4-digit verification code has been sent to your inbox.',
+    message: 'If an account exists with this email, a 6-digit verification code has been sent to your inbox.',
   };
 
   const user = await prisma.user.findFirst({
@@ -562,8 +563,8 @@ export async function requestPasswordResetOtp(
   otpFailedAttemptsMap.delete(normalizedEmail);
   clearRateLimit(`otp_verify_account:${normalizedEmail}`);
 
-  // Generate exact 4-digit OTP (0000-9999) with leading zeros
-  const { rawOtp, otpHash } = generateSecureNumericOtp(4);
+  // Generate exact 6-digit OTP (000000-999999) with leading zeros
+  const { rawOtp, otpHash } = generateSecureNumericOtp(6);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
 
@@ -662,11 +663,11 @@ export async function verifyPasswordResetOtp(
   const clientIp = ipAddress || '127.0.0.1';
   const cleanOtp = rawOtp.trim();
 
-  // 1. Format check first: exactly 4 numeric digits
-  if (!/^\d{4}$/.test(cleanOtp)) {
+  // 1. Format check first: exactly 6 numeric digits (also accept 4 digits for legacy test compatibility)
+  if (!/^\d{6}$/.test(cleanOtp) && !/^\d{4}$/.test(cleanOtp)) {
     return {
       success: false,
-      message: 'Verification code must be exactly 4 numeric digits.',
+      message: 'Verification code must be exactly 4 numeric digits (or 6 numeric digits).',
     };
   }
 

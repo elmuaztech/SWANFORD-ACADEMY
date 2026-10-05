@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
         throw new Error(data.error || 'Failed to send verification code.');
       }
 
-      setInfoMessage(data.message || 'If an account exists, a 4-digit code has been sent.');
+      setInfoMessage(data.message || 'If an account exists, a 6-digit code has been sent.');
       setStep('VERIFY_OTP');
       setSecondsRemaining(300); // 5 minutes
       setIsTimerActive(true);
@@ -87,8 +87,8 @@ export default function ForgotPasswordPage() {
     setErrorMessage(null);
 
     const cleanOtp = otp.trim();
-    if (!/^\d{4}$/.test(cleanOtp)) {
-      setErrorMessage('Please enter the exact 4-digit verification code.');
+    if (!/^\d{6}$/.test(cleanOtp)) {
+      setErrorMessage('Please enter the exact 6-digit verification code.');
       return;
     }
 
@@ -210,8 +210,8 @@ export default function ForgotPasswordPage() {
               {step === 'SUCCESS' && 'Password Updated'}
             </h1>
             <p className="text-xs sm:text-sm text-stone-500">
-              {step === 'REQUEST_OTP' && 'Enter your registered email to receive a secure 4-digit code.'}
-              {step === 'VERIFY_OTP' && `Please enter the 4-digit code sent to ${email}.`}
+              {step === 'REQUEST_OTP' && 'Enter your registered email to receive a secure 6-digit code.'}
+              {step === 'VERIFY_OTP' && `Please enter the 6-digit code sent to ${email}.`}
               {step === 'SET_PASSWORD' && 'Create your new private password (minimum 6 characters).'}
               {step === 'SUCCESS' && 'Your account password has been successfully reset.'}
             </p>
@@ -258,12 +258,12 @@ export default function ForgotPasswordPage() {
                 disabled={loading}
                 className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base bg-[#800020] hover:bg-[#5B0612] text-white shadow-md hover:shadow-lg transition-all disabled:opacity-60 cursor-pointer"
               >
-                {loading ? 'Sending Verification Code...' : 'Send 4-Digit Code →'}
+                {loading ? 'Sending Verification Code...' : 'Send 6-Digit Code →'}
               </button>
             </form>
           )}
 
-          {/* STEP 2: VERIFY 4-DIGIT OTP */}
+          {/* STEP 2: VERIFY 6-DIGIT OTP */}
           {step === 'VERIFY_OTP' && (
             <form onSubmit={handleVerifyOtp} className="space-y-5">
               <div>
@@ -272,7 +272,7 @@ export default function ForgotPasswordPage() {
                     htmlFor="otp-code"
                     className="block text-xs font-bold text-stone-700 uppercase tracking-wider"
                   >
-                    4-Digit Verification Code
+                    6-Digit Verification Code
                   </label>
                   <span className="text-xs font-semibold text-stone-500">
                     Expires in:{' '}
@@ -286,19 +286,19 @@ export default function ForgotPasswordPage() {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={4}
+                  maxLength={6}
                   required
                   autoFocus
-                  placeholder="0000"
+                  placeholder="000000"
                   value={otp}
                   onChange={(e) => {
-                    const clean = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
                     setOtp(clean);
                   }}
                   className="w-full text-center text-3xl font-mono tracking-[0.5em] px-4 py-3 rounded-xl border border-[#EADBDA] bg-[#FDFBF7] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#800020] focus:bg-white transition-all min-h-[52px]"
                 />
                 <p className="text-[11px] text-stone-400 mt-1 text-center">
-                  Format: Exactly 4 digits (e.g. 0427). Leading zeros are preserved.
+                  Format: Exactly 6 digits (e.g. 042718). Leading zeros are preserved.
                 </p>
               </div>
 
@@ -322,7 +322,7 @@ export default function ForgotPasswordPage() {
 
               <button
                 type="submit"
-                disabled={loading || otp.length !== 4}
+                disabled={loading || otp.length !== 6}
                 className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base bg-[#800020] hover:bg-[#5B0612] text-white shadow-md hover:shadow-lg transition-all disabled:opacity-60 cursor-pointer"
               >
                 {loading ? 'Verifying Code...' : 'Verify Code & Continue →'}

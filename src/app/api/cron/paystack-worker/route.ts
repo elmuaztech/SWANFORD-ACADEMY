@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processPendingWebhookEvents, reapStaleLocks } from "@/lib/paystack";
+import { verifyCronAuthorization } from "@/lib/security/cron_auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,27 +9,9 @@ export const dynamic = "force-dynamic";
  * GET /api/cron/paystack-worker
  */
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (process.env.NODE_ENV === "production") {
-    if (!cronSecret) {
-      return NextResponse.json(
-        { error: "CRON_SECRET is not configured on the server." },
-        { status: 500 }
-      );
-    }
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { error: "Unauthorized cron execution." },
-        { status: 401 }
-      );
-    }
-  } else if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json(
-      { error: "Unauthorized cron execution." },
-      { status: 401 }
-    );
+  const auth = verifyCronAuthorization(req);
+  if (!auth.authorized) {
+    return auth.response!;
   }
 
   try {

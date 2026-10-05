@@ -93,3 +93,22 @@ export function createUnactivatedPasswordSentinel(): string {
 export function isUnactivatedAccount(hash: string): boolean {
   return typeof hash === 'string' && hash.startsWith('!UNACTIVATED_ACCOUNT_');
 }
+
+/**
+ * Pre-computed 12-round bcrypt hash of a random sentinel string.
+ * Used for login timing attack normalization to ensure non-existent users
+ * consume equivalent CPU time as existing users.
+ */
+export const DUMMY_BCRYPT_HASH = '$2b$12$oztaJNIVMgTM.8223Ng35Oqr527AseFFGzWazEq9gcRsuQwQfQZnu';
+
+/**
+ * Executes a dummy bcrypt verification against a known hash.
+ * Always resolves to false, but normalizes CPU timing (~250ms on 12 rounds).
+ */
+export async function verifyDummyPassword(password?: string): Promise<boolean> {
+  try {
+    return await bcrypt.compare(password || 'timing-normalization-dummy', DUMMY_BCRYPT_HASH);
+  } catch {
+    return false;
+  }
+}

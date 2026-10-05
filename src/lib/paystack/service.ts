@@ -33,6 +33,7 @@ import { getNextPaymentReference, getNextReceiptNumber } from "@/lib/finance/seq
 import { generatePaymentReference } from "./reference";
 import {
   verifyPaymentSessionToken,
+  markPaymentSessionUsed,
 } from "./session";
 import {
   initializeTransaction,
@@ -137,6 +138,8 @@ export async function initializeApplicationPayment(
         paymentReference: reference,
       },
     });
+
+    await markPaymentSessionUsed(session.id, tx);
   });
 
   return {
@@ -205,16 +208,20 @@ export async function initializeInvoicePayment(params: InitializeInvoicePaymentP
     },
   });
 
-  // 5. Atomic local state initialization
-  await prisma.paymentTransaction.create({
-    data: {
-      gatewayProvider: GatewayProvider.PAYSTACK,
-      gatewayReference: reference,
-      invoiceId: invoice.id,
-      amountKobo: session.expectedAmountKobo,
-      currency: "NGN",
-      status: GatewayTransactionStatus.INITIALIZED,
-    },
+  // 5. Atomic local state initialization & single-use session consumption
+  await prisma.$transaction(async (tx) => {
+    await tx.paymentTransaction.create({
+      data: {
+        gatewayProvider: GatewayProvider.PAYSTACK,
+        gatewayReference: reference,
+        invoiceId: invoice.id,
+        amountKobo: session.expectedAmountKobo,
+        currency: "NGN",
+        status: GatewayTransactionStatus.INITIALIZED,
+      },
+    });
+
+    await markPaymentSessionUsed(session.id, tx);
   });
 
   return {
@@ -486,21 +493,29 @@ export async function processVerifiedTransaction(
         throw new AuthorizationError("Cannot apply payment to a cancelled invoice.", 400, "INVOICE_CANCELLED");
       }
 
-      // Overpayment prevention under lock
-      if (gatewayAmountKobo > lockedInvoice.outstanding_balance_kobo) {
-        throw new AuthorizationError(
-          `Overpayment rejected: Invoice balance is ₦${(
-            Number(lockedInvoice.outstanding_balance_kobo) / 100
-          ).toFixed(2)}, but gateway paid ₦${(Number(gatewayAmountKobo) / 100).toFixed(2)}.`,
-          400,
-          "PAYMENT_EXCEEDS_BALANCE"
-        );
-      }
+      // Authoritative overpayment reconciliation under lock:
+      // If gateway paid more than current outstanding balance (e.g. balance changed while payment was in transit),
+      // we DO NOT reject or drop customer funds. We allocate up to the remaining balance, mark the invoice PAID,
+      // record the excess separately in the ledger and payment notes, flag for reconciliation discrepancy,
+      // issue an official receipt for the full amount paid, and alert school finance.
+      const isOverpayment = gatewayAmountKobo > lockedInvoice.outstanding_balance_kobo;
+      const invoiceAllocatedKobo = isOverpayment
+        ? (lockedInvoice.outstanding_balance_kobo > BigInt(0) ? lockedInvoice.outstanding_balance_kobo : BigInt(0))
+        : gatewayAmountKobo;
+      const excessKobo = isOverpayment
+        ? gatewayAmountKobo - invoiceAllocatedKobo
+        : BigInt(0);
 
       // Generate official Payment reference (PAY-YYYY-NNNNN)
       const officialPayRef = await getNextPaymentReference(tx, currentYear);
 
-      // Create official school Payment record
+      const paymentNotes = isOverpayment
+        ? `Paystack Online Payment (Ref: ${reference}) [OVERPAYMENT: ₦${(
+            Number(excessKobo) / 100
+          ).toFixed(2)} held for reconciliation]`
+        : `Paystack Online Payment (Ref: ${reference})`;
+
+      // Create official school Payment record with FULL amount paid by customer
       const payment = await tx.payment.create({
         data: {
           paymentReference: officialPayRef,
@@ -511,7 +526,7 @@ export async function processVerifiedTransaction(
           paymentMethod: PaymentMethod.PAYSTACK,
           status: PaymentStatus.CONFIRMED,
           bankReference: reference,
-          notes: `Paystack Online Payment (Ref: ${reference})`,
+          notes: paymentNotes,
           paidAt: gatewayData.paid_at ? new Date(gatewayData.paid_at) : new Date(),
           reconciledAt: new Date(),
         },
@@ -519,7 +534,7 @@ export async function processVerifiedTransaction(
 
       schoolPaymentId = payment.id;
 
-      // Allocate payment sequentially across InvoiceItems (FIFO)
+      // Allocate payment sequentially across InvoiceItems (FIFO) up to invoiceAllocatedKobo
       const invoiceItems = await tx.invoiceItem.findMany({
         where: { invoiceId: lockedInvoice.id },
         orderBy: { createdAt: "asc" },
@@ -539,7 +554,7 @@ export async function processVerifiedTransaction(
         }
       }
 
-      let remainingToAllocate = gatewayAmountKobo;
+      let remainingToAllocate = invoiceAllocatedKobo;
       for (const item of invoiceItems) {
         if (remainingToAllocate <= BigInt(0)) break;
         const itemPaid = itemPaidMap.get(item.id) || BigInt(0);
@@ -569,8 +584,20 @@ export async function processVerifiedTransaction(
         });
       }
 
+      // If overpayment occurred, create a dedicated unassigned allocation record for the excess
+      if (excessKobo > BigInt(0)) {
+        await tx.paymentAllocation.create({
+          data: {
+            paymentId: payment.id,
+            invoiceId: lockedInvoice.id,
+            invoiceItemId: null,
+            amountKobo: excessKobo,
+          },
+        });
+      }
+
       // Update invoice balances and status
-      const newAmountPaid = lockedInvoice.amount_paid_kobo + gatewayAmountKobo;
+      const newAmountPaid = lockedInvoice.amount_paid_kobo + invoiceAllocatedKobo;
       const newOutstanding = lockedInvoice.total_amount_kobo - newAmountPaid;
       const newStatus =
         newOutstanding <= BigInt(0) ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
@@ -579,12 +606,12 @@ export async function processVerifiedTransaction(
         where: { id: lockedInvoice.id },
         data: {
           amountPaidKobo: newAmountPaid,
-          outstandingBalanceKobo: newOutstanding,
+          outstandingBalanceKobo: newOutstanding <= BigInt(0) ? BigInt(0) : newOutstanding,
           status: newStatus,
         },
       });
 
-      // Issue Official Receipt
+      // Issue Official Receipt for full received amount
       const guardian = await tx.guardian.findUnique({
         where: { id: lockedInvoice.guardian_id },
       });
@@ -623,14 +650,18 @@ export async function processVerifiedTransaction(
           ipAddress: gatewayData.ip_address || null,
           gatewayResponseJson: gatewayData as unknown as Prisma.InputJsonValue,
           settlementStatus: SettlementStatus.PENDING,
-          reconciliationStatus: ReconciliationStatus.UNRECONCILED,
+          reconciliationStatus: isOverpayment
+            ? ReconciliationStatus.DISCREPANCY
+            : ReconciliationStatus.RECONCILED,
         },
       });
 
       // Audit Log
       await tx.auditLog.create({
         data: {
-          action: "INVOICE_PAYSTACK_PAYMENT_CONFIRMED",
+          action: isOverpayment
+            ? "INVOICE_PAYSTACK_PAYMENT_OVERPAYMENT_RECONCILED"
+            : "INVOICE_PAYSTACK_PAYMENT_CONFIRMED",
           entityType: "Payment",
           entityId: payment.id,
           newValues: {
@@ -639,6 +670,8 @@ export async function processVerifiedTransaction(
             amountKobo: gatewayAmountKobo.toString(),
             receiptNumber: receiptNum,
             status: PaymentStatus.CONFIRMED,
+            isOverpayment,
+            excessKobo: excessKobo.toString(),
           },
         },
       });
@@ -875,7 +908,7 @@ export async function reconcileSettlementBatch(
 /**
  * Helper to verify session token by token string only.
  */
-async function verifyPaymentSessionTokenByTokenOnly(
+export async function verifyPaymentSessionTokenByTokenOnly(
   token: string,
   targetType: PaymentTargetType
 ) {

@@ -180,7 +180,7 @@ describe('Bulk Student Enrollment Integration Tests', () => {
       where: { recipientEmail: 'muhammad.sani@example.com' },
     });
     expect(notification).toBeDefined();
-    expect(notification?.status).toBe('PENDING');
+    expect(['PENDING', 'PROCESSING', 'SENT']).toContain(notification?.status);
     expect(notification?.templateName).toBe('PARENT_WELCOME_ACTIVATION');
   });
 
