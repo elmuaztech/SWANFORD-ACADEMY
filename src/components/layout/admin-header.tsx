@@ -237,7 +237,7 @@ export function AdminHeader({
             {/* Notification Dropdown Panel */}
             {isNotifOpen && (
               <div className="fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 max-w-sm sm:max-w-none mx-auto sm:mx-0 bg-white rounded-2xl shadow-2xl border border-[#EADBDA] overflow-hidden z-50 animate-in fade-in-50 zoom-in-95 duration-150">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#EADBDA] bg-[#FDFCF9]">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#EADBDA] bg-[#FAF7F2]">
                   <div className="flex items-center gap-2">
                     <h3 className="text-xs font-bold text-[#5B0612] font-display">Notifications</h3>
                     {unreadCount > 0 && (
@@ -313,7 +313,7 @@ export function AdminHeader({
                   )}
                 </div>
 
-                <div className="p-2 border-t border-[#EADBDA] bg-[#FDFCF9] text-center">
+                <div className="p-2 border-t border-[#EADBDA] bg-[#FAF7F2] text-center">
                   <Link
                     href="/admin/notifications"
                     onClick={() => setIsNotifOpen(false)}
@@ -358,7 +358,7 @@ export function AdminHeader({
             {/* Profile Dropdown Panel */}
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-[#EADBDA] overflow-hidden z-50 animate-in fade-in-50 zoom-in-95 duration-150">
-                <div className="p-4 border-b border-[#EADBDA] bg-[#FDFCF9] flex items-center gap-3">
+                <div className="p-4 border-b border-[#EADBDA] bg-[#FAF7F2] flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-[#800020] text-white text-sm font-bold flex items-center justify-center shrink-0 border border-[#EADBDA]">
                     {photoUrl ? (
                       <img src={photoUrl} alt="Avatar" className="w-full h-full object-cover" />

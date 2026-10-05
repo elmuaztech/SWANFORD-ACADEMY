@@ -84,7 +84,7 @@ export default function ParentMessagesPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white border border-[#EADBDA] rounded-2xl overflow-hidden shadow-xs min-h-[520px]">
           {/* Messages list */}
-          <div className="lg:col-span-5 border-r border-[#EADBDA] flex flex-col h-full bg-[#FDFCF9]">
+          <div className="lg:col-span-5 border-r border-[#EADBDA] flex flex-col h-full bg-[#FAF7F2]">
             <div className="p-3.5 border-b border-[#EADBDA] bg-white font-bold text-xs text-[#5B0612] font-display">
               Received Messages
             </div>
@@ -153,7 +153,7 @@ export default function ParentMessagesPage() {
               </div>
             ) : (
               <div className="flex-1 flex flex-col h-full overflow-hidden">
-                <div className="p-4 border-b border-[#EADBDA] bg-[#FDFCF9]">
+                <div className="p-4 border-b border-[#EADBDA] bg-[#FAF7F2]">
                   <h2 className="text-base font-bold text-[#5B0612] font-display">
                     {thread.subject}
                   </h2>
@@ -199,7 +199,7 @@ export default function ParentMessagesPage() {
                   )}
                 </div>
 
-                <div className="p-3 border-t border-[#EADBDA] bg-[#FDFCF9] text-center text-xs text-stone-400">
+                <div className="p-3 border-t border-[#EADBDA] bg-[#FAF7F2] text-center text-xs text-stone-400">
                   To respond to official notices, please visit the administrative office at Plot 212, Dr Nuhu Muhammadu Sanusi Way, Dutse, or call 09068897489 / 08103807498.
                 </div>
               </div>

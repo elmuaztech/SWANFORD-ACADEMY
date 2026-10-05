@@ -72,7 +72,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col justify-between text-stone-900 font-sans">
+    <div className="min-h-screen bg-[#FAF7F2] flex flex-col justify-between text-stone-900 font-sans">
       {/* Top Banner Navigation */}
       <header className="py-4 px-4 sm:px-8 border-b border-[#EADBDA] bg-white/90 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

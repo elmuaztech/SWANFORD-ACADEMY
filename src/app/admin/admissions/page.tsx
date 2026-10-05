@@ -278,7 +278,7 @@ export default function AdminAdmissionsPage() {
             </div>
           </div>
 
-          <div className="p-3.5 bg-[#FDFCF9] rounded-xl border border-stone-200 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+          <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-stone-200 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
             <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               <span className="font-semibold text-stone-500 shrink-0">Public Announcement Preview:</span>
               <span className="font-medium text-stone-900 italic">

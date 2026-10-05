@@ -203,7 +203,7 @@ export function AdminMobileDrawer({
         </nav>
 
         {/* Drawer Footer / User Badge */}
-        <div className="p-4 border-t border-[#EADBDA] bg-[#FDFCF9]">
+        <div className="p-4 border-t border-[#EADBDA] bg-[#FAF7F2]">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center shrink-0">
               {userEmail ? userEmail[0].toUpperCase() : "A"}

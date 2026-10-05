@@ -20,7 +20,7 @@ export default function RootErrorBoundary({
   const userFacing = toUserFacingError(error);
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl border border-[#EADBDA] shadow-sm p-6 sm:p-8 text-center space-y-5">
         <div className="w-14 h-14 mx-auto rounded-full bg-[#FAF2F4] border border-[#EADBDA] flex items-center justify-center text-[#800020]">
           <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

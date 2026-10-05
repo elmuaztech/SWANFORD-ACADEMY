@@ -249,7 +249,7 @@ export default function AdminMessagesPage() {
         {/* Messaging Layout: Sidebar list + Detail view */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white border border-[#EADBDA] rounded-2xl overflow-hidden shadow-xs min-h-[580px]">
           {/* Message List Panel */}
-          <div className="lg:col-span-5 border-r border-[#EADBDA] flex flex-col h-full bg-[#FDFCF9]">
+          <div className="lg:col-span-5 border-r border-[#EADBDA] flex flex-col h-full bg-[#FAF7F2]">
             {/* Tabs Header */}
             <div className="p-3 border-b border-[#EADBDA] bg-white flex items-center justify-between">
               <div className="flex items-center gap-1.5">
@@ -312,7 +312,7 @@ export default function AdminMessagesPage() {
                   placeholder="Search subject or text..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#EADBDA] bg-[#FDFCF9] focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#EADBDA] bg-[#FAF7F2] focus:outline-none focus:ring-2 focus:ring-[#800020]"
                 />
                 <svg
                   className="w-4 h-4 text-stone-400 absolute left-2.5 top-2"
@@ -397,7 +397,7 @@ export default function AdminMessagesPage() {
             ) : (
               <div className="flex-1 flex flex-col h-full overflow-hidden">
                 {/* Thread Header */}
-                <div className="p-4 border-b border-[#EADBDA] bg-[#FDFCF9]">
+                <div className="p-4 border-b border-[#EADBDA] bg-[#FAF7F2]">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h2 className="text-base font-bold text-[#5B0612] font-display">
@@ -459,7 +459,7 @@ export default function AdminMessagesPage() {
                 </div>
 
                 {/* Quick Reply Form */}
-                <div className="p-3 border-t border-[#EADBDA] bg-[#FDFCF9]">
+                <div className="p-3 border-t border-[#EADBDA] bg-[#FAF7F2]">
                   <form onSubmit={handleSendReply} className="space-y-2">
                     <textarea
                       rows={2}
@@ -489,7 +489,7 @@ export default function AdminMessagesPage() {
         {isComposeOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
             <div className="bg-white rounded-2xl shadow-2xl border border-[#EADBDA] max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-              <div className="px-5 py-4 border-b border-[#EADBDA] bg-[#FDFCF9] flex items-center justify-between">
+              <div className="px-5 py-4 border-b border-[#EADBDA] bg-[#FAF7F2] flex items-center justify-between">
                 <h3 className="text-sm font-bold text-[#5B0612] font-display">
                   Compose Internal Message
                 </h3>

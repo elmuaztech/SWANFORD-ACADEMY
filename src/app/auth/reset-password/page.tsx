@@ -62,7 +62,7 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col justify-between text-stone-900 font-sans">
+    <div className="min-h-screen bg-[#FAF7F2] flex flex-col justify-between text-stone-900 font-sans">
       {/* Top Banner Navigation */}
       <header className="py-4 px-4 sm:px-8 border-b border-[#EADBDA] bg-white/90 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -139,7 +139,7 @@ function ResetPasswordContent() {
                     placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 rounded-xl border border-[#EADBDA] bg-[#FDFBF7] text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#800020] focus:bg-white transition-all min-h-[46px]"
+                    className="w-full px-4 py-3 pr-12 rounded-xl border border-[#EADBDA] bg-[#FAF7F2] text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#800020] focus:bg-white transition-all min-h-[46px]"
                   />
                   <button
                     type="button"
@@ -178,7 +178,7 @@ function ResetPasswordContent() {
                     placeholder="••••••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 rounded-xl border border-[#EADBDA] bg-[#FDFBF7] text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#800020] focus:bg-white transition-all min-h-[46px]"
+                    className="w-full px-4 py-3 pr-12 rounded-xl border border-[#EADBDA] bg-[#FAF7F2] text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#800020] focus:bg-white transition-all min-h-[46px]"
                   />
                   <button
                     type="button"
@@ -258,7 +258,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+        <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#800020] border-t-transparent rounded-full animate-spin" />
         </div>
       }

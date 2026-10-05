@@ -989,7 +989,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
       {previewDocHtml && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/70 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-[#EADBDA] flex items-center justify-between bg-[#FDFCF9]">
+            <div className="p-3 border-b border-[#EADBDA] flex items-center justify-between bg-[#FAF7F2]">
               <span className="font-bold text-xs text-[#5B0612]">Document Preview</span>
               <button
                 type="button"

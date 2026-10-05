@@ -608,7 +608,7 @@ export default function AdminDashboardPage() {
           <CardContent className="p-0">
             <div className="divide-y divide-[#EADBDA]/60">
               {recentAuditLogs.map((log) => (
-                <div key={log.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-[#FDFCF9]">
+                <div key={log.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-[#FAF7F2]">
                   <div className="flex items-center gap-3">
                     <Badge variant="neutral" size="sm">
                       {log.action}

@@ -18,7 +18,7 @@ export function TeacherShell({
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
 
   return (
-    <div className="min-h-screen bg-[#FDFCF9] flex flex-col text-stone-900 antialiased overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAF7F2] flex flex-col text-stone-900 antialiased overflow-x-hidden">
       {/* Mobile Drawer */}
       <TeacherMobileDrawer
         isOpen={isMobileDrawerOpen}
@@ -46,7 +46,7 @@ export function TeacherShell({
           </main>
 
           {/* Teacher Footer */}
-          <footer className="border-t border-[#EADBDA]/80 bg-white/70 py-4 px-4 sm:px-6 text-center text-xs text-stone-500">
+          <footer className="border-t border-[#EADBDA]/80 bg-[#FAF7F2]/80 py-4 px-4 sm:px-6 text-center text-xs text-stone-500">
             <div className="max-w-7xl mx-auto flex items-center justify-center">
               <p>© {new Date().getFullYear()} Swanford Academy — Teacher Dashboard. All rights reserved.</p>
             </div>
