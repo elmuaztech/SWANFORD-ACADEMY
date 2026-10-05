@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, phoneNumber, roles, firstName, lastName, status, schoolClassId, programmeId } = body;
+    const { email, phoneNumber, roles, fullName, firstName, lastName, status, schoolClassId, programmeId } = body;
 
     const ipAddress =
       request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
         email,
         phoneNumber,
         roles,
+        fullName,
         firstName,
         lastName,
         status,

@@ -17,9 +17,10 @@ import { prisma } from '@/lib/prisma';
 import { SafeUser, sanitizeUser } from '@/lib/auth/service';
 import { requirePermission, AuthorizationError, getUserRoles } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
-import { normalizeAttendanceDate } from '@/lib/attendance/attendance_service';
 import { createUnactivatedPasswordSentinel, hashPassword } from '@/lib/auth/password';
 import { generateSecureToken } from '@/lib/auth/tokens';
+import { parseFullName } from '@/lib/utils/name_parser';
+import { normalizeAttendanceDate } from '@/lib/attendance/attendance_service';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { processPendingNotifications } from '@/lib/notifications/worker';
 import {
@@ -790,6 +791,7 @@ export async function createAdminUser(
     phoneNumber?: string;
     roles?: RoleCode[];
     roleCode?: RoleCode;
+    fullName?: string;
     firstName?: string;
     lastName?: string;
     status?: UserStatus;
@@ -800,11 +802,18 @@ export async function createAdminUser(
 ) {
   await requirePermission(actor, PermissionCode.USER_MANAGE);
 
-  // 1. Mandatory Full Name Validation
-  const firstName = input.firstName?.trim();
-  const lastName = input.lastName?.trim();
+  // 1. Full Name Normalization and Validation
+  let firstName = input.firstName?.trim();
+  let lastName = input.lastName?.trim();
+
+  if (input.fullName?.trim()) {
+    const parsed = parseFullName(input.fullName);
+    firstName = parsed.firstName;
+    lastName = parsed.lastName;
+  }
+
   if (!firstName || !lastName) {
-    throw new Error('Full Name (both First Name and Last Name) is required.');
+    throw new Error('Full Name is required.');
   }
 
   // 2. Mandatory Email Validation & Normalization
@@ -1381,6 +1390,7 @@ export async function adminChangeUserEmail(
 }
 
 export const UpdateAdminUserProfileSchema = z.object({
+  fullName: z.string().trim().optional(),
   firstName: z.string().min(1, 'First name is required').trim().optional(),
   lastName: z.string().min(1, 'Last name is required').trim().optional(),
   email: z.string().email('Invalid email address').trim().optional(),
@@ -1484,11 +1494,19 @@ export async function updateAdminUserProfile(
     }
 
     // Update User record
+    let fName = validated.firstName;
+    let lName = validated.lastName;
+    if (validated.fullName?.trim()) {
+      const parsed = parseFullName(validated.fullName);
+      fName = parsed.firstName;
+      lName = parsed.lastName;
+    }
+
     const updated = await tx.user.update({
       where: { id: userId },
       data: {
-        ...(validated.firstName !== undefined && { firstName: validated.firstName }),
-        ...(validated.lastName !== undefined && { lastName: validated.lastName }),
+        ...(fName !== undefined && { firstName: fName }),
+        ...(lName !== undefined && { lastName: lName }),
         ...(validated.email && { email: validated.email.toLowerCase() }),
         ...(validated.phoneNumber !== undefined && { phoneNumber: validated.phoneNumber || null }),
         ...(validated.status && { status: validated.status }),
@@ -1503,8 +1521,8 @@ export async function updateAdminUserProfile(
       await tx.teacher.update({
         where: { id: existing.teacherProfile.id },
         data: {
-          ...(validated.firstName && { firstName: validated.firstName }),
-          ...(validated.lastName && { lastName: validated.lastName }),
+          ...(fName && { firstName: fName }),
+          ...(lName && { lastName: lName }),
         },
       });
     }
@@ -1514,8 +1532,8 @@ export async function updateAdminUserProfile(
       await tx.guardian.update({
         where: { id: existing.guardianProfile.id },
         data: {
-          ...(validated.firstName && { firstName: validated.firstName }),
-          ...(validated.lastName && { lastName: validated.lastName }),
+          ...(fName && { firstName: fName }),
+          ...(lName && { lastName: lName }),
           ...(validated.email && { email: validated.email.toLowerCase() }),
           ...(validated.phoneNumber !== undefined && { phonePrimary: validated.phoneNumber || null }),
         },

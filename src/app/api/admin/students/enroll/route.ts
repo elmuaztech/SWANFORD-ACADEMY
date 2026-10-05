@@ -17,6 +17,7 @@ import { enqueueNotification } from '@/lib/notifications/outbox';
 import { NotificationCategory } from '@/lib/notifications/types';
 import { renderAccountActivationEmail } from '@/lib/notifications/templates';
 import { AuthorizationError } from '@/lib/auth/authorization';
+import { parseFullName } from '@/lib/utils/name_parser';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,15 +48,23 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = rawEmail.toLowerCase();
 
     // 2. Student Information Validation
-    const firstName = body.firstName?.trim();
-    const lastName = body.lastName?.trim();
-    const otherNames = body.otherNames?.trim() || null;
+    let firstName = body.firstName?.trim();
+    let lastName = body.lastName?.trim();
+    let otherNames = body.otherNames?.trim() || null;
+
+    if (body.fullName?.trim() || body.studentFullName?.trim() || body.pupilFullName?.trim()) {
+      const parsed = parseFullName(body.fullName || body.studentFullName || body.pupilFullName);
+      firstName = parsed.firstName;
+      lastName = parsed.lastName;
+      otherNames = parsed.otherNames || otherNames;
+    }
+
     const gender = body.gender;
     const dateOfBirthStr = body.dateOfBirth;
 
     if (!firstName || !lastName) {
       return NextResponse.json(
-        { error: 'Pupil first name and last name are required.' },
+        { error: 'Pupil full name is required.' },
         { status: 400 }
       );
     }
@@ -76,15 +85,25 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Guardian Information Validation
-    const guardianFirstName = body.guardianFirstName?.trim();
-    const guardianLastName = body.guardianLastName?.trim();
+    let guardianFirstName = body.guardianFirstName?.trim();
+    let guardianLastName = body.guardianLastName?.trim();
+    let guardianOtherNames = body.guardianOtherNames?.trim() || null;
+
+    if (body.guardianFullName?.trim()) {
+      const parsed = parseFullName(body.guardianFullName);
+      guardianFirstName = parsed.firstName;
+      guardianLastName = parsed.lastName;
+      guardianOtherNames = parsed.otherNames || guardianOtherNames;
+    }
+
     const guardianPhone = body.guardianPhone?.trim();
     const relationshipType = body.relationshipType || 'LEGAL_GUARDIAN';
-    const residentialAddress = body.residentialAddress?.trim() || null;
+    const residentialAddress = body.residentialAddress?.trim() || body.guardianAddress?.trim() || null;
+    const guardianOccupation = body.occupation?.trim() || body.guardianOccupation?.trim() || null;
 
     if (!guardianFirstName || !guardianLastName) {
       return NextResponse.json(
-        { error: 'Guardian first name and last name are required.' },
+        { error: 'Guardian full name is required.' },
         { status: 400 }
       );
     }
@@ -198,9 +217,11 @@ export async function POST(request: NextRequest) {
           data: {
             firstName: guardianFirstName,
             lastName: guardianLastName,
+            otherNames: guardianOtherNames,
             email: normalizedEmail,
             phonePrimary: guardianPhone,
             residentialAddress,
+            occupation: guardianOccupation,
           },
         });
         isNewGuardian = true;

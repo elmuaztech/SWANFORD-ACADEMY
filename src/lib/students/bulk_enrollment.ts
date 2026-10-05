@@ -30,17 +30,21 @@ import { renderAccountActivationEmail } from '@/lib/notifications/templates';
  * - Database enrollment NEVER depends on external email delivery.
  */
 
+import { parseFullName } from '@/lib/utils/name_parser';
+
 export interface BulkStudentRowInput {
   rowNumber: number;
-  firstName: string;
-  lastName: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   otherNames?: string;
   gender: 'MALE' | 'FEMALE';
   dateOfBirth: string; // YYYY-MM-DD
   schoolClassId: string;
   programmeIds: string[]; // Multi-programme support
-  guardianFirstName: string;
-  guardianLastName: string;
+  guardianFullName?: string;
+  guardianFirstName?: string;
+  guardianLastName?: string;
   guardianEmail?: string;
   guardianPhone: string;
   relationshipType?: 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'SPONSOR';
@@ -87,8 +91,25 @@ export async function generateBatchNumber(year: number = new Date().getFullYear(
  * Validates a single student row payload
  */
 export function validateRowPayload(row: BulkStudentRowInput): { valid: boolean; error?: string } {
-  if (!row.firstName?.trim()) return { valid: false, error: 'Student first name is required' };
-  if (!row.lastName?.trim()) return { valid: false, error: 'Student last name is required' };
+  // Normalize pupil full name
+  if (row.fullName?.trim()) {
+    const parsed = parseFullName(row.fullName);
+    row.firstName = parsed.firstName;
+    row.lastName = parsed.lastName;
+    if (parsed.otherNames && !row.otherNames) {
+      row.otherNames = parsed.otherNames;
+    }
+  }
+
+  // Normalize guardian full name
+  if (row.guardianFullName?.trim()) {
+    const parsed = parseFullName(row.guardianFullName);
+    row.guardianFirstName = parsed.firstName;
+    row.guardianLastName = parsed.lastName;
+  }
+
+  if (!row.firstName?.trim()) return { valid: false, error: 'Student full name is required' };
+  if (!row.lastName?.trim()) return { valid: false, error: 'Student surname / full name is required' };
   if (!row.gender || !['MALE', 'FEMALE'].includes(row.gender)) {
     return { valid: false, error: 'Valid gender (MALE or FEMALE) is required' };
   }
@@ -107,8 +128,9 @@ export function validateRowPayload(row: BulkStudentRowInput): { valid: boolean; 
     return { valid: false, error: 'At least one programme must be selected' };
   }
 
-  if (!row.guardianFirstName?.trim()) return { valid: false, error: 'Guardian first name is required' };
-  if (!row.guardianLastName?.trim()) return { valid: false, error: 'Guardian last name is required' };
+  if (!row.guardianFirstName?.trim() || !row.guardianLastName?.trim()) {
+    return { valid: false, error: 'Guardian full name is required' };
+  }
   if (!row.guardianPhone?.trim()) return { valid: false, error: 'Guardian phone is required' };
 
   if (row.guardianEmail?.trim()) {
@@ -211,13 +233,22 @@ export async function executeBulkStudentEnrollment(
           throw new Error('One or more selected programmes do not exist');
         }
 
+        const studentParsed = parseFullName(row.fullName || `${row.firstName || ''} ${row.lastName || ''}`);
+        const studentFirstName = studentParsed.firstName || (row.firstName || '').trim();
+        const studentLastName = studentParsed.lastName || (row.lastName || '').trim();
+        const studentOtherNames = studentParsed.otherNames || row.otherNames?.trim() || null;
+
+        const guardianParsed = parseFullName(row.guardianFullName || `${row.guardianFirstName || ''} ${row.guardianLastName || ''}`);
+        const guardianFirstName = guardianParsed.firstName || (row.guardianFirstName || '').trim();
+        const guardianLastName = guardianParsed.lastName || (row.guardianLastName || '').trim();
+
         // Step B: Create Student
         const student = await tx.student.create({
           data: {
             admissionNumber: assignedAdmissionNumber,
-            firstName: row.firstName.trim(),
-            lastName: row.lastName.trim(),
-            otherNames: row.otherNames?.trim() || null,
+            firstName: studentFirstName,
+            lastName: studentLastName,
+            otherNames: studentOtherNames,
             gender: row.gender as Gender,
             dateOfBirth: new Date(row.dateOfBirth),
           },
@@ -239,8 +270,8 @@ export async function executeBulkStudentEnrollment(
           } else {
             const newGuardian = await tx.guardian.create({
               data: {
-                firstName: row.guardianFirstName.trim(),
-                lastName: row.guardianLastName.trim(),
+                firstName: guardianFirstName,
+                lastName: guardianLastName,
                 email: normalizedEmail,
                 phonePrimary: row.guardianPhone.trim(),
                 residentialAddress: row.residentialAddress?.trim() || null,
@@ -252,8 +283,8 @@ export async function executeBulkStudentEnrollment(
           // Parent without email: create unlinked Guardian
           const newGuardian = await tx.guardian.create({
             data: {
-              firstName: row.guardianFirstName.trim(),
-              lastName: row.guardianLastName.trim(),
+              firstName: guardianFirstName,
+              lastName: guardianLastName,
               email: null,
               phonePrimary: row.guardianPhone.trim(),
               residentialAddress: row.residentialAddress?.trim() || null,
@@ -301,8 +332,8 @@ export async function executeBulkStudentEnrollment(
               data: {
                 email: normalizedEmail,
                 phoneNumber: row.guardianPhone?.trim() || null,
-                firstName: row.guardianFirstName.trim(),
-                lastName: row.guardianLastName.trim(),
+                firstName: guardianFirstName,
+                lastName: guardianLastName,
                 passwordHash: sentinelPassword,
                 status: UserStatus.PENDING_VERIFICATION,
                 mustChangePassword: true,

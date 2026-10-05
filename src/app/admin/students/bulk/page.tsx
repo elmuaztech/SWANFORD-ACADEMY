@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { parseFullName } from "@/lib/utils/name_parser";
 import {
   Card,
   CardContent,
@@ -45,14 +46,11 @@ interface SessionOption {
 
 interface BulkRowData {
   rowNumber: number;
-  firstName: string;
-  lastName: string;
-  otherNames: string;
+  fullName: string;
   gender: "MALE" | "FEMALE";
   dateOfBirth: string;
   schoolClassId: string;
-  guardianFirstName: string;
-  guardianLastName: string;
+  guardianFullName: string;
   guardianPhone: string;
   guardianEmail: string;
 }
@@ -72,14 +70,11 @@ export default function AdminBulkStudentEnrollPage() {
 
   const createEmptyRow = (num: number, defaultClassId = ""): BulkRowData => ({
     rowNumber: num,
-    firstName: "",
-    lastName: "",
-    otherNames: "",
+    fullName: "",
     gender: "MALE",
     dateOfBirth: "2018-01-01",
     schoolClassId: defaultClassId,
-    guardianFirstName: "",
-    guardianLastName: "",
+    guardianFullName: "",
     guardianPhone: "",
     guardianEmail: "",
   });
@@ -167,9 +162,9 @@ export default function AdminBulkStudentEnrollPage() {
     setErrorMsg(null);
     setResults(null);
 
-    // Validate active rows (rows where at least firstName or lastName is entered)
+    // Validate active rows (rows where at least pupil name or guardian name is entered)
     const filledRows = rows.filter(
-      (r) => r.firstName.trim() || r.lastName.trim() || r.guardianEmail.trim()
+      (r) => r.fullName.trim() || r.guardianFullName.trim() || r.guardianEmail.trim()
     );
 
     if (filledRows.length === 0) {
@@ -180,16 +175,16 @@ export default function AdminBulkStudentEnrollPage() {
     // Validate required fields in filled rows
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     for (const r of filledRows) {
-      if (!r.firstName.trim() || !r.lastName.trim()) {
-        setErrorMsg(`Row ${r.rowNumber}: First name and last name are required.`);
+      if (!r.fullName.trim()) {
+        setErrorMsg(`Row ${r.rowNumber}: Pupil Full Name is required.`);
         return;
       }
       if (!r.schoolClassId) {
         setErrorMsg(`Row ${r.rowNumber}: Class selection is required.`);
         return;
       }
-      if (!r.guardianFirstName.trim() || !r.guardianLastName.trim()) {
-        setErrorMsg(`Row ${r.rowNumber}: Guardian name is required.`);
+      if (!r.guardianFullName.trim()) {
+        setErrorMsg(`Row ${r.rowNumber}: Parent / Guardian Full Name is required.`);
         return;
       }
       if (!r.guardianPhone.trim()) {
@@ -211,17 +206,21 @@ export default function AdminBulkStudentEnrollPage() {
     try {
       const payloadRows = filledRows.map((r) => {
         const cls = classes.find((c) => c.id === r.schoolClassId);
+        const parsedPupil = parseFullName(r.fullName);
+        const parsedGuardian = parseFullName(r.guardianFullName);
         return {
           rowNumber: r.rowNumber,
-          firstName: r.firstName.trim(),
-          lastName: r.lastName.trim(),
-          otherNames: r.otherNames.trim() || undefined,
+          fullName: r.fullName.trim(),
+          firstName: parsedPupil.firstName,
+          lastName: parsedPupil.lastName,
+          otherNames: parsedPupil.otherNames,
           gender: r.gender,
           dateOfBirth: r.dateOfBirth,
           schoolClassId: r.schoolClassId,
           programmeIds: cls ? [cls.programmeId] : [],
-          guardianFirstName: r.guardianFirstName.trim(),
-          guardianLastName: r.guardianLastName.trim(),
+          guardianFullName: r.guardianFullName.trim(),
+          guardianFirstName: parsedGuardian.firstName,
+          guardianLastName: parsedGuardian.lastName,
           guardianPhone: r.guardianPhone.trim(),
           guardianEmail: r.guardianEmail.trim(),
         };
@@ -410,14 +409,12 @@ export default function AdminBulkStudentEnrollPage() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-stone-100 border-b border-stone-200 text-stone-700 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="py-2.5 px-2 w-10 text-center">#</th>
-                  <th className="py-2.5 px-2 min-w-[130px]">Pupil First Name *</th>
-                  <th className="py-2.5 px-2 min-w-[130px]">Pupil Surname *</th>
+                  <th className="py-2.5 px-2 w-12 text-center">S/N</th>
+                  <th className="py-2.5 px-3 min-w-[200px]">Pupil Full Name *</th>
                   <th className="py-2.5 px-2 min-w-[90px]">Gender *</th>
                   <th className="py-2.5 px-2 min-w-[120px]">Date of Birth *</th>
                   <th className="py-2.5 px-2 min-w-[140px]">Class *</th>
-                  <th className="py-2.5 px-2 min-w-[120px]">Parent First *</th>
-                  <th className="py-2.5 px-2 min-w-[120px]">Parent Last *</th>
+                  <th className="py-2.5 px-3 min-w-[180px]">Parent Full Name *</th>
                   <th className="py-2.5 px-2 min-w-[120px]">Parent Phone *</th>
                   <th className="py-2.5 px-2 min-w-[160px]">Parent Email (MANDATORY) *</th>
                 </tr>
@@ -425,23 +422,15 @@ export default function AdminBulkStudentEnrollPage() {
               <tbody className="divide-y divide-stone-100 bg-white">
                 {rows.map((row, idx) => (
                   <tr key={row.rowNumber} className="hover:bg-stone-50/60">
-                    <td className="py-2 px-2 font-mono text-center font-bold text-stone-400">
+                    <td className="py-2 px-2 font-mono text-center font-bold text-stone-500">
                       {row.rowNumber}
                     </td>
                     <td className="py-2 px-2">
                       <input
                         className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        placeholder="First Name"
-                        value={row.firstName}
-                        onChange={(e) => handleRowChange(idx, "firstName", e.target.value)}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        placeholder="Surname"
-                        value={row.lastName}
-                        onChange={(e) => handleRowChange(idx, "lastName", e.target.value)}
+                        placeholder="e.g. Bilkisu Usman Muhammed"
+                        value={row.fullName}
+                        onChange={(e) => handleRowChange(idx, "fullName", e.target.value)}
                       />
                     </td>
                     <td className="py-2 px-2">
@@ -478,17 +467,9 @@ export default function AdminBulkStudentEnrollPage() {
                     <td className="py-2 px-2">
                       <input
                         className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        placeholder="Parent First"
-                        value={row.guardianFirstName}
-                        onChange={(e) => handleRowChange(idx, "guardianFirstName", e.target.value)}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        placeholder="Parent Last"
-                        value={row.guardianLastName}
-                        onChange={(e) => handleRowChange(idx, "guardianLastName", e.target.value)}
+                        placeholder="e.g. Usman Muhammed"
+                        value={row.guardianFullName}
+                        onChange={(e) => handleRowChange(idx, "guardianFullName", e.target.value)}
                       />
                     </td>
                     <td className="py-2 px-2">

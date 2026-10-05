@@ -36,32 +36,87 @@ import {
   renderAccountActivationEmail,
 } from '@/lib/notifications/templates';
 
-export const CreateApplicationSchema = z.object({
-  admissionCycleId: z.string().uuid(),
-  applicantFirstName: z.string().min(2).max(50).trim(),
-  applicantLastName: z.string().min(2).max(50).trim(),
-  applicantOtherNames: z.string().max(50).trim().optional().nullable(),
-  applicantGender: z.nativeEnum(Gender),
-  applicantDob: z.coerce.date(),
-  profilePhotoId: z.string().uuid().optional().nullable(),
+import { parseFullName } from '@/lib/utils/name_parser';
 
-  guardianFirstName: z.string().min(2).max(50).trim(),
-  guardianLastName: z.string().min(2).max(50).trim(),
-  guardianEmail: z.string().email().toLowerCase().trim(),
-  guardianPhone: z.string().min(8).max(20).trim(),
-  guardianRelationship: z.nativeEnum(RelationshipType),
+export const CreateApplicationSchema = z
+  .object({
+    admissionCycleId: z.string().uuid(),
+    applicantFullName: z.string().min(2).max(120).trim().optional(),
+    applicantFirstName: z.string().min(1).max(50).trim().optional(),
+    applicantLastName: z.string().min(1).max(50).trim().optional(),
+    applicantOtherNames: z.string().max(50).trim().optional().nullable(),
+    applicantGender: z.nativeEnum(Gender),
+    applicantDob: z.coerce.date(),
+    profilePhotoId: z.string().uuid().optional().nullable(),
 
-  programmeSelections: z
-    .array(
-      z.object({
-        programmeId: z.string().uuid(),
-        targetClassId: z.string().uuid().optional().nullable(),
-      })
-    )
-    .min(1, 'At least one programme must be selected for admission.'),
-});
+    // Physical Application Form Fields (Image 2 standard)
+    applicantAddress: z.string().max(255).trim().optional().nullable(),
+    placeOfBirth: z.string().max(100).trim().optional().nullable(),
+    stateOfOrigin: z.string().max(100).trim().optional().nullable(),
+    lga: z.string().max(100).trim().optional().nullable(),
+    nationality: z.string().max(100).trim().optional().nullable(),
+    specialAttention: z.string().max(500).trim().optional().nullable(),
+    additionalInformation: z.string().max(1000).trim().optional().nullable(),
 
-export type CreateApplicationInput = z.infer<typeof CreateApplicationSchema>;
+    guardianFullName: z.string().min(2).max(120).trim().optional(),
+    guardianFirstName: z.string().min(1).max(50).trim().optional(),
+    guardianLastName: z.string().min(1).max(50).trim().optional(),
+    guardianEmail: z.string().email().toLowerCase().trim(),
+    guardianPhone: z.string().min(8).max(20).trim(),
+    guardianRelationship: z.nativeEnum(RelationshipType),
+    guardianOccupation: z.string().max(100).trim().optional().nullable(),
+    guardianAddress: z.string().max(255).trim().optional().nullable(),
+
+    programmeSelections: z
+      .array(
+        z.object({
+          programmeId: z.string().uuid(),
+          targetClassId: z.string().uuid().optional().nullable(),
+        })
+      )
+      .min(1, 'At least one programme must be selected for admission.'),
+  })
+  .transform((data) => {
+    let applicantFirstName = data.applicantFirstName || '';
+    let applicantLastName = data.applicantLastName || '';
+    let applicantOtherNames = data.applicantOtherNames || null;
+
+    if (data.applicantFullName) {
+      const parsed = parseFullName(data.applicantFullName);
+      applicantFirstName = parsed.firstName;
+      applicantLastName = parsed.lastName;
+      applicantOtherNames = parsed.otherNames || applicantOtherNames;
+    }
+
+    let guardianFirstName = data.guardianFirstName || '';
+    let guardianLastName = data.guardianLastName || '';
+
+    if (data.guardianFullName) {
+      const parsed = parseFullName(data.guardianFullName);
+      guardianFirstName = parsed.firstName;
+      guardianLastName = parsed.lastName;
+    }
+
+    if (!applicantFirstName || !applicantLastName) {
+      throw new Error('Applicant full name (or first name and last name) is required.');
+    }
+
+    if (!guardianFirstName || !guardianLastName) {
+      throw new Error('Guardian full name (or first name and last name) is required.');
+    }
+
+    return {
+      ...data,
+      applicantFirstName,
+      applicantLastName,
+      applicantOtherNames,
+      guardianFirstName,
+      guardianLastName,
+    };
+  });
+
+export type CreateApplicationInput = z.input<typeof CreateApplicationSchema>;
+export type ValidatedApplicationInput = z.output<typeof CreateApplicationSchema>;
 
 export const ReviewSelectionSchema = z.object({
   decision: z.enum(['APPROVED', 'REJECTED']),
@@ -128,7 +183,7 @@ export async function checkDuplicateApplication(
  * Concurrency-safe, immutable application number (APP-YYYY-NNNN).
  */
 export async function createDraftApplication(
-  input: CreateApplicationInput,
+  input: CreateApplicationInput | ValidatedApplicationInput,
   now: Date = new Date(),
   externalTx?: Prisma.TransactionClient
 ) {

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { parseFullName } from "@/lib/utils/name_parser";
 import {
   Card,
   CardContent,
@@ -60,8 +61,7 @@ export default function AdminUsersPage() {
   const [createPhone, setCreatePhone] = useState("");
   const [createRole, setCreateRole] = useState<RoleCode>(RoleCode.ADMIN);
   const [createStatus, setCreateStatus] = useState<UserStatus>(UserStatus.ACTIVE);
-  const [createFirstName, setCreateFirstName] = useState("");
-  const [createLastName, setCreateLastName] = useState("");
+  const [createFullName, setCreateFullName] = useState("");
   const [createSchoolClassId, setCreateSchoolClassId] = useState("");
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string; programme?: { name: string } }[]>([]);
   const [createSubmitting, setCreateSubmitting] = useState(false);
@@ -71,8 +71,7 @@ export default function AdminUsersPage() {
   // Edit User Modal State (Super Admin Exclusive)
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
+  const [editFullName, setEditFullName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editStatus, setEditStatus] = useState<UserStatus>(UserStatus.ACTIVE);
@@ -168,8 +167,8 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setCreateError(null);
 
-    if (!createFirstName.trim() || !createLastName.trim()) {
-      setCreateError("Full Name (both First Name and Last Name) is mandatory.");
+    if (!createFullName.trim()) {
+      setCreateError("Full Name is mandatory.");
       return;
     }
 
@@ -183,6 +182,8 @@ export default function AdminUsersPage() {
       return;
     }
 
+    const parsed = parseFullName(createFullName);
+
     setCreateSubmitting(true);
     try {
       const res = await fetch("/api/super-admin/users", {
@@ -193,8 +194,9 @@ export default function AdminUsersPage() {
           phoneNumber: createPhone.trim(),
           roles: [createRole],
           status: createStatus,
-          firstName: createFirstName.trim(),
-          lastName: createLastName.trim(),
+          fullName: createFullName.trim(),
+          firstName: parsed.firstName,
+          lastName: parsed.lastName,
           schoolClassId: createRole === RoleCode.TEACHER && createSchoolClassId ? createSchoolClassId : undefined,
         }),
       });
@@ -207,8 +209,7 @@ export default function AdminUsersPage() {
       setShowCreateModal(false);
       setCreateEmail("");
       setCreatePhone("");
-      setCreateFirstName("");
-      setCreateLastName("");
+      setCreateFullName("");
       setCreateSchoolClassId("");
       setCreateRole(RoleCode.ADMIN);
       setCreateStatus(UserStatus.ACTIVE);
@@ -312,8 +313,8 @@ export default function AdminUsersPage() {
     setEditingUserId(u.id);
     const firstName = u.firstName || u.teacher?.firstName || u.guardian?.firstName || u.student?.firstName || "";
     const lastName = u.lastName || u.teacher?.lastName || u.guardian?.lastName || u.student?.lastName || "";
-    setEditFirstName(firstName);
-    setEditLastName(lastName);
+    const fullName = [firstName, lastName].filter(Boolean).join(" ");
+    setEditFullName(fullName);
     setEditEmail(u.email);
     setEditPhone(u.phoneNumber || "");
     setEditStatus(u.status);
@@ -332,8 +333,8 @@ export default function AdminUsersPage() {
     e.preventDefault();
     if (!editingUserId) return;
 
-    if (!editFirstName.trim() || !editLastName.trim()) {
-      setEditError("First name and last name are required.");
+    if (!editFullName.trim()) {
+      setEditError("Full name is required.");
       return;
     }
 
@@ -347,6 +348,8 @@ export default function AdminUsersPage() {
       return;
     }
 
+    const parsed = parseFullName(editFullName);
+
     setEditSubmitting(true);
     setEditError(null);
 
@@ -355,8 +358,9 @@ export default function AdminUsersPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName: editFirstName.trim(),
-          lastName: editLastName.trim(),
+          fullName: editFullName.trim(),
+          firstName: parsed.firstName,
+          lastName: parsed.lastName,
           email: editEmail.trim().toLowerCase(),
           phoneNumber: editPhone.trim() || null,
           status: editStatus,
@@ -745,22 +749,14 @@ export default function AdminUsersPage() {
               </Alert>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <FormGroup label="First Name" required>
-                <Input
-                  value={editFirstName}
-                  onChange={(e) => setEditFirstName(e.target.value)}
-                  required
-                />
-              </FormGroup>
-              <FormGroup label="Last Name" required>
-                <Input
-                  value={editLastName}
-                  onChange={(e) => setEditLastName(e.target.value)}
-                  required
-                />
-              </FormGroup>
-            </div>
+            <FormGroup label="Full Name" required>
+              <Input
+                value={editFullName}
+                onChange={(e) => setEditFullName(e.target.value)}
+                placeholder="e.g. Muhammad Bello Haruna"
+                required
+              />
+            </FormGroup>
 
             <FormGroup label="Email Address" required>
               <Input
@@ -918,26 +914,15 @@ export default function AdminUsersPage() {
             </Alert>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <FormGroup label="First Name" required>
-              <Input
-                type="text"
-                required
-                placeholder="e.g. Amina"
-                value={createFirstName}
-                onChange={(e) => setCreateFirstName(e.target.value)}
-              />
-            </FormGroup>
-            <FormGroup label="Last Name" required>
-              <Input
-                type="text"
-                required
-                placeholder="e.g. Bello"
-                value={createLastName}
-                onChange={(e) => setCreateLastName(e.target.value)}
-              />
-            </FormGroup>
-          </div>
+          <FormGroup label="Full Name" required>
+            <Input
+              type="text"
+              required
+              placeholder="e.g. Muhammad Bello Haruna"
+              value={createFullName}
+              onChange={(e) => setCreateFullName(e.target.value)}
+            />
+          </FormGroup>
 
           <FormGroup label="Email Address" required>
             <Input
@@ -1015,7 +1000,7 @@ export default function AdminUsersPage() {
             <Button
               type="submit"
               variant="primary"
-              disabled={createSubmitting || !createEmail.trim() || !createFirstName.trim() || !createLastName.trim() || !createPhone.trim()}
+              disabled={createSubmitting || !createEmail.trim() || !createFullName.trim() || !createPhone.trim()}
               className="font-bold min-h-[44px]"
             >
               {createSubmitting ? "Provisioning..." : "Create User & Dispatch Email"}

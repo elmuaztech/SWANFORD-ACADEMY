@@ -45,12 +45,29 @@ describe('Requirement 30: Complete Login Flow & User Accounts Production Verific
     originalFailedAttempts = su.failedLoginAttempts;
     originalLockedUntil = su.lockedUntil;
 
-    // Ensure super admin has valid passwordHash for testing
+    // Ensure super admin has valid passwordHash for testing and SUPER_ADMIN role
     const hashed = await hashPassword(superAdminPassword);
     await prisma.user.update({
       where: { id: superAdminId },
       data: { passwordHash: hashed, status: UserStatus.ACTIVE, failedLoginAttempts: 0, lockedUntil: null },
     });
+
+    const superAdminRole = await prisma.role.findUnique({ where: { code: RoleCode.SUPER_ADMIN } });
+    if (superAdminRole) {
+      await prisma.userRole.upsert({
+        where: { userId_roleId: { userId: superAdminId, roleId: superAdminRole.id } },
+        update: {},
+        create: { userId: superAdminId, roleId: superAdminRole.id },
+      });
+    }
+
+    const refreshedSu = await prisma.user.findUnique({
+      where: { id: superAdminId },
+      include: { userRoles: { include: { role: true } } },
+    });
+    if (refreshedSu) {
+      superAdminUser = sanitizeUser(refreshedSu as any);
+    }
 
     // Clean up any stale test accounts from previous runs
     const staleUsers = await prisma.user.findMany({

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { parseFullName } from "@/lib/utils/name_parser";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,8 +85,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
   // Super Admin Edit User Profile Modal
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
+  const [editFullName, setEditFullName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editStatus, setEditStatus] = useState<UserStatus>("ACTIVE");
@@ -184,8 +184,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     if (!user) return;
     const firstName = user.firstName || user.teacherProfile?.firstName || user.guardianProfile?.firstName || "";
     const lastName = user.lastName || user.teacherProfile?.lastName || user.guardianProfile?.lastName || "";
-    setEditFirstName(firstName);
-    setEditLastName(lastName);
+    const fullName = [firstName, lastName].filter(Boolean).join(" ");
+    setEditFullName(fullName);
     setEditEmail(user.email);
     setEditPhone(user.phoneNumber || "");
     setEditStatus(user.status);
@@ -210,8 +210,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
   const handleEditUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editFirstName.trim() || !editLastName.trim()) {
-      setEditError("First name and last name are required.");
+    if (!editFullName.trim()) {
+      setEditError("Full name is required.");
       return;
     }
     if (!editEmail.trim()) {
@@ -223,6 +223,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       return;
     }
 
+    const parsed = parseFullName(editFullName);
+
     setEditSubmitting(true);
     setEditError(null);
     try {
@@ -230,8 +232,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName: editFirstName.trim(),
-          lastName: editLastName.trim(),
+          fullName: editFullName.trim(),
+          firstName: parsed.firstName,
+          lastName: parsed.lastName,
           email: editEmail.trim().toLowerCase(),
           phoneNumber: editPhone.trim() || null,
           status: editStatus,
@@ -871,26 +874,15 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             </Alert>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormGroup label="First Name" required>
-              <Input
-                type="text"
-                required
-                value={editFirstName}
-                onChange={(e) => setEditFirstName(e.target.value)}
-                placeholder="First Name"
-              />
-            </FormGroup>
-            <FormGroup label="Last Name" required>
-              <Input
-                type="text"
-                required
-                value={editLastName}
-                onChange={(e) => setEditLastName(e.target.value)}
-                placeholder="Last Name"
-              />
-            </FormGroup>
-          </div>
+          <FormGroup label="Full Name" required>
+            <Input
+              type="text"
+              required
+              value={editFullName}
+              onChange={(e) => setEditFullName(e.target.value)}
+              placeholder="e.g. Muhammad Bello Haruna"
+            />
+          </FormGroup>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormGroup label="Email Address" required>
