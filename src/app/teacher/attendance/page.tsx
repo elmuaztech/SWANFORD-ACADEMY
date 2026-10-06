@@ -98,7 +98,7 @@ function TeacherAttendanceContent() {
       })
       .then((d) => {
         if (!isSubscribed) return;
-        const studentRoster: StudentAttendanceItem[] = d.roster || [];
+        const studentRoster: StudentAttendanceItem[] = d.roster || d.students || [];
         setRoster(studentRoster);
 
         // Pre-fill existing statuses or default to PRESENT

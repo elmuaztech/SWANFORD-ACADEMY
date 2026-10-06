@@ -105,6 +105,18 @@ export async function recordDailyAttendance(
       } else {
         teacher = await prisma.teacher.findFirst();
       }
+
+      if (!teacher) {
+        teacher = await prisma.teacher.create({
+          data: {
+            userId: actorUserId,
+            staffIdNumber: `ADM-${actorUserId.slice(0, 6).toUpperCase()}`,
+            firstName: 'System',
+            lastName: 'Administrator',
+            department: 'Administration',
+          },
+        });
+      }
     }
   }
 
@@ -184,14 +196,12 @@ export async function recordDailyAttendance(
 
   const studentIds = input.items.map((i) => i.studentId);
 
-  // 7. Validate that all students have an ACTIVE enrollment in requested programme, class, session, and term
+  // 7. Validate that all students have an ACTIVE enrollment in requested programme and class
   const activeEnrollments = await prisma.studentProgrammeEnrollment.findMany({
     where: {
       studentId: { in: studentIds },
       programmeId: input.programmeId,
       schoolClassId: input.schoolClassId,
-      academicSessionId: sessionId,
-      academicTermId: termId,
       enrollmentStatus: EnrollmentStatus.ACTIVE,
     },
     select: { studentId: true },
@@ -202,7 +212,7 @@ export async function recordDailyAttendance(
   for (const item of input.items) {
     if (!activeEnrolledStudentIdSet.has(item.studentId)) {
       throw new AuthorizationError(
-        `Student ${item.studentId} is not actively enrolled in the requested programme and class for this term.`,
+        `Student ${item.studentId} is not actively enrolled in the requested programme and class.`,
         400,
         'STUDENT_NOT_ENROLLED'
       );
@@ -308,7 +318,7 @@ export async function getClassDailyAttendance(
   }
 
   // 1. Fetch active enrolled students
-  const enrollments = await prisma.studentProgrammeEnrollment.findMany({
+  let enrollments = await prisma.studentProgrammeEnrollment.findMany({
     where: {
       programmeId: params.programmeId,
       schoolClassId: params.schoolClassId,
@@ -332,6 +342,33 @@ export async function getClassDailyAttendance(
       { student: { firstName: 'asc' } },
     ],
   });
+
+  // Fallback: If no enrollments found under the specific session and sessionId wasn't explicitly passed
+  if (enrollments.length === 0 && !params.academicSessionId) {
+    enrollments = await prisma.studentProgrammeEnrollment.findMany({
+      where: {
+        programmeId: params.programmeId,
+        schoolClassId: params.schoolClassId,
+        enrollmentStatus: EnrollmentStatus.ACTIVE,
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            admissionNumber: true,
+            firstName: true,
+            lastName: true,
+            otherNames: true,
+            gender: true,
+          },
+        },
+      },
+      orderBy: [
+        { student: { lastName: 'asc' } },
+        { student: { firstName: 'asc' } },
+      ],
+    });
+  }
 
   // 2. Fetch existing records for this date
   const records = await prisma.attendanceRecord.findMany({
@@ -366,6 +403,7 @@ export async function getClassDailyAttendance(
     totalStudents: rosterWithAttendance.length,
     markedCount: records.length,
     roster: rosterWithAttendance,
+    students: rosterWithAttendance,
   };
 }
 
@@ -416,5 +454,237 @@ export async function getStudentAttendanceSummary(
     lateCount,
     excusedCount,
     attendancePercentage,
+  };
+}
+
+export interface TermRegisterStudentRow {
+  student: {
+    id: string;
+    admissionNumber: string | null;
+    firstName: string;
+    lastName: string;
+    gender: string;
+  };
+  programme: { id: string; name: string } | null;
+  schoolClass: { id: string; name: string } | null;
+  daysPresent: number;
+  daysLate: number;
+  daysAbsent: number;
+  daysExcused: number;
+  totalDays: number;
+  attendancePercentage: number;
+}
+
+export interface ClassTermAttendanceRegisterResult {
+  session: { id?: string; name: string };
+  term: { id?: string; name: string };
+  programme: { id: string; name: string; code?: string } | null;
+  schoolClass: { id: string; name: string; code?: string } | null;
+  totalStudents: number;
+  totalSessionsHeld: number;
+  averageAttendanceRate: number;
+  register: TermRegisterStudentRow[];
+}
+
+/**
+ * Retrieves comprehensive academic term attendance register for a class or entire school.
+ * Powers the printable official term register.
+ */
+export async function getClassTermAttendanceRegister(
+  actor: SafeUser | string,
+  params: {
+    programmeId?: string;
+    schoolClassId?: string;
+    academicTermId?: string;
+    academicSessionId?: string;
+  }
+): Promise<ClassTermAttendanceRegisterResult> {
+  const actorUserId = typeof actor === 'string' ? actor : actor.id;
+  await requirePermission(actorUserId, PermissionCode.ATTENDANCE_VIEW);
+
+  // If teacher, assert scope
+  if (params.programmeId && params.schoolClassId) {
+    await assertTeacherScope(actorUserId, {
+      programmeId: params.programmeId,
+      schoolClassId: params.schoolClassId,
+      academicSessionId: params.academicSessionId,
+    });
+  }
+
+  // Resolve session & term
+  let sessionId = params.academicSessionId;
+  let termId = params.academicTermId;
+
+  if (!sessionId) {
+    const activeSession = await prisma.academicSession.findFirst({
+      where: { isCurrent: true },
+      select: { id: true, name: true },
+    });
+    sessionId = activeSession?.id;
+  }
+
+  if (!termId && sessionId) {
+    const activeTerm = await prisma.academicTerm.findFirst({
+      where: { academicSessionId: sessionId, isCurrent: true },
+      select: { id: true, name: true },
+    });
+    termId = activeTerm?.id;
+  }
+
+  const [session, term, programme, schoolClass] = await Promise.all([
+    sessionId ? prisma.academicSession.findUnique({ where: { id: sessionId }, select: { id: true, name: true } }) : null,
+    termId ? prisma.academicTerm.findUnique({ where: { id: termId }, select: { id: true, name: true } }) : null,
+    params.programmeId ? prisma.programme.findUnique({ where: { id: params.programmeId }, select: { id: true, name: true, code: true } }) : null,
+    params.schoolClassId ? prisma.schoolClass.findUnique({ where: { id: params.schoolClassId }, select: { id: true, name: true, code: true } }) : null,
+  ]);
+
+  // Fetch active enrollments
+  const enrollmentWhere: Prisma.StudentProgrammeEnrollmentWhereInput = {
+    enrollmentStatus: EnrollmentStatus.ACTIVE,
+    ...(params.programmeId ? { programmeId: params.programmeId } : {}),
+    ...(params.schoolClassId ? { schoolClassId: params.schoolClassId } : {}),
+    ...(sessionId ? { academicSessionId: sessionId } : {}),
+  };
+
+  let enrollments = await prisma.studentProgrammeEnrollment.findMany({
+    where: enrollmentWhere,
+    include: {
+      student: {
+        select: {
+          id: true,
+          admissionNumber: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+        },
+      },
+      programme: { select: { id: true, name: true } },
+      schoolClass: { select: { id: true, name: true } },
+    },
+    orderBy: [
+      { schoolClass: { name: 'asc' } },
+      { student: { lastName: 'asc' } },
+      { student: { firstName: 'asc' } },
+    ],
+  });
+
+  if (enrollments.length === 0 && params.schoolClassId) {
+    // Fallback without strict session
+    enrollments = await prisma.studentProgrammeEnrollment.findMany({
+      where: {
+        enrollmentStatus: EnrollmentStatus.ACTIVE,
+        ...(params.programmeId ? { programmeId: params.programmeId } : {}),
+        schoolClassId: params.schoolClassId,
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            admissionNumber: true,
+            firstName: true,
+            lastName: true,
+            gender: true,
+          },
+        },
+        programme: { select: { id: true, name: true } },
+        schoolClass: { select: { id: true, name: true } },
+      },
+      orderBy: [
+        { schoolClass: { name: 'asc' } },
+        { student: { lastName: 'asc' } },
+        { student: { firstName: 'asc' } },
+      ],
+    });
+  }
+
+  // Deduplicate students if enrolled in multiple programmes
+  const studentMap = new Map<string, typeof enrollments[0]>();
+  for (const enr of enrollments) {
+    if (!studentMap.has(enr.studentId)) {
+      studentMap.set(enr.studentId, enr);
+    }
+  }
+  const uniqueStudents = Array.from(studentMap.values());
+  const studentIds = uniqueStudents.map((e) => e.studentId);
+
+  // Fetch all attendance records for these students in this term/session
+  const attendanceWhere: Prisma.AttendanceRecordWhereInput = {
+    studentId: { in: studentIds },
+    ...(termId ? { academicTermId: termId } : {}),
+    ...(sessionId ? { academicSessionId: sessionId } : {}),
+    ...(params.programmeId ? { programmeId: params.programmeId } : {}),
+    ...(params.schoolClassId ? { schoolClassId: params.schoolClassId } : {}),
+  };
+
+  const records = await prisma.attendanceRecord.findMany({
+    where: attendanceWhere,
+    select: {
+      studentId: true,
+      status: true,
+      date: true,
+    },
+  });
+
+  // Calculate distinct session days held
+  const uniqueDates = new Set(records.map((r) => r.date.toISOString().slice(0, 10)));
+  const totalSessionsHeld = uniqueDates.size;
+
+  // Aggregate by student
+  const statsMap = new Map<string, { present: number; late: number; absent: number; excused: number; total: number }>();
+  for (const sId of studentIds) {
+    statsMap.set(sId, { present: 0, late: 0, absent: 0, excused: 0, total: 0 });
+  }
+
+  for (const r of records) {
+    const stat = statsMap.get(r.studentId);
+    if (!stat) continue;
+    stat.total++;
+    if (r.status === AttendanceStatus.PRESENT) stat.present++;
+    else if (r.status === AttendanceStatus.LATE) stat.late++;
+    else if (r.status === AttendanceStatus.ABSENT) stat.absent++;
+    else if (r.status === AttendanceStatus.EXCUSED) stat.excused++;
+  }
+
+  let totalPercentageSum = 0;
+  const register: TermRegisterStudentRow[] = uniqueStudents.map((enr) => {
+    const stat = statsMap.get(enr.studentId) || { present: 0, late: 0, absent: 0, excused: 0, total: 0 };
+    const effectiveDays = stat.total > 0 ? stat.total : totalSessionsHeld;
+    const rate = effectiveDays > 0
+      ? Math.round(((stat.present + stat.late) / effectiveDays) * 100 * 10) / 10
+      : 100;
+    totalPercentageSum += rate;
+
+    return {
+      student: {
+        id: enr.student.id,
+        admissionNumber: enr.student.admissionNumber,
+        firstName: enr.student.firstName,
+        lastName: enr.student.lastName,
+        gender: enr.student.gender,
+      },
+      programme: enr.programme,
+      schoolClass: enr.schoolClass,
+      daysPresent: stat.present,
+      daysLate: stat.late,
+      daysAbsent: stat.absent,
+      daysExcused: stat.excused,
+      totalDays: effectiveDays,
+      attendancePercentage: rate,
+    };
+  });
+
+  const averageAttendanceRate = register.length > 0
+    ? Math.round((totalPercentageSum / register.length) * 10) / 10
+    : 100;
+
+  return {
+    session: session || { name: 'Current Academic Session' },
+    term: term || { name: 'Current Term' },
+    programme: programme || null,
+    schoolClass: schoolClass || null,
+    totalStudents: register.length,
+    totalSessionsHeld,
+    averageAttendanceRate,
+    register,
   };
 }

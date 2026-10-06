@@ -130,17 +130,17 @@ export async function getAuthorizedMedia(
 
   // Gallery Photos: Published photos are publicly accessible to all (including unauthenticated visitors)
   if (asset.mediaType === MediaType.GALLERY_PHOTO) {
+    const isStaff = actor && (actorHasRole(actor, RoleCode.SUPER_ADMIN) || actorHasRole(actor, RoleCode.ADMIN));
+    if (isStaff) {
+      const buffer = await readMediaFile(asset.storageKey);
+      return { asset, buffer };
+    }
+
     const galleryItem = await prisma.galleryItem.findFirst({
       where: { mediaAssetId: assetId },
     });
 
     if (galleryItem && galleryItem.isPublished) {
-      const buffer = await readMediaFile(asset.storageKey);
-      return { asset, buffer };
-    }
-
-    // Unpublished gallery photos: Accessible ONLY by authorized Super Admin users
-    if (actor && actorHasRole(actor, RoleCode.SUPER_ADMIN)) {
       const buffer = await readMediaFile(asset.storageKey);
       return { asset, buffer };
     }

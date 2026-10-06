@@ -51,7 +51,18 @@ export async function GET(request: NextRequest) {
       schoolClassId,
     });
 
-    return NextResponse.json(overview);
+    return NextResponse.json({
+      date: overview.date instanceof Date ? overview.date.toISOString().slice(0, 10) : String(overview.date),
+      totalRecords: overview.summary.total,
+      breakdown: {
+        present: overview.summary.present,
+        absent: overview.summary.absent,
+        late: overview.summary.late,
+        excused: overview.summary.excused,
+      },
+      summary: overview.summary,
+      records: overview.records,
+    });
   } catch (error: unknown) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });

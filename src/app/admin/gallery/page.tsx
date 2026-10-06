@@ -61,6 +61,59 @@ const CATEGORY_LABELS: Record<GalleryCategory, string> = {
   TAHFEEZ: "Tahfeez & Quranic Studies",
 };
 
+function GalleryImagePreview({
+  mediaAssetId,
+  altText,
+  category,
+  className = "",
+}: {
+  mediaAssetId: string;
+  altText: string;
+  category?: string;
+  className?: string;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className={`w-full h-full bg-gradient-to-br from-stone-100 to-stone-200 flex flex-col items-center justify-center p-3 text-center select-none ${className}`}>
+        <div className="w-10 h-10 rounded-xl bg-white shadow-xs border border-stone-200/80 flex items-center justify-center text-stone-400 mb-1.5">
+          <svg className="w-5 h-5 text-stone-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+          </svg>
+        </div>
+        <span className="text-[10px] font-bold tracking-wider uppercase text-stone-600">
+          {category || "Photo Archive"}
+        </span>
+        <span className="text-[10px] text-stone-400 mt-0.5">Preview processing</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative w-full h-full bg-stone-100 overflow-hidden ${className}`}>
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-stone-200/60 animate-pulse flex items-center justify-center">
+          <svg className="w-6 h-6 text-stone-300" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+          </svg>
+        </div>
+      )}
+      <img
+        src={`/api/media/${mediaAssetId}`}
+        alt={altText}
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setHasError(true)}
+        className={`w-full h-full object-cover transition-all duration-300 ${
+          isLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
+        }`}
+        loading="lazy"
+      />
+    </div>
+  );
+}
+
 export default function AdminGalleryPage() {
   const [items, setItems] = useState<GalleryItemData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -640,32 +693,29 @@ export default function AdminGalleryPage() {
           {items.map((item) => (
             <Card
               key={item.id}
-              className="overflow-hidden border-[#EADBDA]/80 bg-white hover:shadow-md transition-shadow flex flex-col"
+              className="overflow-hidden border border-[#EADBDA]/80 bg-white hover:shadow-lg transition-all duration-200 flex flex-col group rounded-2xl"
             >
               {/* Image Preview Container */}
-              <div className="relative aspect-4/3 w-full bg-stone-100 overflow-hidden border-b border-stone-200">
-                <img
-                  src={`/api/media/${item.mediaAssetId}`}
-                  alt={item.altText}
-                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                  loading="lazy"
+              <div className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden border-b border-stone-200/80">
+                <GalleryImagePreview
+                  mediaAssetId={item.mediaAssetId}
+                  altText={item.altText}
+                  category={CATEGORY_LABELS[item.category] || item.category}
+                  className="group-hover:scale-105 transition-transform duration-300"
                 />
 
-                {/* Category Badge */}
-                <div className="absolute top-2 left-2">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-stone-900/80 text-white backdrop-blur-xs">
+                {/* Sleek Top Overlay Bar */}
+                <div className="absolute inset-x-0 top-0 p-2.5 bg-gradient-to-b from-black/75 via-black/30 to-transparent flex items-start justify-between gap-2 pointer-events-none z-10">
+                  <span className="max-w-[130px] truncate px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/60 backdrop-blur-md text-white shadow-xs border border-white/10">
                     {CATEGORY_LABELS[item.category] || item.category}
                   </span>
-                </div>
 
-                {/* Publish Badge */}
-                <div className="absolute top-2 right-2">
                   {item.isPublished ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-700 text-white shadow-xs">
+                    <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-600/90 backdrop-blur-md text-white shadow-xs border border-emerald-400/30">
                       Published
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-600 text-white shadow-xs">
+                    <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-600/90 backdrop-blur-md text-white shadow-xs border border-amber-400/30">
                       Draft
                     </span>
                   )}
@@ -673,8 +723,8 @@ export default function AdminGalleryPage() {
 
                 {/* Display Order Pill */}
                 {item.displayOrder !== 0 && (
-                  <div className="absolute bottom-2 right-2">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/90 text-stone-700 shadow-xs">
+                  <div className="absolute bottom-2 right-2 pointer-events-none z-10">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-black/60 backdrop-blur-md text-white/95 shadow-xs border border-white/10">
                       Order: {item.displayOrder}
                     </span>
                   </div>
@@ -682,9 +732,9 @@ export default function AdminGalleryPage() {
               </div>
 
               {/* Card Body */}
-              <CardContent className="p-3.5 flex-1 flex flex-col justify-between space-y-3">
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-[#5B0612] line-clamp-1 font-display" title={item.title}>
+              <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-white">
+                <div className="space-y-1.5">
+                  <h3 className="text-sm font-bold text-stone-900 group-hover:text-[#800020] transition-colors line-clamp-1 font-display" title={item.title}>
                     {item.title}
                   </h3>
                   {item.caption && (
@@ -692,20 +742,24 @@ export default function AdminGalleryPage() {
                       {item.caption}
                     </p>
                   )}
-                  <p className="text-[11px] text-stone-400 truncate italic" title={item.altText}>
-                    Alt: {item.altText}
-                  </p>
+                  <div className="pt-1">
+                    <p className="text-[11px] text-stone-500 bg-stone-50 rounded-lg px-2.5 py-1.5 border border-stone-100 truncate italic" title={item.altText}>
+                      <span className="font-semibold text-stone-700 not-italic mr-1">Alt:</span>
+                      {item.altText}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Actions Toolbar */}
-                <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-1">
-                  {/* Quick Toggle Button */}
+                <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
                   <Button
-                    variant="outline"
+                    variant={item.isPublished ? "outline" : "primary"}
                     size="sm"
                     onClick={() => handleTogglePublish(item)}
                     isLoading={togglingId === item.id}
-                    className="text-[11px] py-1 px-2 h-7"
+                    className={`text-xs py-1 px-3 h-8 font-semibold ${
+                      item.isPublished ? "text-amber-700 hover:text-amber-800 hover:bg-amber-50" : ""
+                    }`}
                     title={item.isPublished ? "Switch to Draft" : "Publish to Gallery"}
                   >
                     {item.isPublished ? "Unpublish" : "Publish"}
@@ -716,7 +770,7 @@ export default function AdminGalleryPage() {
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}
-                      className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+                      className="p-1.5 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                       title="Edit Photograph Details"
                       aria-label="Edit Photograph Details"
                     >
@@ -729,7 +783,7 @@ export default function AdminGalleryPage() {
                     <button
                       type="button"
                       onClick={() => handleOpenDelete(item)}
-                      className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                      className="p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                       title="Delete Photograph"
                       aria-label="Delete Photograph"
                     >
@@ -763,11 +817,10 @@ export default function AdminGalleryPage() {
                 <TableRow key={item.id}>
                   <TableCell>
                     <div className="w-14 h-11 rounded-lg overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
-                      <img
-                        src={`/api/media/${item.mediaAssetId}`}
-                        alt={item.altText}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
+                      <GalleryImagePreview
+                        mediaAssetId={item.mediaAssetId}
+                        altText={item.altText}
+                        category={CATEGORY_LABELS[item.category] || item.category}
                       />
                     </div>
                   </TableCell>

@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { AuthorizationError } from '@/lib/auth/authorization';
 
 /**
  * Swanford Academy — Media Storage Driver
@@ -55,7 +56,15 @@ export async function saveMediaFile(storageKey: string, buffer: Buffer): Promise
  */
 export async function readMediaFile(storageKey: string): Promise<Buffer> {
   const filePath = getSafeFilePath(storageKey);
-  return fs.readFile(filePath);
+  try {
+    return await fs.readFile(filePath);
+  } catch (err: unknown) {
+    const isEnoent = (err as { code?: string })?.code === 'ENOENT';
+    if (isEnoent) {
+      throw new AuthorizationError('Media asset file not found on disk storage.', 404, 'MEDIA_NOT_FOUND');
+    }
+    throw err;
+  }
 }
 
 /**
