@@ -78,12 +78,19 @@ export async function claimNotificationBatch(
           SELECT id, recipient_email, subject, body_text, html_body, idempotency_key, attempts, max_attempts, lease_version, status, locked_by, lease_expires_at
           FROM notifications
           WHERE id = ${targetNotificationId}::uuid
+            AND (
+              status IN ('PENDING', 'RETRYABLE')
+              OR (status = 'PROCESSING' AND lease_expires_at <= (NOW() AT TIME ZONE 'UTC'))
+            )
           FOR UPDATE SKIP LOCKED;
         `
       : await tx.$queryRaw<RawClaimedRow[]>`
           SELECT id, recipient_email, subject, body_text, html_body, idempotency_key, attempts, max_attempts, lease_version, status, locked_by, lease_expires_at
           FROM notifications
-          WHERE status IN ('PENDING', 'RETRYABLE')
+          WHERE (
+            status IN ('PENDING', 'RETRYABLE')
+            OR (status = 'PROCESSING' AND lease_expires_at <= (NOW() AT TIME ZONE 'UTC'))
+          )
             AND (next_retry_at IS NULL OR next_retry_at <= (NOW() AT TIME ZONE 'UTC'))
             AND (lease_expires_at IS NULL OR lease_expires_at <= (NOW() AT TIME ZONE 'UTC'))
           ORDER BY created_at ASC

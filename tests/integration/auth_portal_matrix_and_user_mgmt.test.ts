@@ -503,7 +503,36 @@ describe('Requirement 30: Complete Login Flow & User Accounts Production Verific
         })
       ).rejects.toThrow(/Phone number is mandatory/i);
     });
+
+    it('Create PARENT user when Guardian record already exists with same email → SUCCEEDS and links profile', async () => {
+      const existingEmail = `existing.guardian.${Date.now()}@swanford.test`;
+      const createdGuardian = await prisma.guardian.create({
+        data: {
+          firstName: 'Existing',
+          lastName: 'Guardian',
+          email: existingEmail,
+          phonePrimary: makePhone(),
+        },
+      });
+
+      const result = await createAdminUser(superAdminUser, {
+        firstName: 'Existing',
+        lastName: 'Guardian',
+        email: existingEmail,
+        phoneNumber: makePhone(),
+        roles: [RoleCode.PARENT],
+      });
+
+      expect(result).toBeDefined();
+      expect(result.email).toBe(existingEmail);
+
+      const updatedGuardian = await prisma.guardian.findUnique({
+        where: { id: createdGuardian.id },
+      });
+      expect(updatedGuardian?.userId).toBe(result.id);
+    });
   });
+
 
   // =========================================================================
   // 6. FORGOT PASSWORD FLOW

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/request_auth';
 import { listGuardians, createGuardian, CreateGuardianSchema } from '@/lib/guardians/guardian_service';
 import { AuthorizationError } from '@/lib/auth/authorization';
+import { toUserFacingError } from '@/lib/ui/error_messages';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Failed to list guardians.';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const userFacing = toUserFacingError(error);
+    return NextResponse.json({ error: userFacing.message }, { status: 500 });
   }
 }
 
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Failed to create guardian.';
-    return NextResponse.json({ error: message }, { status: 400 });
+    const userFacing = toUserFacingError(error);
+    return NextResponse.json({ error: userFacing.message }, { status: 400 });
   }
 }

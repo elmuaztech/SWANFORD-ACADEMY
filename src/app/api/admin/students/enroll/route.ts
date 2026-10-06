@@ -19,6 +19,8 @@ import { renderAccountActivationEmail } from '@/lib/notifications/templates';
 import { AuthorizationError } from '@/lib/auth/authorization';
 import { parseFullName } from '@/lib/utils/name_parser';
 import { toAbsoluteEmailUrl } from '@/lib/utils/url';
+import { toUserFacingError } from '@/lib/ui/error_messages';
+import { processPendingNotifications } from '@/lib/notifications/worker';
 
 export const dynamic = 'force-dynamic';
 
@@ -397,6 +399,9 @@ export async function POST(request: NextRequest) {
       };
     });
 
+    // Trigger immediate background dispatch for the parent welcome / activation notification
+    processPendingNotifications().catch(() => {});
+
     return NextResponse.json({
       success: true,
       message: `Pupil enrolled successfully with Admission Number ${result.admissionNumber}.`,
@@ -406,7 +411,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Failed to enroll student.';
-    return NextResponse.json({ error: message }, { status: 400 });
+    const userFacing = toUserFacingError(error);
+    return NextResponse.json({ error: userFacing.message }, { status: 400 });
   }
 }

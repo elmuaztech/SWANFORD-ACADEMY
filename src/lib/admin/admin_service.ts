@@ -896,6 +896,8 @@ export async function createAdminUser(
     where: { code: { in: resolvedRoles } },
   });
 
+  let pendingNotificationId: string | null = null;
+
   const newUser = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
@@ -952,16 +954,34 @@ export async function createAdminUser(
     }
 
     if (resolvedRoles.includes(RoleCode.PARENT)) {
-      await tx.guardian.create({
-        data: {
-          userId: user.id,
-          firstName,
-          lastName,
-          email: normalizedEmail,
-          phonePrimary: normalizedPhone,
-          isVerified: true,
-        },
+      const existingGuardian = await tx.guardian.findUnique({
+        where: { email: normalizedEmail },
       });
+
+      if (existingGuardian) {
+        if (existingGuardian.userId && existingGuardian.userId !== user.id) {
+          throw new Error('A parent portal account is already linked to this guardian email address.');
+        }
+        await tx.guardian.update({
+          where: { id: existingGuardian.id },
+          data: {
+            userId: user.id,
+            isVerified: true,
+            phonePrimary: existingGuardian.phonePrimary || normalizedPhone,
+          },
+        });
+      } else {
+        await tx.guardian.create({
+          data: {
+            userId: user.id,
+            firstName,
+            lastName,
+            email: normalizedEmail,
+            phonePrimary: normalizedPhone,
+            isVerified: true,
+          },
+        });
+      }
     }
 
     await tx.auditLog.create({
@@ -1055,12 +1075,18 @@ export async function createAdminUser(
       );
 
       if (notifResult.notificationId) {
-        processPendingNotifications({ targetNotificationId: notifResult.notificationId }).catch(() => { });
+        pendingNotificationId = notifResult.notificationId;
       }
     }
 
     return user;
   });
+
+  if (pendingNotificationId) {
+    processPendingNotifications({ targetNotificationId: pendingNotificationId }).catch(() => { });
+  } else {
+    processPendingNotifications().catch(() => { });
+  }
 
   const safe = sanitizeUser(newUser);
   return {

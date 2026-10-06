@@ -79,7 +79,18 @@ export async function createGuardian(
     dbClient
   );
 
-  if (match.matchedGuardianId && match.matchType === 'EXACT_EMAIL_MATCH' && !match.hasConflict) {
+  if (normalizedEmail) {
+    const existing = await dbClient.guardian.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (existing) {
+      return {
+        guardian: existing,
+        isExisting: true,
+        warnings: match.conflictReason ? [match.conflictReason] : [],
+      };
+    }
+  } else if (match.matchedGuardianId && match.matchType === 'EXACT_EMAIL_MATCH' && !match.hasConflict) {
     const existing = await dbClient.guardian.findUniqueOrThrow({
       where: { id: match.matchedGuardianId },
     });
