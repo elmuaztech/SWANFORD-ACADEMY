@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { parseFullName } from "@/lib/utils/name_parser";
 import {
@@ -16,12 +16,7 @@ import {
   Badge,
   LoadingState,
   TableWrapper,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeaderCell,
-  TableBody,
-  TableCell,
+  DatePicker,
 } from "@/components";
 
 interface ProgrammeOption {
@@ -44,15 +39,21 @@ interface SessionOption {
   terms: Array<{ id: string; name: string; isCurrent: boolean }>;
 }
 
-interface BulkRowData {
+export type RelationshipTypeOption = "FATHER" | "MOTHER" | "LEGAL_GUARDIAN" | "SPONSOR";
+
+export interface BulkRowData {
   rowNumber: number;
   fullName: string;
   gender: "MALE" | "FEMALE";
   dateOfBirth: string;
   schoolClassId: string;
+  profilePhotoId?: string;
+  passportPhotoUrl?: string;
+  relationshipType: RelationshipTypeOption;
   guardianFullName: string;
   guardianPhone: string;
   guardianEmail: string;
+  residentialAddress?: string;
 }
 
 export default function AdminBulkStudentEnrollPage() {
@@ -72,14 +73,27 @@ export default function AdminBulkStudentEnrollPage() {
     rowNumber: num,
     fullName: "",
     gender: "MALE",
-    dateOfBirth: "2018-01-01",
+    dateOfBirth: "",
     schoolClassId: defaultClassId,
+    profilePhotoId: "",
+    passportPhotoUrl: "",
+    relationshipType: "FATHER",
     guardianFullName: "",
     guardianPhone: "",
     guardianEmail: "",
+    residentialAddress: "",
   });
 
   const [rows, setRows] = useState<BulkRowData[]>([]);
+
+  // Per-row photo upload loading indicators
+  const [uploadingPhotos, setUploadingPhotos] = useState<{ [rowIdx: number]: boolean }>({});
+
+  // Batch Photo Matcher state
+  const [showBatchPhotoModal, setShowBatchPhotoModal] = useState(false);
+  const [batchPhotoProcessing, setBatchPhotoProcessing] = useState(false);
+  const [batchPhotoMsg, setBatchPhotoMsg] = useState<string | null>(null);
+  const batchFileInputRef = useRef<HTMLInputElement>(null);
 
   // Submission state
   const [submitting, setSubmitting] = useState(false);
@@ -157,6 +171,159 @@ export default function AdminBulkStudentEnrollPage() {
     });
   };
 
+  // Helper to copy parent from the previous row (sibling quick-link)
+  const handleCopyParentFromAbove = (currentIndex: number) => {
+    if (currentIndex <= 0) return;
+    const parentRow = rows[currentIndex - 1];
+    setRows((prev) => {
+      const updated = [...prev];
+      updated[currentIndex] = {
+        ...updated[currentIndex],
+        guardianFullName: parentRow.guardianFullName,
+        relationshipType: parentRow.relationshipType,
+        guardianPhone: parentRow.guardianPhone,
+        guardianEmail: parentRow.guardianEmail,
+        residentialAddress: parentRow.residentialAddress || "",
+      };
+      return updated;
+    });
+  };
+
+  // Handle single photo upload for a row
+  const handlePhotoUpload = async (index: number, file: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErrorMsg(`File must be an image (JPEG, PNG, or WebP).`);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg(`Photo size must not exceed 5 MB.`);
+      return;
+    }
+
+    setUploadingPhotos((prev) => ({ ...prev, [index]: true }));
+    setErrorMsg(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to upload passport photo.");
+      }
+
+      setRows((prev) => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          profilePhotoId: data.assetId,
+          passportPhotoUrl: data.url,
+        };
+        return updated;
+      });
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to upload passport photograph.");
+    } finally {
+      setUploadingPhotos((prev) => ({ ...prev, [index]: false }));
+    }
+  };
+
+  // Remove photo from a row
+  const handleRemovePhoto = (index: number) => {
+    setRows((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        profilePhotoId: "",
+        passportPhotoUrl: "",
+      };
+      return updated;
+    });
+  };
+
+  // Batch Photo Auto-Matcher: Matches dropped/selected files to rows
+  const handleBatchPhotoFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setBatchPhotoProcessing(true);
+    setBatchPhotoMsg(null);
+    let matchedCount = 0;
+
+    try {
+      const fileArray = Array.from(files);
+
+      for (const file of fileArray) {
+        if (!file.type.startsWith("image/")) continue;
+
+        const baseName = file.name.replace(/\.[^/.]+$/, "").trim().toLowerCase();
+
+        // 1. Try matching by row number: e.g., "1.jpg", "row1.jpg", "row-1.png", "1_passport.jpg"
+        let targetRowIndex = -1;
+        const rowNumMatch = /^(?:row[-_]?)?(\d+)/i.exec(baseName);
+        if (rowNumMatch) {
+          const rowNum = parseInt(rowNumMatch[1], 10);
+          const foundIdx = rows.findIndex((r) => r.rowNumber === rowNum);
+          if (foundIdx !== -1) {
+            targetRowIndex = foundIdx;
+          }
+        }
+
+        // 2. If not matched by row number, try matching by student full name
+        if (targetRowIndex === -1) {
+          const nameWords = baseName.split(/[\s-_.]+/).filter((w) => w.length > 2);
+          for (let idx = 0; idx < rows.length; idx++) {
+            const studentName = rows[idx].fullName.trim().toLowerCase();
+            if (!studentName) continue;
+            // If student name contains key parts of the filename or vice versa
+            if (nameWords.some((word) => studentName.includes(word))) {
+              targetRowIndex = idx;
+              break;
+            }
+          }
+        }
+
+        if (targetRowIndex !== -1) {
+          // Upload and attach
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const res = await fetch("/api/media/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            setRows((prev) => {
+              const updated = [...prev];
+              updated[targetRowIndex] = {
+                ...updated[targetRowIndex],
+                profilePhotoId: data.assetId,
+                passportPhotoUrl: data.url,
+              };
+              return updated;
+            });
+            matchedCount++;
+          }
+        }
+      }
+
+      setBatchPhotoMsg(`Successfully matched and attached ${matchedCount} passport photo(s).`);
+    } catch {
+      setBatchPhotoMsg(`Error processing some photos.`);
+    } finally {
+      setBatchPhotoProcessing(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -179,6 +346,10 @@ export default function AdminBulkStudentEnrollPage() {
         setErrorMsg(`Row ${r.rowNumber}: Pupil Full Name is required.`);
         return;
       }
+      if (!r.dateOfBirth?.trim()) {
+        setErrorMsg(`Row ${r.rowNumber}: Date of Birth is required. Please type or pick a date.`);
+        return;
+      }
       if (!r.schoolClassId) {
         setErrorMsg(`Row ${r.rowNumber}: Class selection is required.`);
         return;
@@ -192,7 +363,7 @@ export default function AdminBulkStudentEnrollPage() {
         return;
       }
       if (!r.guardianEmail.trim()) {
-        setErrorMsg(`Row ${r.rowNumber}: Guardian email address is mandatory.`);
+        setErrorMsg(`Row ${r.rowNumber}: Guardian email address is mandatory for parent account creation.`);
         return;
       }
       if (!emailRegex.test(r.guardianEmail.trim())) {
@@ -215,14 +386,17 @@ export default function AdminBulkStudentEnrollPage() {
           lastName: parsedPupil.lastName,
           otherNames: parsedPupil.otherNames,
           gender: r.gender,
-          dateOfBirth: r.dateOfBirth,
+          dateOfBirth: r.dateOfBirth.trim(),
+          profilePhotoId: r.profilePhotoId || null,
           schoolClassId: r.schoolClassId,
           programmeIds: cls ? [cls.programmeId] : [],
+          relationshipType: r.relationshipType || "FATHER",
           guardianFullName: r.guardianFullName.trim(),
           guardianFirstName: parsedGuardian.firstName,
           guardianLastName: parsedGuardian.lastName,
           guardianPhone: r.guardianPhone.trim(),
           guardianEmail: r.guardianEmail.trim(),
+          residentialAddress: r.residentialAddress?.trim() || null,
         };
       });
 
@@ -267,7 +441,7 @@ export default function AdminBulkStudentEnrollPage() {
             Bulk Student Enrollment
           </h1>
           <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
-            Register multiple pupils simultaneously with atomic per-row transaction isolation.
+            Register multiple pupils simultaneously with passport photographs, easy calendar DOB entry, and direct parent linking.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -287,7 +461,7 @@ export default function AdminBulkStudentEnrollPage() {
       <Alert variant="info" className="bg-[#FAF4F5] border-[#EADBDA] text-[#5B0612]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <strong className="font-bold">Parent Email is Required:</strong> Each student&apos;s parent or guardian email address must be provided. The email is strictly required to automatically provision Parent Portal access credentials and deliver official school notifications, fee reminders, and academic term reports.
+            <strong className="font-bold">Direct Parent Linking & Portals:</strong> Each child is directly linked to their parent or guardian. The parent&apos;s email address automatically provisions their secure Parent Portal account and links siblings under one family profile.
           </div>
         </div>
       </Alert>
@@ -358,12 +532,12 @@ export default function AdminBulkStudentEnrollPage() {
         </Card>
       )}
 
-      {/* Row Count Selector & Placement Toolbar */}
+      {/* Row Count Selector & Toolbar */}
       <Card>
         <CardContent className="p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Row Selector (Requirement 14: 1, 5, 10, 20, 30, 40, 50) */}
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            {/* Row Selector (1, 5, 10, 20, 30, 40, 50) */}
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-stone-700">Rows to Enter:</span>
               <div className="inline-flex rounded-lg border border-stone-200 bg-stone-50 p-0.5">
                 {rowCountOptions.map((cnt) => (
@@ -383,129 +557,270 @@ export default function AdminBulkStudentEnrollPage() {
               </div>
             </div>
 
-            {/* Academic Session */}
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-stone-500 font-medium">Academic Session:</span>
-              <select
-                className="h-8 px-2 rounded-lg border border-stone-200 bg-white text-stone-800 text-xs font-medium focus:ring-1 focus:ring-[#800020]"
-                value={selectedSessionId}
-                onChange={(e) => setSelectedSessionId(e.target.value)}
-              >
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} {s.isCurrent ? "(Current)" : ""}
-                  </option>
-                ))}
-              </select>
+            {/* Quick Actions & Session */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Batch Match Photos Helper Button */}
+              <div>
+                <input
+                  ref={batchFileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleBatchPhotoFiles(e.target.files)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => batchFileInputRef.current?.click()}
+                  disabled={batchPhotoProcessing}
+                  className="text-xs flex items-center gap-1.5"
+                  title="Select multiple passport photos at once to auto-match rows by student name or row number (e.g. 1.jpg, 2.jpg)"
+                >
+                  <span>📷</span>
+                  <span>{batchPhotoProcessing ? "Matching..." : "Batch Match Passport Photos"}</span>
+                </Button>
+              </div>
+
+              {/* Academic Session */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-stone-500 font-medium">Academic Session:</span>
+                <select
+                  className="h-8 px-2 rounded-lg border border-stone-200 bg-white text-stone-800 text-xs font-medium focus:ring-1 focus:ring-[#800020]"
+                  value={selectedSessionId}
+                  onChange={(e) => setSelectedSessionId(e.target.value)}
+                >
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {s.isCurrent ? "(Current)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
+
+          {/* Batch Photo Match feedback */}
+          {batchPhotoMsg && (
+            <div className="mt-3 p-2 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-700 flex items-center justify-between">
+              <span>{batchPhotoMsg}</span>
+              <button
+                type="button"
+                onClick={() => setBatchPhotoMsg(null)}
+                className="text-stone-400 hover:text-stone-700 font-bold px-1"
+              >
+                &times;
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Main Bulk Table */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <TableWrapper>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-h-[380px]">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-stone-100 border-b border-stone-200 text-stone-700 font-bold uppercase tracking-wider text-[11px]">
                   <th className="py-2.5 px-2 w-12 text-center">S/N</th>
-                  <th className="py-2.5 px-3 min-w-[200px]">Pupil Full Name *</th>
+                  <th className="py-2.5 px-2 min-w-[95px] text-center">Passport Photo</th>
+                  <th className="py-2.5 px-3 min-w-[190px]">Pupil Full Name *</th>
                   <th className="py-2.5 px-2 min-w-[90px]">Gender *</th>
-                  <th className="py-2.5 px-2 min-w-[120px]">Date of Birth *</th>
-                  <th className="py-2.5 px-2 min-w-[140px]">Class *</th>
-                  <th className="py-2.5 px-3 min-w-[180px]">Parent Full Name *</th>
+                  <th className="py-2.5 px-2 min-w-[160px]">
+                    Date of Birth *
+                    <span className="block text-[9px] font-normal text-stone-500 lowercase">
+                      type or pick
+                    </span>
+                  </th>
+                  <th className="py-2.5 px-2 min-w-[130px]">Class *</th>
+                  <th className="py-2.5 px-2 min-w-[110px]">Relationship</th>
+                  <th className="py-2.5 px-3 min-w-[170px]">Parent Full Name *</th>
                   <th className="py-2.5 px-2 min-w-[120px]">Parent Phone *</th>
                   <th className="py-2.5 px-2 min-w-[160px]">Parent Email (MANDATORY) *</th>
+                  <th className="py-2.5 px-2 w-16 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 bg-white">
-                {rows.map((row, idx) => (
-                  <tr key={row.rowNumber} className="hover:bg-stone-50/60">
-                    <td className="py-2 px-2 font-mono text-center font-bold text-stone-500">
-                      {row.rowNumber}
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        placeholder="e.g. Bilkisu Usman Muhammed"
-                        value={row.fullName}
-                        onChange={(e) => handleRowChange(idx, "fullName", e.target.value)}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <select
-                        className="w-full h-8 px-1.5 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        value={row.gender}
-                        onChange={(e) => handleRowChange(idx, "gender", e.target.value)}
-                      >
-                        <option value="MALE">Male</option>
-                        <option value="FEMALE">Female</option>
-                      </select>
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        type="date"
-                        className="w-full h-8 px-1.5 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        value={row.dateOfBirth}
-                        onChange={(e) => handleRowChange(idx, "dateOfBirth", e.target.value)}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <select
-                        className="w-full h-8 px-1.5 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        value={row.schoolClassId}
-                        onChange={(e) => handleRowChange(idx, "schoolClassId", e.target.value)}
-                      >
-                        {classes.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name} ({c.code})
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        placeholder="e.g. Usman Muhammed"
-                        value={row.guardianFullName}
-                        onChange={(e) => handleRowChange(idx, "guardianFullName", e.target.value)}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
-                        placeholder="080..."
-                        value={row.guardianPhone}
-                        onChange={(e) => handleRowChange(idx, "guardianPhone", e.target.value)}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        type="email"
-                        className="w-full h-8 px-2 rounded border border-stone-200 text-xs font-mono focus:outline-none focus:border-[#800020]"
-                        placeholder="parent@example.com"
-                        value={row.guardianEmail}
-                        onChange={(e) => handleRowChange(idx, "guardianEmail", e.target.value)}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row, idx) => {
+                  const isUploadingThisPhoto = Boolean(uploadingPhotos[idx]);
+
+                  return (
+                    <tr key={row.rowNumber} className="hover:bg-stone-50/60 transition-colors">
+                      {/* S/N */}
+                      <td className="py-2 px-2 font-mono text-center font-bold text-stone-500">
+                        {row.rowNumber}
+                      </td>
+
+                      {/* Passport Photograph Column */}
+                      <td className="py-2 px-2 text-center">
+                        <div className="flex items-center justify-center">
+                          {row.passportPhotoUrl ? (
+                            <div className="relative group inline-block">
+                              <img
+                                src={row.passportPhotoUrl}
+                                alt={`Row ${row.rowNumber} Passport`}
+                                className="w-8 h-8 rounded-full object-cover border-2 border-[#800020] shadow-2xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePhoto(idx)}
+                                title="Remove photo"
+                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] flex items-center justify-center font-bold hover:bg-rose-700 shadow-xs"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={isUploadingThisPhoto}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handlePhotoUpload(idx, file);
+                                }}
+                              />
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded border border-dashed text-[11px] font-semibold transition-colors ${
+                                  isUploadingThisPhoto
+                                    ? "bg-stone-100 text-stone-400 border-stone-300 cursor-wait"
+                                    : "border-[#800020]/40 text-[#800020] hover:bg-[#FAF4F5] hover:border-[#800020]"
+                                }`}
+                              >
+                                {isUploadingThisPhoto ? "⏳ ..." : "📷 Photo"}
+                              </span>
+                            </label>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Pupil Full Name */}
+                      <td className="py-2 px-2">
+                        <input
+                          className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
+                          placeholder="e.g. Bilkisu Usman Muhammed"
+                          value={row.fullName}
+                          onChange={(e) => handleRowChange(idx, "fullName", e.target.value)}
+                        />
+                      </td>
+
+                      {/* Gender */}
+                      <td className="py-2 px-2">
+                        <select
+                          className="w-full h-8 px-1.5 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
+                          value={row.gender}
+                          onChange={(e) => handleRowChange(idx, "gender", e.target.value)}
+                        >
+                          <option value="MALE">Male</option>
+                          <option value="FEMALE">Female</option>
+                        </select>
+                      </td>
+
+                      {/* Date of Birth: Reusable DatePicker with direct typing & calendar */}
+                      <td className="py-2 px-2">
+                        <DatePicker
+                          size="sm"
+                          value={row.dateOfBirth}
+                          onChange={(val) => handleRowChange(idx, "dateOfBirth", val)}
+                          placeholder="DD/MM/YYYY"
+                        />
+                      </td>
+
+                      {/* Class */}
+                      <td className="py-2 px-2">
+                        <select
+                          className="w-full h-8 px-1.5 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
+                          value={row.schoolClassId}
+                          onChange={(e) => handleRowChange(idx, "schoolClassId", e.target.value)}
+                        >
+                          {classes.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} ({c.code})
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+
+                      {/* Relationship Type */}
+                      <td className="py-2 px-2">
+                        <select
+                          className="w-full h-8 px-1 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
+                          value={row.relationshipType}
+                          onChange={(e) => handleRowChange(idx, "relationshipType", e.target.value)}
+                        >
+                          <option value="FATHER">Father</option>
+                          <option value="MOTHER">Mother</option>
+                          <option value="LEGAL_GUARDIAN">Guardian</option>
+                          <option value="SPONSOR">Sponsor</option>
+                        </select>
+                      </td>
+
+                      {/* Parent Full Name */}
+                      <td className="py-2 px-2">
+                        <input
+                          className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
+                          placeholder="e.g. Usman Muhammed"
+                          value={row.guardianFullName}
+                          onChange={(e) => handleRowChange(idx, "guardianFullName", e.target.value)}
+                        />
+                      </td>
+
+                      {/* Parent Phone */}
+                      <td className="py-2 px-2">
+                        <input
+                          className="w-full h-8 px-2 rounded border border-stone-200 text-xs focus:outline-none focus:border-[#800020]"
+                          placeholder="080..."
+                          value={row.guardianPhone}
+                          onChange={(e) => handleRowChange(idx, "guardianPhone", e.target.value)}
+                        />
+                      </td>
+
+                      {/* Parent Email */}
+                      <td className="py-2 px-2">
+                        <input
+                          type="email"
+                          className="w-full h-8 px-2 rounded border border-stone-200 text-xs font-mono focus:outline-none focus:border-[#800020]"
+                          placeholder="parent@example.com"
+                          value={row.guardianEmail}
+                          onChange={(e) => handleRowChange(idx, "guardianEmail", e.target.value)}
+                        />
+                      </td>
+
+                      {/* Row Actions: Sibling Quick Copy from Above */}
+                      <td className="py-2 px-1 text-center">
+                        {idx > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyParentFromAbove(idx)}
+                            title="Same parent as row above (link siblings)"
+                            className="p-1 text-[11px] text-stone-500 hover:text-[#800020] hover:bg-stone-100 rounded transition-colors"
+                          >
+                            <span className="font-bold">↓ Copy</span>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </TableWrapper>
 
         {/* Submit Bar */}
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
           <p className="text-xs text-stone-500">
-            * Empty rows will be skipped automatically. Only completed rows will be enrolled.
+            * Empty rows will be skipped automatically. Only completed pupil records will be matriculated and linked to parent accounts.
           </p>
           <Button
             type="submit"
             variant="primary"
             size="lg"
-            className="min-w-[180px]"
+            className="min-w-[190px]"
             disabled={submitting}
           >
             {submitting ? "Processing..." : `Enroll Entered Pupils`}

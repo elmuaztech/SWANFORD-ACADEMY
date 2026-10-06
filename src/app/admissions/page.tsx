@@ -18,6 +18,7 @@ import {
   LoadingState,
   PrintedApplicationForm,
   ApplicationFormData,
+  DatePicker,
 } from '@/components';
 import { formatNaira } from '@/lib/money';
 import { parseFullName } from '@/lib/utils/name_parser';
@@ -500,12 +501,12 @@ export default function PublicAdmissionPage() {
                         </Select>
                       </FormGroup>
 
-                      <FormGroup label="Date of Birth" required>
-                        <Input
-                          type="date"
+                      <FormGroup label="Date of Birth" required hint="Type date (e.g. 15/04/2018) or click calendar">
+                        <DatePicker
                           required
                           value={formData.dateOfBirth}
-                          onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                          onChange={(val) => setFormData({ ...formData, dateOfBirth: val })}
+                          placeholder="YYYY-MM-DD or DD/MM/YYYY"
                         />
                       </FormGroup>
                     </div>

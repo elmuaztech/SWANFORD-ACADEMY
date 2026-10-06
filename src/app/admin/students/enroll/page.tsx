@@ -16,6 +16,7 @@ import {
   Badge,
   PrintedApplicationForm,
   ApplicationFormData,
+  DatePicker,
 } from "@/components";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { SCHOOL_PROFILE } from "@/lib/constants";
@@ -399,12 +400,12 @@ export default function AdminStudentEnrollPage() {
                   </select>
                 </FormGroup>
 
-                <FormGroup label="Date of Birth *" required>
-                  <Input
-                    type="date"
+                <FormGroup label="Date of Birth *" required hint="Type date (e.g. 15/04/2018) or click calendar to pick year, month and day">
+                  <DatePicker
                     required
                     value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    onChange={(val) => setFormData({ ...formData, dateOfBirth: val })}
+                    placeholder="YYYY-MM-DD or DD/MM/YYYY"
                   />
                 </FormGroup>
               </div>

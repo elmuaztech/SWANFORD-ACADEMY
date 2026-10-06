@@ -24,6 +24,7 @@ export * from "./ui/dropdown";
 export * from "./ui/states";
 export * from "./ui/avatar";
 export * from "./ui/image-upload";
+export * from "./ui/date-picker";
 export * from "./ui/scroll-reveal";
 
 // Structural Layouts

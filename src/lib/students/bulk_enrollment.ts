@@ -49,6 +49,7 @@ export interface BulkStudentRowInput {
   guardianPhone: string;
   relationshipType?: 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'SPONSOR';
   residentialAddress?: string;
+  profilePhotoId?: string | null;
 }
 
 export interface BulkEnrollmentBatchInput {
@@ -114,13 +115,40 @@ export function validateRowPayload(row: BulkStudentRowInput): { valid: boolean; 
     return { valid: false, error: 'Valid gender (MALE or FEMALE) is required' };
   }
 
-  const dob = new Date(row.dateOfBirth);
+  // Resilient Date of Birth parsing (supports YYYY-MM-DD and DD/MM/YYYY)
+  let dob = new Date(row.dateOfBirth);
+  if (isNaN(dob.getTime())) {
+    const dmyMatch = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec((row.dateOfBirth || '').trim());
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10);
+      const month = parseInt(dmyMatch[2], 10);
+      const year = parseInt(dmyMatch[3], 10);
+      const iso = `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      dob = new Date(iso);
+      if (!isNaN(dob.getTime())) {
+        row.dateOfBirth = iso;
+      }
+    }
+  } else {
+    const isoMatch = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec((row.dateOfBirth || '').trim());
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10);
+      const day = parseInt(isoMatch[3], 10);
+      row.dateOfBirth = `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    }
+  }
+
   if (isNaN(dob.getTime())) {
     return { valid: false, error: 'Invalid date of birth format' };
   }
 
   if (dob >= new Date()) {
     return { valid: false, error: 'Date of birth must be in the past' };
+  }
+
+  if (row.relationshipType && !['FATHER', 'MOTHER', 'LEGAL_GUARDIAN', 'SPONSOR'].includes(row.relationshipType)) {
+    return { valid: false, error: 'Invalid parent relationship type' };
   }
 
   if (!row.schoolClassId?.trim()) return { valid: false, error: 'School class ID is required' };
@@ -242,7 +270,7 @@ export async function executeBulkStudentEnrollment(
         const guardianFirstName = guardianParsed.firstName || (row.guardianFirstName || '').trim();
         const guardianLastName = guardianParsed.lastName || (row.guardianLastName || '').trim();
 
-        // Step B: Create Student
+        // Step B: Create Student with passport photo and parent emergency contact details
         const student = await tx.student.create({
           data: {
             admissionNumber: assignedAdmissionNumber,
@@ -251,6 +279,10 @@ export async function executeBulkStudentEnrollment(
             otherNames: studentOtherNames,
             gender: row.gender as Gender,
             dateOfBirth: new Date(row.dateOfBirth),
+            profilePhotoId: row.profilePhotoId?.trim() || null,
+            emergencyContactName: `${guardianFirstName} ${guardianLastName}`.trim(),
+            emergencyContactPhone: row.guardianPhone.trim(),
+            emergencyContactRelationship: (row.relationshipType as string) || 'PARENT',
           },
         });
 
@@ -258,10 +290,38 @@ export async function executeBulkStudentEnrollment(
         let guardianId: string;
         let guardianUserId: string | null = null;
         const normalizedEmail = row.guardianEmail?.trim().toLowerCase() || null;
+        const normalizedPhone = row.guardianPhone.trim();
 
         if (normalizedEmail) {
           const existingGuardian = await tx.guardian.findUnique({
             where: { email: normalizedEmail },
+          });
+
+          if (existingGuardian) {
+            guardianId = existingGuardian.id;
+            guardianUserId = existingGuardian.userId;
+            if (!existingGuardian.phonePrimary && normalizedPhone) {
+              await tx.guardian.update({
+                where: { id: existingGuardian.id },
+                data: { phonePrimary: normalizedPhone },
+              });
+            }
+          } else {
+            const newGuardian = await tx.guardian.create({
+              data: {
+                firstName: guardianFirstName,
+                lastName: guardianLastName,
+                email: normalizedEmail,
+                phonePrimary: normalizedPhone,
+                residentialAddress: row.residentialAddress?.trim() || null,
+              },
+            });
+            guardianId = newGuardian.id;
+          }
+        } else {
+          // Parent without email: check if existing guardian exists by phone
+          const existingGuardian = await tx.guardian.findFirst({
+            where: { phonePrimary: normalizedPhone },
           });
 
           if (existingGuardian) {
@@ -272,36 +332,37 @@ export async function executeBulkStudentEnrollment(
               data: {
                 firstName: guardianFirstName,
                 lastName: guardianLastName,
-                email: normalizedEmail,
-                phonePrimary: row.guardianPhone.trim(),
+                email: null,
+                phonePrimary: normalizedPhone,
                 residentialAddress: row.residentialAddress?.trim() || null,
               },
             });
             guardianId = newGuardian.id;
           }
-        } else {
-          // Parent without email: create unlinked Guardian
-          const newGuardian = await tx.guardian.create({
-            data: {
-              firstName: guardianFirstName,
-              lastName: guardianLastName,
-              email: null,
-              phonePrimary: row.guardianPhone.trim(),
-              residentialAddress: row.residentialAddress?.trim() || null,
-            },
-          });
-          guardianId = newGuardian.id;
         }
 
         // Step D: Create GuardianStudentRelationship
-        await tx.guardianStudentRelationship.create({
-          data: {
-            guardianId,
-            studentId: student.id,
-            relationshipType: (row.relationshipType as RelationshipType) || RelationshipType.LEGAL_GUARDIAN,
-            isPrimaryContact: true,
+        const existingRel = await tx.guardianStudentRelationship.findUnique({
+          where: {
+            guardianId_studentId: {
+              guardianId,
+              studentId: student.id,
+            },
           },
         });
+
+        if (!existingRel) {
+          await tx.guardianStudentRelationship.create({
+            data: {
+              guardianId,
+              studentId: student.id,
+              relationshipType: (row.relationshipType as RelationshipType) || RelationshipType.LEGAL_GUARDIAN,
+              isPrimaryContact: true,
+              canPickup: true,
+              receivesInvoices: true,
+            },
+          });
+        }
 
         // Step E: Create StudentProgrammeEnrollment for each programme
         for (const prog of programmes) {
@@ -327,11 +388,21 @@ export async function executeBulkStudentEnrollment(
           // Check if a User already exists with this email
           let user = await tx.user.findUnique({ where: { email: normalizedEmail } });
           if (!user) {
+            let userPhone = row.guardianPhone?.trim() || null;
+            if (userPhone) {
+              const existingPhoneUser = await tx.user.findUnique({
+                where: { phoneNumber: userPhone },
+              });
+              if (existingPhoneUser) {
+                userPhone = null;
+              }
+            }
+
             const sentinelPassword = createUnactivatedPasswordSentinel();
             user = await tx.user.create({
               data: {
                 email: normalizedEmail,
-                phoneNumber: row.guardianPhone?.trim() || null,
+                phoneNumber: userPhone,
                 firstName: guardianFirstName,
                 lastName: guardianLastName,
                 passwordHash: sentinelPassword,

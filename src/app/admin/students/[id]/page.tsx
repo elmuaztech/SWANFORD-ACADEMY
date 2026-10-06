@@ -27,6 +27,7 @@ import {
   TableWrapper,
   PageHeader,
   Alert,
+  DatePicker,
 } from "@/components";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { StudentStatus, Gender } from "@prisma/client";
@@ -790,12 +791,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   <option value="FEMALE">Female</option>
                 </Select>
               </FormGroup>
-              <FormGroup label="Date of Birth" required>
-                <Input
-                  type="date"
-                  value={editForm.dateOfBirth}
-                  onChange={(e) => setEditForm((p) => ({ ...p, dateOfBirth: e.target.value }))}
+              <FormGroup label="Date of Birth" required hint="Type date (e.g. 15/04/2018) or click calendar">
+                <DatePicker
                   required
+                  value={editForm.dateOfBirth}
+                  onChange={(val) => setEditForm((p) => ({ ...p, dateOfBirth: val }))}
+                  placeholder="YYYY-MM-DD or DD/MM/YYYY"
                 />
               </FormGroup>
             </div>

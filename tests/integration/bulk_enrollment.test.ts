@@ -327,4 +327,72 @@ describe('Bulk Student Enrollment Integration Tests', () => {
     expect(row?.batch).toBeDefined();
     expect(row?.batch.batchNumber).toMatch(/^BATCH-\d{4}-\d{5}$/);
   });
+
+  it('supports passport photo upload, resilient DD/MM/YYYY date parsing, and direct parent details linking', async () => {
+    // 1. Create a dummy media asset for passport photo test
+    const uniqueKey = `profile-photos/test-passport-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.webp`;
+    const dummyAsset = await prisma.mediaAsset.create({
+      data: {
+        storageKey: uniqueKey,
+        mediaType: 'PROFILE_PHOTO',
+        mimeType: 'image/webp',
+        fileSize: 1024,
+      },
+    });
+
+    const testPhone = `080${Math.floor(10000000 + Math.random() * 90000000)}`;
+    const photoRows: BulkStudentRowInput[] = [
+      {
+        rowNumber: 1,
+        fullName: 'Bilkisu Usman Muhammed',
+        gender: 'FEMALE',
+        dateOfBirth: '14/05/2018', // Typed manually in DD/MM/YYYY format!
+        profilePhotoId: dummyAsset.id,
+        schoolClassId: primaryClassId,
+        programmeIds: [primaryProgrammeId],
+        relationshipType: 'FATHER',
+        guardianFullName: 'Usman Muhammed',
+        guardianEmail: `usman.muhammed.bulk.${Date.now()}@example.com`,
+        guardianPhone: testPhone,
+        residentialAddress: 'No. 12 Government House Road, Dutse',
+      },
+    ];
+
+    const result = await executeBulkStudentEnrollment({
+      academicSessionId,
+      academicTermId,
+      rows: photoRows,
+    });
+
+    expect(result.status).toBe(ImportBatchStatus.COMPLETED);
+    expect(result.totalSuccessful).toBe(1);
+
+    const studentId = result.successfulStudents[0].studentId;
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        profilePhoto: true,
+        guardianLinks: { include: { guardian: true } },
+      },
+    });
+
+    expect(student).toBeDefined();
+    // Passport photo linked
+    expect(student?.profilePhotoId).toBe(dummyAsset.id);
+    expect(student?.profilePhoto).toBeDefined();
+
+    // Date of Birth parsed correctly to 2018-05-14
+    expect(student?.dateOfBirth.toISOString()).toContain('2018-05-14');
+
+    // Directly linked parent emergency contact details
+    expect(student?.emergencyContactName).toBe('Usman Muhammed');
+    expect(student?.emergencyContactPhone).toBe(testPhone);
+    expect(student?.emergencyContactRelationship).toBe('FATHER');
+
+    // Guardian link with relationship FATHER
+    expect(student?.guardianLinks).toHaveLength(1);
+    expect(student?.guardianLinks[0].relationshipType).toBe('FATHER');
+    expect(student?.guardianLinks[0].guardian.firstName).toBe('Usman');
+    expect(student?.guardianLinks[0].guardian.lastName).toBe('Muhammed');
+  });
 });

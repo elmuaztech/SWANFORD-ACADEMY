@@ -76,7 +76,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const dateOfBirth = new Date(dateOfBirthStr);
+    let dateOfBirth = new Date(dateOfBirthStr);
+    if (isNaN(dateOfBirth.getTime())) {
+      const dmyMatch = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec((dateOfBirthStr || '').trim());
+      if (dmyMatch) {
+        const day = parseInt(dmyMatch[1], 10);
+        const month = parseInt(dmyMatch[2], 10);
+        const year = parseInt(dmyMatch[3], 10);
+        dateOfBirth = new Date(`${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`);
+      }
+    }
     if (isNaN(dateOfBirth.getTime()) || dateOfBirth >= new Date()) {
       return NextResponse.json(
         { error: 'Please provide a valid date of birth in the past.' },
@@ -203,6 +212,9 @@ export async function POST(request: NextRequest) {
           allergies: body.allergies?.trim() || null,
           medicalNotes: body.medicalNotes?.trim() || null,
           profilePhotoId: body.profilePhotoId?.trim() || null,
+          emergencyContactName: body.emergencyContactName?.trim() || `${guardianFirstName} ${guardianLastName}`.trim(),
+          emergencyContactPhone: body.emergencyContactPhone?.trim() || guardianPhone,
+          emergencyContactRelationship: body.emergencyContactRelationship?.trim() || (relationshipType as string) || 'PARENT',
         },
       });
 
