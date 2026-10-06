@@ -263,4 +263,18 @@ describe('Stage 10: Notification Templates & Data Minimization', () => {
     expect(rendered.html).toContain('height="80"');
     expect(rendered.html).not.toContain('NURSERY · PRIMARY · TAHFEEZ');
   });
+
+  it('guarantees relative and localhost activation URLs are converted to secure canonical HTTPS domain', () => {
+    const rendered = renderAccountActivationEmail({
+      recipientName: 'Ruqayyah Parent',
+      activationUrl: '/auth/activate?token=sample_token_123',
+      expiresInHours: 24,
+    });
+
+    expect(rendered.html).toContain('href="https://swanfordacademy.com.ng/auth/activate?token=sample_token_123"');
+    expect(rendered.text).toContain('https://swanfordacademy.com.ng/auth/activate?token=sample_token_123');
+    expect(rendered.html).not.toContain('href="/auth/activate');
+    expect(rendered.html).not.toContain('http:///');
+  });
 });
+

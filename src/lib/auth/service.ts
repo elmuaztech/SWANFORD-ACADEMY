@@ -7,6 +7,7 @@ import { NotificationCategory } from '@/lib/notifications/types';
 import { renderPasswordResetEmail, renderPasswordResetOtpEmail, renderPasswordChangedEmail } from '@/lib/notifications/templates';
 import { checkRateLimit, clearRateLimit } from '@/lib/security/rate_limiter';
 import { processPendingNotifications } from '@/lib/notifications/worker';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 
 /**
  * Swanford Academy — Authentication & Account Lifecycle Service
@@ -375,7 +376,7 @@ export async function requestPasswordReset(email: string, ipAddress?: string): P
     });
 
     // Queue persistent notification in outbox
-    const resetUrl = `/auth/reset-password?token=${rawToken}`;
+    const resetUrl = toAbsoluteEmailUrl(`/auth/reset-password?token=${rawToken}`);
     const rendered = renderPasswordResetEmail({
       recipientName: user.email.split('@')[0],
       resetUrl,

@@ -20,6 +20,7 @@ import { PermissionCode } from '@/lib/auth/permissions';
 import { createUnactivatedPasswordSentinel, hashPassword } from '@/lib/auth/password';
 import { generateSecureToken } from '@/lib/auth/tokens';
 import { parseFullName } from '@/lib/utils/name_parser';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 import { normalizeAttendanceDate } from '@/lib/attendance/attendance_service';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { processPendingNotifications } from '@/lib/notifications/worker';
@@ -982,12 +983,11 @@ export async function createAdminUser(
       },
     });
 
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
     const primaryRole = rolesToAssign[0]?.name || 'User';
     const recipientName = `${firstName} ${lastName}`.trim();
 
     if (isActiveStatus && tempPassword) {
-      const loginUrl = `${appUrl}/auth/login`;
+      const loginUrl = toAbsoluteEmailUrl('/auth/login');
       const rendered = renderWelcomeNewUserEmail({
         recipientName,
         roleName: primaryRole,
@@ -1030,7 +1030,7 @@ export async function createAdminUser(
         },
       });
 
-      const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+      const activationUrl = toAbsoluteEmailUrl(`/auth/activate?token=${rawToken}`);
       const rendered = renderAccountActivationEmail({
         recipientName,
         activationUrl,
@@ -1148,8 +1148,7 @@ export async function adminInitiatePasswordReset(
     });
 
     // 5. Render and enqueue notification
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-    const resetUrl = `${appUrl}/auth/reset-password?token=${rawToken}`;
+    const resetUrl = toAbsoluteEmailUrl(`/auth/reset-password?token=${rawToken}`);
     const recipientName = targetUser.guardianProfile
       ? `${targetUser.guardianProfile.firstName} ${targetUser.guardianProfile.lastName}`.trim()
       : targetUser.teacherProfile
@@ -1348,8 +1347,7 @@ export async function adminChangeUserEmail(
     );
 
     // 7. Verification email to NEW email
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-    const verificationUrl = `${appUrl}/api/auth/verify-email?token=${rawToken}`;
+    const verificationUrl = toAbsoluteEmailUrl(`/api/auth/verify-email?token=${rawToken}`);
     const newNotice = renderEmailChangedNotification({
       recipientName,
       oldEmail,
@@ -1749,8 +1747,7 @@ export async function adminEmergencyAccountRecovery(
         },
       });
 
-      const appUrl = process.env.APP_URL || 'http://localhost:3000';
-      const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+      const activationUrl = toAbsoluteEmailUrl(`/auth/activate?token=${rawToken}`);
       const primaryRole = targetRoles[0] || 'Member';
       const recipientName = targetUser.guardianProfile
         ? `${targetUser.guardianProfile.firstName} ${targetUser.guardianProfile.lastName}`.trim()
@@ -2132,8 +2129,7 @@ export async function createAdminTeacher(
 
         targetUserId = createdUser.id;
 
-        const appUrl = process.env.APP_URL || 'http://localhost:3000';
-        const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+        const activationUrl = toAbsoluteEmailUrl(`/auth/activate?token=${rawToken}`);
         const recipientName = `${firstName} ${lastName}`.trim();
 
         const rendered = renderWelcomeNewUserEmail({

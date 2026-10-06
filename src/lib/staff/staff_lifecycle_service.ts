@@ -18,6 +18,7 @@ import { AuthorizationError, requirePermission, getUserRoles } from '@/lib/auth/
 import { PermissionCode } from '@/lib/auth/permissions';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { processPendingNotifications } from '@/lib/notifications/worker';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 
 export interface ProbationRatingsInput {
   excellence: ProbationRating;
@@ -896,7 +897,7 @@ export async function issueStaffDocument(
       templateName: 'STAFF_DOCUMENT_ISSUED',
       subject: `Official Document Issued: ${doc.title}`,
       bodyText: `Dear ${doc.teacher.firstName}, an official employment document (${doc.title}) has been issued to you by School Management. Please log into your Teacher Portal to view and download it.`,
-      htmlBody: `<p>Dear ${doc.teacher.firstName},</p><p>An official employment document (<strong>${doc.title}</strong>) has been issued to you by School Management.</p><p>Please log into your <a href="http://localhost:3000/auth/login">Swanford Academy Teacher Portal</a> to view and download it under <strong>My Documents</strong>.</p>`,
+      htmlBody: `<p>Dear ${doc.teacher.firstName},</p><p>An official employment document (<strong>${doc.title}</strong>) has been issued to you by School Management.</p><p>Please log into your <a href="${toAbsoluteEmailUrl('/auth/login')}">Swanford Academy Teacher Portal</a> to view and download it under <strong>My Documents</strong>.</p>`,
     });
 
     processPendingNotifications().catch(() => {});

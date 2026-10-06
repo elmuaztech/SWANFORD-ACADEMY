@@ -13,6 +13,7 @@
  */
 
 import { BRAND_COLORS, VERIFIED_SCHOOL_INFO, EMAIL_LAYOUT_CONSTANTS } from './theme';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 
 export interface EmailTableItem {
   label: string;
@@ -247,12 +248,13 @@ export function renderMasterEmail(subject: string, input: EmailRenderInput): Ren
   // 7. Call To Action HTML
   let ctaHtml = '';
   if (input.callToAction) {
+    const safeCtaUrl = toAbsoluteEmailUrl(input.callToAction.url);
     ctaHtml = `
       <div style="margin: 32px 0 24px; text-align: center;">
         <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
           <tr>
             <td align="center" style="border-radius: 8px; background-color: ${BRAND_COLORS.maroonPrimary};">
-              <a href="${escapeHtml(input.callToAction.url)}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 700; color: #FFFFFF; text-decoration: none; border-radius: 8px; min-height: ${EMAIL_LAYOUT_CONSTANTS.minTouchTarget}; line-height: 20px; text-align: center; letter-spacing: 0.3px;">
+              <a href="${escapeHtml(safeCtaUrl)}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 700; color: #FFFFFF; text-decoration: none; border-radius: 8px; min-height: ${EMAIL_LAYOUT_CONSTANTS.minTouchTarget}; line-height: 20px; text-align: center; letter-spacing: 0.3px;">
                 ${escapeHtml(input.callToAction.label)}
               </a>
             </td>
@@ -415,7 +417,8 @@ export function renderMasterEmail(subject: string, input: EmailRenderInput): Ren
     text += `\n`;
   }
   if (input.callToAction) {
-    text += `${input.callToAction.label}: ${input.callToAction.url}\n\n`;
+    const safeCtaUrl = toAbsoluteEmailUrl(input.callToAction.url);
+    text += `${input.callToAction.label}: ${safeCtaUrl}\n\n`;
   }
   text += `Warm regards,\n`;
   text += `Swanford Academy Administration\n`;

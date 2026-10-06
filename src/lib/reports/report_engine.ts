@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { resolveGrade } from '@/lib/academic/grading_service';
 import { enqueueNotification } from '@/lib/notifications/outbox';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 
 export interface SubjectReportScore {
   subjectId: string;
@@ -1481,8 +1482,8 @@ export async function releaseTerminalReports(
 
     for (const link of student.guardianLinks) {
       if (link.guardian.email) {
-        const portalUrl = `${process.env.APP_URL || 'https://portal.swanford.edu.ng'}/parent/results`;
-        const downloadPdfUrl = `${process.env.APP_URL || 'https://portal.swanford.edu.ng'}/api/parent/reports/${student.id}?termId=${params.academicTermId}&download=pdf`;
+        const portalUrl = toAbsoluteEmailUrl('/parent/results');
+        const downloadPdfUrl = toAbsoluteEmailUrl(`/api/parent/reports/${student.id}?termId=${params.academicTermId}&download=pdf`);
 
         await enqueueNotification({
           idempotencyKey: `REPORT-RELEASE-${release.id}-${student.id}-${link.guardianId}`,

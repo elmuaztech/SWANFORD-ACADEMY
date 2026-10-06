@@ -4,6 +4,7 @@ import { formatNaira } from '@/lib/money';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { renderMasterEmail } from '@/lib/notifications/templates/renderer';
 import { VERIFIED_SCHOOL_INFO } from '@/lib/notifications/templates/theme';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 
 export interface OutstandingStudentItem {
   invoiceId: string;
@@ -287,7 +288,7 @@ export async function sendPaymentRemindersNow(options: {
       detailsTable,
       callToAction: {
         label: 'View Invoice & Pay Online',
-        url: `${process.env.APP_URL || 'http://localhost:3000'}/parent`,
+        url: toAbsoluteEmailUrl('/parent'),
       },
       footerNotes: [
         `${VERIFIED_SCHOOL_INFO.name}`,
@@ -496,7 +497,7 @@ export async function processDueScheduledReminders(): Promise<number> {
           detailsTable,
           callToAction: {
             label: 'View Invoice & Pay Online',
-            url: `${process.env.APP_URL || 'http://localhost:3000'}/parent`,
+            url: toAbsoluteEmailUrl('/parent'),
           },
           footerNotes: [
             `${VERIFIED_SCHOOL_INFO.name}`,

@@ -28,6 +28,7 @@ import { processPendingNotifications } from '@/lib/notifications/worker';
 import { readMediaFile } from '@/lib/media/storage';
 import { createUnactivatedPasswordSentinel } from '@/lib/auth/password';
 import { generateSecureToken } from '@/lib/auth/tokens';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 import {
   renderApplicationSubmittedEmail,
   renderApplicationFeeConfirmedEmail,
@@ -751,8 +752,7 @@ export async function reviewProgrammeSelection(
         });
 
       const programmesList = approvedProgrammeNames.join(', ') || selection.programme.name;
-      const appUrl = process.env.APP_URL || 'http://localhost:3000';
-      const admissionLetterUrl = `${appUrl}/admissions/letter/${application.id}`;
+      const admissionLetterUrl = toAbsoluteEmailUrl(`/admissions/letter/${application.id}`);
 
       // Convert applicant photo to base64 Data URI for immediate inline email/letter rendering
       let profilePhotoDataUri: string | null = null;
@@ -899,8 +899,7 @@ export async function reviewProgrammeSelection(
           });
 
           // Enqueue Account Activation Email with single-use secure token link
-          const appUrl = process.env.APP_URL || 'http://localhost:3000';
-          const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+          const activationUrl = toAbsoluteEmailUrl(`/auth/activate?token=${rawToken}`);
           const guardianFullName = `${application.guardianFirstName} ${application.guardianLastName}`.trim();
 
           const activationEmail = renderAccountActivationEmail({

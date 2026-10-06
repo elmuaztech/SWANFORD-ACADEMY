@@ -16,6 +16,7 @@ import { generateSecureToken } from '@/lib/auth/tokens';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { renderWelcomeNewUserEmail } from '@/lib/notifications/templates/catalog';
 import { matchExistingGuardian } from './guardian_matching';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 
 /**
  * Swanford Academy — Guardian Profile Service
@@ -520,8 +521,7 @@ export async function provisionGuardianUserAccount(
       },
     });
 
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-    const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+    const activationUrl = toAbsoluteEmailUrl(`/auth/activate?token=${rawToken}`);
     const recipientName = `${guardian.firstName} ${guardian.lastName}`.trim();
 
     const rendered = renderWelcomeNewUserEmail({

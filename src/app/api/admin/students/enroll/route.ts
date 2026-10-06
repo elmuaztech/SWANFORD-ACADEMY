@@ -18,6 +18,7 @@ import { NotificationCategory } from '@/lib/notifications/types';
 import { renderAccountActivationEmail } from '@/lib/notifications/templates';
 import { AuthorizationError } from '@/lib/auth/authorization';
 import { parseFullName } from '@/lib/utils/name_parser';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -295,8 +296,7 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        const appUrl = process.env.APP_URL || 'http://localhost:3000';
-        const activationUrl = `${appUrl}/auth/activate?token=${rawToken}`;
+        const activationUrl = toAbsoluteEmailUrl(`/auth/activate?token=${rawToken}`);
         const rendered = renderAccountActivationEmail({
           recipientName: `${guardianFirstName} ${guardianLastName}`.trim(),
           activationUrl,

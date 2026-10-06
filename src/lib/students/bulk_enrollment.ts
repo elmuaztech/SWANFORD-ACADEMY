@@ -16,6 +16,7 @@ import { generateSecureToken } from '@/lib/auth/tokens';
 import { enqueueNotification } from '@/lib/notifications/outbox';
 import { NotificationCategory } from '@/lib/notifications/types';
 import { renderAccountActivationEmail } from '@/lib/notifications/templates';
+import { toAbsoluteEmailUrl } from '@/lib/utils/url';
 
 /**
  * Swanford Academy — Bulk Student Enrollment Service
@@ -435,7 +436,7 @@ export async function executeBulkStudentEnrollment(
             });
 
             // Step G: Persistent Outbox Notification
-            const activationUrl = `/auth/activate?token=${rawToken}`;
+            const activationUrl = toAbsoluteEmailUrl(`/auth/activate?token=${rawToken}`);
             const rendered = renderAccountActivationEmail({
               recipientName: `${row.guardianFirstName} ${row.guardianLastName}`.trim(),
               activationUrl,
