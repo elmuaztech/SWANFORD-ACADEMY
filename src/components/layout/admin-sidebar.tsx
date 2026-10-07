@@ -425,7 +425,7 @@ export function AdminSidebar({
       </nav>
 
       {/* Footer User Badge */}
-      <div className="p-3 border-t border-[#EADBDA]/80 bg-[#FAF7F2]">
+      <div className="p-3 border-t border-[#EADBDA]/80 bg-[#EFE8DC]">
         <div className={`flex items-center gap-2.5 ${isCollapsed ? "justify-center" : ""}`}>
           <div className="w-8 h-8 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center shrink-0">
             {userEmail ? userEmail[0].toUpperCase() : "A"}

@@ -127,7 +127,7 @@ export function TeacherHeader({ onOpenMobileDrawer, userEmail }: TeacherHeaderPr
           {/* Messages / Announcement Dropdown Panel */}
           {isBellOpen && (
             <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-[#EADBDA] overflow-hidden z-40 animate-in fade-in-50 zoom-in-95 duration-150">
-              <div className="p-3.5 border-b border-[#EADBDA] bg-[#FAF7F2] flex items-center justify-between">
+              <div className="p-3.5 border-b border-[#EADBDA] bg-[#EFE8DC] flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-bold text-stone-900">Announcements &amp; Messages</h3>
                   <p className="text-[11px] text-stone-500">
@@ -155,7 +155,7 @@ export function TeacherHeader({ onOpenMobileDrawer, userEmail }: TeacherHeaderPr
                       href="/teacher/messages"
                       onClick={() => setIsBellOpen(false)}
                       className={`block p-3 hover:bg-stone-50 transition-colors ${
-                        !msg.isRead ? "bg-[#FAF7F2]/50 font-medium" : ""
+                        !msg.isRead ? "bg-[#EFE8DC]/50 font-medium" : ""
                       }`}
                     >
                       <div className="flex items-center justify-between text-xs font-semibold text-stone-900 mb-0.5">
@@ -172,7 +172,7 @@ export function TeacherHeader({ onOpenMobileDrawer, userEmail }: TeacherHeaderPr
                 )}
               </div>
 
-              <div className="p-2.5 border-t border-[#EADBDA] bg-[#FAF7F2]/40 text-center">
+              <div className="p-2.5 border-t border-[#EADBDA] bg-[#EFE8DC]/40 text-center">
                 <Link
                   href="/teacher/messages"
                   onClick={() => setIsBellOpen(false)}
@@ -210,7 +210,7 @@ export function TeacherHeader({ onOpenMobileDrawer, userEmail }: TeacherHeaderPr
 
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white border border-[#EADBDA] rounded-2xl shadow-xl py-1.5 z-40 animate-in fade-in-50 zoom-in-95 duration-150 overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#EADBDA] bg-[#FAF7F2]/50 flex items-center gap-2.5">
+              <div className="px-4 py-3 border-b border-[#EADBDA] bg-[#EFE8DC]/50 flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-[#800020] text-white text-xs font-bold flex items-center justify-center shrink-0 border border-[#EADBDA]">
                   {photoUrl ? (
                     <img src={photoUrl} alt="Avatar" className="w-full h-full object-cover" />

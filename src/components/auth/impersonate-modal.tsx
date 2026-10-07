@@ -137,7 +137,7 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Parent Portal */}
-            <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-xl p-4 flex flex-col justify-between hover:border-amber-600 transition-colors">
+            <div className="bg-[#EFE8DC] border border-[#EADBDA] rounded-xl p-4 flex flex-col justify-between hover:border-amber-600 transition-colors">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl mb-2.5">
                   👨‍👩‍👧
@@ -160,7 +160,7 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
             </div>
 
             {/* Teacher Portal */}
-            <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-xl p-4 flex flex-col justify-between hover:border-emerald-600 transition-colors">
+            <div className="bg-[#EFE8DC] border border-[#EADBDA] rounded-xl p-4 flex flex-col justify-between hover:border-emerald-600 transition-colors">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl mb-2.5">
                   👩‍🏫
@@ -183,7 +183,7 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
             </div>
 
             {/* Admin Portal */}
-            <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-xl p-4 flex flex-col justify-between hover:border-rose-600 transition-colors">
+            <div className="bg-[#EFE8DC] border border-[#EADBDA] rounded-xl p-4 flex flex-col justify-between hover:border-rose-600 transition-colors">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center text-xl mb-2.5">
                   🛡️

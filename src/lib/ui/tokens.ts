@@ -24,9 +24,9 @@ export const BRAND_TOKENS = {
     navySoft: '#F0F4F8',
 
     // Surfaces & Backgrounds
-    creamCanvas: '#FAF7F2',
+    creamCanvas: '#EFE8DC',
     creamCard: '#FFFFFF',
-    creamSection: '#FAF7F2',
+    creamSection: '#EFE8DC',
     creamBorder: '#EADBDA',
     creamBorderLight: '#EFE9DF',
 

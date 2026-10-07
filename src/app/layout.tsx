@@ -74,7 +74,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col font-sans bg-[#FAF7F2] text-slate-900 overflow-x-hidden w-full max-w-full relative">
+      <body className="min-h-full flex flex-col font-sans bg-[#EFE8DC] text-slate-900 overflow-x-hidden w-full max-w-full relative">
         <ImpersonationBanner />
         <ScrollObserver />
         <div className="flex-1 flex flex-col w-full max-w-full overflow-x-hidden">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -16,9 +16,14 @@ export function TeacherMobileDrawer({
   userEmail,
 }: TeacherMobileDrawerProps) {
   const pathname = usePathname();
+  const currentPathRef = useRef(pathname);
 
+  // Close only when route actually changes during an open session
   useEffect(() => {
-    onClose();
+    if (currentPathRef.current !== pathname) {
+      currentPathRef.current = pathname;
+      onClose();
+    }
   }, [pathname, onClose]);
 
   useEffect(() => {
@@ -92,6 +97,7 @@ export function TeacherMobileDrawer({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onClose}
                 className={`flex items-center px-3.5 py-3 rounded-lg text-sm font-semibold transition-colors min-h-[44px] ${
                   isActive
                     ? "bg-[#800020] text-white"
