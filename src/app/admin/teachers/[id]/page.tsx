@@ -2,30 +2,37 @@
 
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { Avatar } from "@/components/ui/avatar";
+import { Alert } from "@/components";
 
 interface TeacherDetail {
   id: string;
-  staffId: string;
+  staffId?: string;
+  staffIdNumber?: string;
   firstName: string;
   lastName: string;
-  middleName: string | null;
-  phonePrimary: string;
-  phoneSecondary: string | null;
-  qualification: string | null;
-  employmentStatus: string;
-  user: { id: string; email: string; status: string };
+  middleName?: string | null;
+  phonePrimary?: string;
+  phoneNumber?: string | null;
+  phoneSecondary?: string | null;
+  qualification?: string | null;
+  position?: string | null;
+  department?: string | null;
+  employmentStatus?: string;
+  status?: string;
+  dateOfEmployment?: string | Date | null;
+  user?: { id: string; email: string; phoneNumber?: string | null; status: string };
   scopes: Array<{
     id: string;
-    scopeType: string;
+    scopeType?: string;
     isClassTeacher: boolean;
-    academicSession: { name: string };
+    academicSession?: { name: string };
     programme: { id: string; name: string };
     schoolClass: { id: string; name: string } | null;
     subject: { id: string; name: string } | null;
@@ -95,12 +102,80 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
   const resolvedParams = use(params);
   const teacherId = resolvedParams.id;
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [teacher, setTeacher] = useState<TeacherDetail | null>(null);
   const [config, setConfig] = useState<ConfigData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"scopes" | "probation" | "documents">("scopes");
+
+  // Edit Teacher Details Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+    staffIdNumber: "",
+    qualification: "",
+    department: "",
+    position: "",
+    status: "ACTIVE",
+    dateOfEmployment: "",
+  });
+
+  const handleOpenEditModal = () => {
+    if (!teacher) return;
+    setEditForm({
+      firstName: teacher.firstName || "",
+      lastName: teacher.lastName || "",
+      email: teacher.user?.email || "",
+      phoneNumber: teacher.phonePrimary || teacher.user?.phoneNumber || "",
+      staffIdNumber: teacher.staffId || teacher.staffIdNumber || "",
+      qualification: teacher.qualification || "",
+      department: teacher.department || "",
+      position: teacher.position || "",
+      status: teacher.employmentStatus || teacher.status || "ACTIVE",
+      dateOfEmployment: teacher.dateOfEmployment
+        ? new Date(teacher.dateOfEmployment).toISOString().split("T")[0]
+        : "",
+    });
+    setEditError(null);
+    setEditSuccess(null);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsEditing(true);
+    setEditError(null);
+    setEditSuccess(null);
+    try {
+      const res = await fetch(`/api/admin/teachers/${teacherId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update teacher profile.");
+      }
+      setEditSuccess("Teacher profile updated successfully!");
+      fetchTeacher();
+      setTimeout(() => {
+        setShowEditModal(false);
+        setEditSuccess(null);
+      }, 1200);
+    } catch (err: any) {
+      setEditError(err.message || "Failed to update teacher profile.");
+    } finally {
+      setIsEditing(false);
+    }
+  };
 
   // Status Change Modal State
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -144,7 +219,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
         if (!tRes.ok) throw new Error("Failed to load teacher profile.");
         const tJson = await tRes.json();
         setTeacher(tJson);
-        setNewStatus(tJson.employmentStatus);
+        setNewStatus(tJson.employmentStatus || tJson.status || "ACTIVE");
 
         if (cRes.ok) {
           const cJson = await cRes.json();
@@ -190,6 +265,12 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
     fetchProbationRecords();
     fetchDocuments();
   }, [teacherId]);
+
+  useEffect(() => {
+    if (searchParams.get("edit") === "true" && teacher) {
+      handleOpenEditModal();
+    }
+  }, [searchParams, teacher]);
 
   const handleUpdateStatus = async () => {
     if (!newStatus) return;
@@ -361,7 +442,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
               ← Teachers Directory
             </Link>
             <span>/</span>
-            <span className="font-mono font-bold text-stone-700">{teacher.staffId}</span>
+            <span className="font-mono font-bold text-stone-700">{teacher.staffId || teacher.staffIdNumber || "—"}</span>
           </div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#5B0612] tracking-tight font-display">
@@ -369,25 +450,35 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             </h1>
             <Badge
               variant={
-                teacher.employmentStatus === "ACTIVE" || teacher.employmentStatus === "CONFIRMED"
+                (teacher.employmentStatus || teacher.status) === "ACTIVE" || (teacher.employmentStatus || teacher.status) === "CONFIRMED"
                   ? "success"
-                  : teacher.employmentStatus === "PROBATION"
+                  : (teacher.employmentStatus || teacher.status) === "PROBATION"
                   ? "warning"
                   : "neutral"
               }
               size="md"
             >
-              {teacher.employmentStatus.replace(/_/g, " ")}
+              {(teacher.employmentStatus || teacher.status || "ACTIVE").replace(/_/g, " ")}
             </Badge>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={handleOpenEditModal}
+            className="font-semibold bg-white border-[#800020] text-[#800020] hover:bg-[#FAF2F4] min-h-[40px]"
+            title="Edit all personal, employment, and account details"
+          >
+            ✏️ Edit Profile
+          </Button>
+
           <Button
             variant="outline"
             size="md"
             onClick={() => setShowStatusModal(true)}
-            className="font-semibold"
+            className="font-semibold min-h-[40px]"
           >
             Change Status
           </Button>
@@ -396,7 +487,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             variant="primary"
             size="md"
             onClick={() => setShowScopeModal(true)}
-            className="bg-[#800020] text-white font-bold"
+            className="bg-[#800020] text-white font-bold min-h-[40px]"
           >
             + Assign Scope
           </Button>
@@ -410,31 +501,45 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex justify-center mb-3">
               <Avatar
                 size="lg"
-                fallback={`${teacher.firstName[0]}${teacher.lastName[0]}`}
+                fallback={`${(teacher.firstName || "T")[0]}${(teacher.lastName || "S")[0]}`}
                 alt={`${teacher.firstName} ${teacher.lastName}`}
               />
             </div>
             <CardTitle className="text-lg font-bold text-stone-900 font-display">
               {teacher.firstName} {teacher.lastName}
             </CardTitle>
-            <span className="text-xs font-mono font-bold text-[#800020]">{teacher.staffId}</span>
+            <span className="text-xs font-mono font-bold text-[#800020]">{teacher.staffId || teacher.staffIdNumber || "—"}</span>
           </CardHeader>
           <CardContent className="space-y-3 pt-2 text-xs">
             <div className="flex justify-between py-1.5 border-b border-stone-100">
               <span className="text-stone-500 font-medium">Employment Status</span>
-              <span className="font-bold text-stone-900">{teacher.employmentStatus.replace(/_/g, " ")}</span>
+              <span className="font-bold text-stone-900">{(teacher.employmentStatus || teacher.status || "ACTIVE").replace(/_/g, " ")}</span>
             </div>
             <div className="py-1.5 border-b border-stone-100">
               <span className="text-stone-500 font-medium block">Email Address</span>
-              <span className="font-semibold text-stone-900">{teacher.user?.email}</span>
+              <span className="font-semibold text-stone-900 break-words">{teacher.user?.email || "—"}</span>
             </div>
             <div className="py-1.5 border-b border-stone-100">
               <span className="text-stone-500 font-medium block">Primary Phone</span>
-              <span className="font-semibold text-stone-900">{teacher.phonePrimary}</span>
+              <span className="font-semibold text-stone-900">{teacher.phonePrimary || teacher.user?.phoneNumber || "—"}</span>
             </div>
-            <div className="py-1.5">
+            <div className="py-1.5 border-b border-stone-100">
+              <span className="text-stone-500 font-medium block">Department</span>
+              <span className="font-semibold text-stone-900">{teacher.department || "General Academics"}</span>
+            </div>
+            <div className="py-1.5 border-b border-stone-100">
+              <span className="text-stone-500 font-medium block">Position</span>
+              <span className="font-semibold text-stone-900">{teacher.position || "Teacher"}</span>
+            </div>
+            <div className="py-1.5 border-b border-stone-100">
               <span className="text-stone-500 font-medium block">Qualification</span>
               <span className="font-semibold text-stone-900">{teacher.qualification || "Unspecified"}</span>
+            </div>
+            <div className="py-1.5">
+              <span className="text-stone-500 font-medium block">Date of Employment</span>
+              <span className="font-semibold text-stone-900">
+                {teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment).toLocaleDateString("en-GB") : "—"}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -517,7 +622,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                             )}
                           </div>
                           <p className="text-xs text-stone-600 mt-1">
-                            Session: {sc.academicSession.name}
+                            Session: {sc.academicSession?.name || "Active Session"}
                             {sc.subject && ` • Subject: ${sc.subject.name}`}
                           </p>
                         </div>
@@ -699,6 +804,172 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
+
+      {/* Edit Teacher Details Modal */}
+      {showEditModal && (
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => !isEditing && setShowEditModal(false)}
+          title="Edit Teacher Profile"
+          description="Update educator personal credentials, contact numbers, staff ID, qualification, and department."
+          size="lg"
+        >
+          <form onSubmit={handleSaveEdit} className="space-y-4 pt-2">
+            {editError && (
+              <Alert variant="danger" title="Update Failed">
+                {editError}
+              </Alert>
+            )}
+
+            {editSuccess && (
+              <Alert variant="success" title="Success">
+                {editSuccess}
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.firstName}
+                  onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.lastName}
+                  onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  Primary Phone <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={editForm.phoneNumber}
+                  onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Staff ID Number</label>
+                <input
+                  type="text"
+                  value={editForm.staffIdNumber}
+                  onChange={(e) => setEditForm({ ...editForm, staffIdNumber: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Employment Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                >
+                  {LIFECYCLE_STATES.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace(/_/g, " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Department</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sciences, Arts, Languages"
+                  value={editForm.department}
+                  onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Position / Designation</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Senior Teacher, Head of Subject"
+                  value={editForm.position}
+                  onChange={(e) => setEditForm({ ...editForm, position: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Highest Qualification</label>
+                <input
+                  type="text"
+                  placeholder="e.g. B.Ed, B.Sc, M.Sc, NCE"
+                  value={editForm.qualification}
+                  onChange={(e) => setEditForm({ ...editForm, qualification: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Date of Employment</label>
+                <input
+                  type="date"
+                  value={editForm.dateOfEmployment}
+                  onChange={(e) => setEditForm({ ...editForm, dateOfEmployment: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-stone-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-stone-100">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isEditing}
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isEditing}
+                className="bg-[#800020] text-white font-bold"
+              >
+                {isEditing ? "Saving Changes..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {/* Status Change Modal */}
       {showStatusModal && (

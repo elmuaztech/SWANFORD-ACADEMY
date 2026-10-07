@@ -413,7 +413,7 @@ export default function AdminTeachersPage() {
                     <TableHeaderCell className="min-w-[160px] text-left font-semibold text-stone-700">Qualification</TableHeaderCell>
                     <TableHeaderCell className="w-36 text-left font-semibold text-stone-700">Active Scopes</TableHeaderCell>
                     <TableHeaderCell className="w-28 text-left font-semibold text-stone-700">Status</TableHeaderCell>
-                    <TableHeaderCell className="min-w-[180px] text-right font-semibold text-stone-700">Actions</TableHeaderCell>
+                    <TableHeaderCell className="min-w-[240px] text-right font-semibold text-stone-700">Actions</TableHeaderCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -449,8 +449,8 @@ export default function AdminTeachersPage() {
                           {t.employmentStatus}
                         </Badge>
                       </TableCell>
-                      <TableCell className="min-w-[180px] text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <TableCell className="min-w-[240px] text-right">
+                        <div className="flex items-center justify-end gap-1.5">
                           {currentUser?.roles?.includes("SUPER_ADMIN") && (
                             <Button
                               variant="outline"
@@ -463,6 +463,16 @@ export default function AdminTeachersPage() {
                               {impersonatingId === t.id ? "Loading..." : "🎭 Impersonate"}
                             </Button>
                           )}
+                          <Link href={`/admin/teachers/${t.id}?edit=true`}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-stone-300 text-stone-700 hover:bg-stone-50 font-semibold text-xs whitespace-nowrap min-h-[36px]"
+                              title="Edit teacher profile details"
+                            >
+                              ✏️ Edit
+                            </Button>
+                          </Link>
                           <Link href={`/admin/teachers/${t.id}`}>
                             <Button variant="secondary" size="sm" className="bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold whitespace-nowrap min-h-[36px]">
                               Manage Scopes
@@ -524,6 +534,15 @@ export default function AdminTeachersPage() {
                         {impersonatingId === t.id ? "Switching..." : "🎭 Impersonate Teacher"}
                       </Button>
                     )}
+                    <Link href={`/admin/teachers/${t.id}?edit=true`} className="w-full block">
+                      <Button
+                        variant="outline"
+                        size="md"
+                        className="w-full font-semibold min-h-[44px]"
+                      >
+                        ✏️ Edit Details
+                      </Button>
+                    </Link>
                     <Link href={`/admin/teachers/${t.id}`} className="w-full block">
                       <Button
                         variant="secondary"

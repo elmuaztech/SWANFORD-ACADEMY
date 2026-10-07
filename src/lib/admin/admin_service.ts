@@ -1913,7 +1913,14 @@ export async function listAdminTeachers(
     }),
   ]);
 
-  return { total, limit, offset, teachers };
+  const mappedTeachers = teachers.map((t) => ({
+    ...t,
+    staffId: t.staffIdNumber,
+    employmentStatus: t.status,
+    phonePrimary: t.user?.phoneNumber || '',
+  }));
+
+  return { total, limit, offset, teachers: mappedTeachers };
 }
 
 export async function getAdminTeacherDetails(actor: SafeUser, teacherId: string) {
@@ -1940,7 +1947,12 @@ export async function getAdminTeacherDetails(actor: SafeUser, teacherId: string)
     throw new AuthorizationError('Teacher profile not found.', 404, 'TEACHER_NOT_FOUND');
   }
 
-  return teacher;
+  return {
+    ...teacher,
+    staffId: teacher.staffIdNumber,
+    employmentStatus: teacher.status,
+    phonePrimary: teacher.user?.phoneNumber || '',
+  };
 }
 
 export async function assignTeacherScope(
@@ -2125,8 +2137,39 @@ export async function createAdminTeacher(
         include: { teacherProfile: true, userRoles: true },
       });
 
+      const rawPhone = input.phonePrimary?.trim();
+      if (rawPhone) {
+        const existingPhoneUser = await tx.user.findFirst({
+          where: { phoneNumber: rawPhone },
+          include: { teacherProfile: true },
+        });
+
+        if (existingPhoneUser) {
+          if (existingPhoneUser.teacherProfile) {
+            throw new Error(`This phone number is already registered to teacher "${existingPhoneUser.teacherProfile.firstName} ${existingPhoneUser.teacherProfile.lastName}".`);
+          } else if (existingPhoneUser.email.toLowerCase() !== normalizedEmail) {
+            throw new Error(`This phone number is already registered to user account "${existingPhoneUser.email}". Please provide a unique phone number.`);
+          }
+        }
+      }
+
       if (existingUser) {
-        throw new Error('This email address is already registered.');
+        if (existingUser.teacherProfile) {
+          throw new Error('This email address is already registered to another teacher profile.');
+        }
+        targetUserId = existingUser.id;
+        const hasTeacherRole = existingUser.userRoles.some((ur) => ur.roleId === teacherRole.id);
+        if (!hasTeacherRole) {
+          await tx.userRole.create({
+            data: { userId: targetUserId, roleId: teacherRole.id },
+          });
+        }
+        if (!existingUser.phoneNumber && rawPhone) {
+          await tx.user.update({
+            where: { id: targetUserId },
+            data: { phoneNumber: rawPhone },
+          });
+        }
       } else {
         const sentinelHash = createUnactivatedPasswordSentinel();
         const { rawToken, tokenHash } = generateSecureToken();
@@ -2136,7 +2179,7 @@ export async function createAdminTeacher(
         const createdUser = await tx.user.create({
           data: {
             email: normalizedEmail,
-            phoneNumber: input.phonePrimary?.trim() || null,
+            phoneNumber: rawPhone || null,
             passwordHash: sentinelHash,
             status: UserStatus.PENDING_VERIFICATION,
             userRoles: {
@@ -2248,6 +2291,149 @@ export async function createAdminTeacher(
   });
 
   return getAdminTeacherDetails(actor, result.id);
+}
+
+export async function updateAdminTeacher(
+  actor: SafeUser,
+  teacherId: string,
+  input: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phoneNumber?: string;
+    staffIdNumber?: string;
+    qualification?: string | null;
+    position?: string | null;
+    department?: string | null;
+    status?: TeacherStatus;
+    dateOfEmployment?: string | Date | null;
+  },
+  ipAddress?: string
+) {
+  await requirePermission(actor, PermissionCode.TEACHER_MANAGE);
+
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    include: { user: true },
+  });
+
+  if (!teacher) {
+    throw new AuthorizationError('Teacher profile not found.', 404, 'TEACHER_NOT_FOUND');
+  }
+
+  // Validate email if changed
+  let normalizedEmail: string | undefined = undefined;
+  if (input.email !== undefined) {
+    normalizedEmail = input.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      throw new Error('Please provide a valid email address.');
+    }
+    if (normalizedEmail !== teacher.user.email.toLowerCase()) {
+      const emailConflict = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (emailConflict && emailConflict.id !== teacher.userId) {
+        throw new Error('This email address is already in use by another account.');
+      }
+    }
+  }
+
+  // Validate phone if changed
+  let normalizedPhone: string | null | undefined = undefined;
+  if (input.phoneNumber !== undefined) {
+    if (input.phoneNumber && input.phoneNumber.trim()) {
+      normalizedPhone = input.phoneNumber.trim();
+      if (normalizedPhone !== teacher.user.phoneNumber) {
+        const phoneConflict = await prisma.user.findFirst({
+          where: { phoneNumber: normalizedPhone },
+        });
+        if (phoneConflict && phoneConflict.id !== teacher.userId) {
+          throw new Error('This phone number is already registered to another user.');
+        }
+      }
+    } else {
+      normalizedPhone = null;
+    }
+  }
+
+  // Validate staffIdNumber if changed
+  let staffId = input.staffIdNumber?.trim();
+  if (staffId && staffId !== teacher.staffIdNumber) {
+    const staffConflict = await prisma.teacher.findUnique({
+      where: { staffIdNumber: staffId },
+    });
+    if (staffConflict && staffConflict.id !== teacher.id) {
+      throw new Error(`Staff ID ${staffId} is already assigned to another educator.`);
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Update User account (names, email, phone)
+    const userUpdateData: any = {};
+    if (input.firstName !== undefined) userUpdateData.firstName = input.firstName.trim();
+    if (input.lastName !== undefined) userUpdateData.lastName = input.lastName.trim();
+    if (normalizedEmail !== undefined) userUpdateData.email = normalizedEmail;
+    if (normalizedPhone !== undefined) userUpdateData.phoneNumber = normalizedPhone;
+
+    if (Object.keys(userUpdateData).length > 0) {
+      await tx.user.update({
+        where: { id: teacher.userId },
+        data: userUpdateData,
+      });
+    }
+
+    // 2. Update Teacher record
+    const teacherUpdateData: any = {};
+    if (input.firstName !== undefined) teacherUpdateData.firstName = input.firstName.trim();
+    if (input.lastName !== undefined) teacherUpdateData.lastName = input.lastName.trim();
+    if (staffId !== undefined) teacherUpdateData.staffIdNumber = staffId;
+    if (input.qualification !== undefined) teacherUpdateData.qualification = input.qualification?.trim() || null;
+    if (input.position !== undefined) teacherUpdateData.position = input.position?.trim() || null;
+    if (input.department !== undefined) teacherUpdateData.department = input.department?.trim() || null;
+    if (input.status !== undefined) teacherUpdateData.status = input.status;
+    if (input.dateOfEmployment !== undefined) {
+      teacherUpdateData.dateOfEmployment = input.dateOfEmployment ? new Date(input.dateOfEmployment) : null;
+    }
+
+    const updated = await tx.teacher.update({
+      where: { id: teacher.id },
+      data: teacherUpdateData,
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'TEACHER_UPDATED',
+        entityType: 'Teacher',
+        entityId: teacher.id,
+        ipAddress,
+        oldValues: {
+          name: `${teacher.firstName} ${teacher.lastName}`,
+          email: teacher.user.email,
+          phone: teacher.user.phoneNumber,
+          staffId: teacher.staffIdNumber,
+          status: teacher.status,
+          qualification: teacher.qualification,
+          position: teacher.position,
+          department: teacher.department,
+        },
+        newValues: {
+          name: `${updated.firstName} ${updated.lastName}`,
+          email: normalizedEmail || teacher.user.email,
+          phone: normalizedPhone !== undefined ? normalizedPhone : teacher.user.phoneNumber,
+          staffId: staffId || teacher.staffIdNumber,
+          status: updated.status,
+          qualification: updated.qualification,
+          position: updated.position,
+          department: updated.department,
+        },
+      },
+    });
+
+    return updated;
+  });
+
+  return getAdminTeacherDetails(actor, teacher.id);
 }
 
 // ==========================================

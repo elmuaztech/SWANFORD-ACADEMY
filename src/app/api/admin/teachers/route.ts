@@ -56,6 +56,27 @@ export async function POST(request: NextRequest) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }
+    if (error && typeof error === 'object' && 'code' in error && (error as any).code === 'P2002') {
+      const target = (error as any).meta?.target;
+      if (Array.isArray(target) && target.includes('phone_number')) {
+        return NextResponse.json(
+          { error: 'This phone number is already registered to another user account. Please use a unique phone number.' },
+          { status: 400 }
+        );
+      }
+      if (Array.isArray(target) && target.includes('email')) {
+        return NextResponse.json(
+          { error: 'This email address is already registered in the system.' },
+          { status: 400 }
+        );
+      }
+      if (Array.isArray(target) && target.includes('staff_id_number')) {
+        return NextResponse.json(
+          { error: 'This Staff ID is already assigned to another educator. Please use a different Staff ID.' },
+          { status: 400 }
+        );
+      }
+    }
     const message = error instanceof Error ? error.message : 'Failed to create teacher account.';
     return NextResponse.json({ error: message }, { status: 400 });
   }
