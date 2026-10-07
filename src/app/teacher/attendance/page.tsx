@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, EmptyState } from "@/components/ui/states";
+import { TableWrapper } from "@/components/ui/table";
 
 type AttendanceStatusType = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
 
@@ -338,66 +339,68 @@ function TeacherAttendanceContent() {
             })}
           </div>
 
-          {/* Desktop Table */}
-          <div className="hidden md:block bg-white rounded-xl border border-[#EFE9DF] shadow-xs overflow-hidden">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 w-12">#</th>
-                  <th className="py-3.5 px-4">Admission No.</th>
-                  <th className="py-3.5 px-4">Student Name</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EFE9DF]">
-                {roster.map((item, idx) => {
-                  const currentStatus = statuses[item.student.id] || "PRESENT";
-                  return (
-                    <tr key={item.student.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
-                      <td className="py-3 px-4 text-xs font-mono text-stone-400">{idx + 1}</td>
-                      <td className="py-3 px-4 text-xs font-mono font-bold text-[#800020]">{item.student.admissionNumber}</td>
-                      <td className="py-3 px-4 font-semibold text-stone-900">
-                        {item.student.lastName}, {item.student.firstName}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex justify-center gap-1.5">
-                          {(["PRESENT", "ABSENT", "LATE", "EXCUSED"] as AttendanceStatusType[]).map((st) => {
-                            const isSelected = currentStatus === st;
-                            const colors = {
-                              PRESENT: isSelected ? "bg-emerald-700 text-white font-bold" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
-                              ABSENT: isSelected ? "bg-rose-700 text-white font-bold" : "bg-rose-50 text-rose-800 hover:bg-rose-100",
-                              LATE: isSelected ? "bg-amber-700 text-white font-bold" : "bg-amber-50 text-amber-800 hover:bg-amber-100",
-                              EXCUSED: isSelected ? "bg-sky-700 text-white font-bold" : "bg-sky-50 text-sky-800 hover:bg-sky-100",
-                            }[st];
+          {/* Desktop Table with Dual Horizontal Scroll */}
+          <div className="hidden md:block">
+            <TableWrapper className="border border-[#EFE9DF]">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 w-12">#</th>
+                    <th className="py-3.5 px-4">Admission No.</th>
+                    <th className="py-3.5 px-4">Student Name</th>
+                    <th className="py-3.5 px-4 text-center">Status</th>
+                    <th className="py-3.5 px-4">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFE9DF]">
+                  {roster.map((item, idx) => {
+                    const currentStatus = statuses[item.student.id] || "PRESENT";
+                    return (
+                      <tr key={item.student.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
+                        <td className="py-3 px-4 text-xs font-mono text-stone-400">{idx + 1}</td>
+                        <td className="py-3 px-4 text-xs font-mono font-bold text-[#800020]">{item.student.admissionNumber}</td>
+                        <td className="py-3 px-4 font-semibold text-stone-900">
+                          {item.student.lastName}, {item.student.firstName}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex justify-center gap-1.5">
+                            {(["PRESENT", "ABSENT", "LATE", "EXCUSED"] as AttendanceStatusType[]).map((st) => {
+                              const isSelected = currentStatus === st;
+                              const colors = {
+                                PRESENT: isSelected ? "bg-emerald-700 text-white font-bold" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+                                ABSENT: isSelected ? "bg-rose-700 text-white font-bold" : "bg-rose-50 text-rose-800 hover:bg-rose-100",
+                                LATE: isSelected ? "bg-amber-700 text-white font-bold" : "bg-amber-50 text-amber-800 hover:bg-amber-100",
+                                EXCUSED: isSelected ? "bg-sky-700 text-white font-bold" : "bg-sky-50 text-sky-800 hover:bg-sky-100",
+                              }[st];
 
-                            return (
-                              <button
-                                key={st}
-                                type="button"
-                                onClick={() => handleStatusChange(item.student.id, st)}
-                                className={`px-2.5 py-1.5 min-h-[36px] rounded-md text-xs transition-colors cursor-pointer select-none ${colors}`}
-                              >
-                                {st}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <input
-                          type="text"
-                          placeholder="Optional notes"
-                          value={remarks[item.student.id] || ""}
-                          onChange={(e) => handleRemarkChange(item.student.id, e.target.value)}
-                          className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-md px-2.5 py-1.5 text-xs text-stone-800"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                              return (
+                                <button
+                                  key={st}
+                                  type="button"
+                                  onClick={() => handleStatusChange(item.student.id, st)}
+                                  className={`px-2.5 py-1.5 min-h-[36px] rounded-md text-xs transition-colors cursor-pointer select-none ${colors}`}
+                                >
+                                  {st}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            placeholder="Optional notes"
+                            value={remarks[item.student.id] || ""}
+                            onChange={(e) => handleRemarkChange(item.student.id, e.target.value)}
+                            className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-md px-2.5 py-1.5 text-xs text-stone-800"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableWrapper>
           </div>
 
           {/* Persistent Save Button Container */}

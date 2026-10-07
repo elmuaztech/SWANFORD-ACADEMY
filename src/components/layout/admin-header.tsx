@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RoleCode } from "@prisma/client";
+import { ImpersonateModal } from "@/components/auth/impersonate-modal";
 
 export interface AdminHeaderProps {
   onOpenMobileDrawer: () => void;
@@ -62,6 +63,7 @@ export function AdminHeader({
   // Profile Menu State
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isImpersonateOpen, setIsImpersonateOpen] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -326,6 +328,19 @@ export function AdminHeader({
             )}
           </div>
 
+          {/* Super Admin Direct Impersonate Action */}
+          {userRole === "SUPER_ADMIN" && (
+            <button
+              type="button"
+              onClick={() => setIsImpersonateOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all shadow-2xs hover:scale-105 active:scale-95 cursor-pointer min-h-[40px]"
+              title="Directly impersonate Parent, Teacher, or Admin dashboard"
+            >
+              <span className="text-sm">🎭</span>
+              <span className="hidden sm:inline">Impersonate</span>
+            </button>
+          )}
+
           {/* User Profile Menu */}
           <div className="relative" ref={profileDropdownRef}>
             <button
@@ -421,6 +436,18 @@ export function AdminHeader({
                         </svg>
                         <span>System Configuration</span>
                       </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          setIsImpersonateOpen(true);
+                        }}
+                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-amber-50 text-amber-900 font-semibold transition-colors cursor-pointer"
+                      >
+                        <span className="text-sm">🎭</span>
+                        <span>Impersonate Dashboard</span>
+                      </button>
                     </>
                   )}
                 </div>
@@ -443,6 +470,14 @@ export function AdminHeader({
           </div>
         </div>
       </div>
+
+      {/* Super Admin Direct Impersonation Modal */}
+      {userRole === "SUPER_ADMIN" && (
+        <ImpersonateModal
+          isOpen={isImpersonateOpen}
+          onClose={() => setIsImpersonateOpen(false)}
+        />
+      )}
     </header>
   );
 }

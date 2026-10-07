@@ -27,6 +27,7 @@ import {
   TableMobileCard,
 } from "@/components";
 import { UserStatus, RoleCode } from "@prisma/client";
+import { ImpersonateModal } from "@/components/auth/impersonate-modal";
 
 interface UserItem {
   id: string;
@@ -85,6 +86,30 @@ export default function AdminUsersPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Impersonate Portal Modal State (Super Admin Exclusive)
+  const [showImpersonateModal, setShowImpersonateModal] = useState(false);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+
+  const handleImpersonateUser = async (user: UserItem) => {
+    try {
+      setImpersonatingId(user.id);
+      setError(null);
+      const res = await fetch("/api/super-admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to impersonate account");
+      }
+      window.location.href = data.redirectUrl || "/admin";
+    } catch (err: any) {
+      setError(err?.message || "Failed to impersonate user.");
+      setImpersonatingId(null);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -431,14 +456,24 @@ export default function AdminUsersPage() {
         ]}
         actions={
           isSuperAdmin ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setShowCreateModal(true)}
-              className="font-bold min-h-[44px]"
-            >
-              + Create New User
-            </Button>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setShowImpersonateModal(true)}
+                className="font-bold border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 min-h-[44px]"
+              >
+                🎭 Impersonate Portal
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setShowCreateModal(true)}
+                className="font-bold min-h-[44px]"
+              >
+                + Create New User
+              </Button>
+            </div>
           ) : (
             <Badge variant="neutral" size="sm" className="py-1 px-2.5 text-xs text-stone-500">
               Super Admin Privilege Required for User Provisioning
@@ -609,6 +644,19 @@ export default function AdminUsersPage() {
                             </Link>
                             {isSuperAdmin && (
                               <>
+                                {!isSelf && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleImpersonateUser(u)}
+                                    isLoading={impersonatingId === u.id}
+                                    disabled={Boolean(impersonatingId)}
+                                    className="whitespace-nowrap min-h-[36px] border-amber-300 text-amber-900 bg-amber-50/60 hover:bg-amber-100 font-semibold"
+                                    title="Impersonate into this user's portal dashboard directly"
+                                  >
+                                    🎭 Impersonate
+                                  </Button>
+                                )}
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -707,6 +755,18 @@ export default function AdminUsersPage() {
                       </Link>
                       {isSuperAdmin && (
                         <>
+                          {!isSelf && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleImpersonateUser(u)}
+                              isLoading={impersonatingId === u.id}
+                              disabled={Boolean(impersonatingId)}
+                              className="min-h-[44px] border-amber-300 text-amber-900 bg-amber-50/60 font-semibold"
+                            >
+                              🎭 Impersonate
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
@@ -1008,6 +1068,14 @@ export default function AdminUsersPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Super Admin Direct Impersonate Modal */}
+      {isSuperAdmin && (
+        <ImpersonateModal
+          isOpen={showImpersonateModal}
+          onClose={() => setShowImpersonateModal(false)}
+        />
+      )}
     </div>
   );
 }

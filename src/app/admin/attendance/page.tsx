@@ -985,7 +985,7 @@ export default function AdminAttendancePage() {
                   </Badge>
                 </div>
 
-                <div className="overflow-x-auto">
+                <TableWrapper className="border-0 shadow-none">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-stone-100 text-stone-700 font-bold border-b border-stone-200 print:bg-stone-200 print:text-black">
@@ -1063,7 +1063,7 @@ export default function AdminAttendancePage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableWrapper>
 
                 {/* Print-only Signatures Section */}
                 <div className="hidden print:block pt-12 pb-6 px-4 mt-6 border-t-2 border-stone-800 text-xs">

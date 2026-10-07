@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
+import { TableWrapper } from "@/components/ui/table";
 
 interface LinkedChild {
   studentId: string;
@@ -188,49 +189,47 @@ export default function ParentResultsPage() {
             </div>
           </div>
 
-          <Card className="border-[#EADBDA] bg-white overflow-hidden shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-stone-50 border-b border-stone-200/80 text-stone-600 uppercase tracking-wider font-semibold">
-                    <th className="py-3 px-4">Subject</th>
-                    <th className="py-3 px-4 text-center">Score</th>
-                    <th className="py-3 px-4 text-center">Grade</th>
-                    <th className="py-3 px-4">Teacher Remark</th>
-                    <th className="py-3 px-4 text-center">Status</th>
+          <TableWrapper className="border-[#EADBDA]">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-stone-50 border-b border-stone-200/80 text-stone-600 uppercase tracking-wider font-semibold">
+                  <th className="py-3 px-4">Subject</th>
+                  <th className="py-3 px-4 text-center">Score</th>
+                  <th className="py-3 px-4 text-center">Grade</th>
+                  <th className="py-3 px-4">Teacher Remark</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {results.map((r, i) => (
+                  <tr key={i} className="hover:bg-stone-50/50">
+                    <td className="py-3 px-4 font-semibold text-stone-900">
+                      {r.subjectName}
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono font-medium text-stone-900">
+                      {r.totalWeightedScore.toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="inline-block px-2 py-0.5 rounded font-bold font-mono bg-stone-100 text-stone-800">
+                        {r.grade}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-stone-600">
+                      {r.remark || "—"}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <Badge
+                        variant={r.isPass ? "success" : "danger"}
+                        className="text-[11px]"
+                      >
+                        {r.isPass ? "Pass" : "Needs Support"}
+                      </Badge>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {results.map((r, i) => (
-                    <tr key={i} className="hover:bg-stone-50/50">
-                      <td className="py-3 px-4 font-semibold text-stone-900">
-                        {r.subjectName}
-                      </td>
-                      <td className="py-3 px-4 text-center font-mono font-medium text-stone-900">
-                        {r.totalWeightedScore.toFixed(1)}%
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="inline-block px-2 py-0.5 rounded font-bold font-mono bg-stone-100 text-stone-800">
-                          {r.grade}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-stone-600">
-                        {r.remark || "—"}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <Badge
-                          variant={r.isPass ? "success" : "danger"}
-                          className="text-[11px]"
-                        >
-                          {r.isPass ? "Pass" : "Needs Support"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                ))}
+              </tbody>
+            </table>
+          </TableWrapper>
         </div>
       )}
     </div>

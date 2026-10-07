@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
+import { TableWrapper } from "@/components/ui/table";
 
 interface LinkedChild {
   studentId: string;
@@ -272,49 +273,47 @@ export default function ParentAttendancePage() {
               }.`}
             />
           ) : (
-            <Card className="border-[#EADBDA] bg-white overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-stone-50 border-b border-stone-200/80 text-stone-600 uppercase tracking-wider font-semibold">
-                      <th className="py-3 px-4">Date</th>
-                      <th className="py-3 px-4">Class</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Notes</th>
+            <TableWrapper className="border-[#EADBDA]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-stone-50 border-b border-stone-200/80 text-stone-600 uppercase tracking-wider font-semibold">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Class</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {filteredRecords.map((r) => (
+                    <tr key={r.id} className="hover:bg-stone-50/50">
+                      <td className="py-3 px-4 font-mono font-medium text-stone-900">
+                        {r.date}
+                      </td>
+                      <td className="py-3 px-4 text-stone-700">
+                        {r.className}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge
+                          variant={
+                            r.status === "PRESENT"
+                              ? "success"
+                              : r.status === "ABSENT"
+                              ? "danger"
+                              : "warning"
+                          }
+                          className="text-[11px]"
+                        >
+                          {r.status}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-stone-500 italic">
+                        {r.remarks || "—"}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {filteredRecords.map((r) => (
-                      <tr key={r.id} className="hover:bg-stone-50/50">
-                        <td className="py-3 px-4 font-mono font-medium text-stone-900">
-                          {r.date}
-                        </td>
-                        <td className="py-3 px-4 text-stone-700">
-                          {r.className}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge
-                            variant={
-                              r.status === "PRESENT"
-                                ? "success"
-                                : r.status === "ABSENT"
-                                ? "danger"
-                                : "warning"
-                            }
-                            className="text-[11px]"
-                          >
-                            {r.status}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-stone-500 italic">
-                          {r.remarks || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrapper>
           )}
         </>
       )}

@@ -62,6 +62,38 @@ export default function AdminGuardiansPage() {
     residentialAddress: "",
   });
 
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) setCurrentUser(d.user);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleImpersonateGuardian = async (guardianId: string) => {
+    try {
+      setImpersonatingId(guardianId);
+      setError(null);
+      const res = await fetch("/api/super-admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guardianId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to impersonate parent account");
+      }
+      window.location.href = data.redirectUrl || "/parent";
+    } catch (err: any) {
+      setError(err?.message || "Failed to impersonate parent.");
+      setImpersonatingId(null);
+    }
+  };
+
   const fetchGuardians = (query?: string) => {
     setLoading(true);
     setError(null);
@@ -261,7 +293,7 @@ export default function AdminGuardiansPage() {
                     <TableHeaderCell className="w-40 text-left font-semibold text-stone-700">Phone Number</TableHeaderCell>
                     <TableHeaderCell className="min-w-[160px] text-left font-semibold text-stone-700">Email</TableHeaderCell>
                     <TableHeaderCell className="min-w-[200px] text-left font-semibold text-stone-700">Linked Students</TableHeaderCell>
-                    <TableHeaderCell className="w-32 text-right font-semibold text-stone-700">Action</TableHeaderCell>
+                    <TableHeaderCell className="min-w-[180px] text-right font-semibold text-stone-700">Actions</TableHeaderCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -301,12 +333,26 @@ export default function AdminGuardiansPage() {
                           <span className="text-stone-400">None linked</span>
                         )}
                       </TableCell>
-                      <TableCell className="w-32 text-right">
-                        <Link href={`/admin/guardians/${g.id}`}>
-                          <Button variant="secondary" size="sm" className="bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold whitespace-nowrap min-h-[36px]">
-                            View Details
-                          </Button>
-                        </Link>
+                      <TableCell className="min-w-[180px] text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {currentUser?.roles?.includes("SUPER_ADMIN") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={impersonatingId === g.id}
+                              onClick={() => handleImpersonateGuardian(g.id)}
+                              className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold text-xs whitespace-nowrap min-h-[36px]"
+                              title="Directly impersonate this parent and open Parent Dashboard"
+                            >
+                              {impersonatingId === g.id ? "Loading..." : "🎭 Impersonate"}
+                            </Button>
+                          )}
+                          <Link href={`/admin/guardians/${g.id}`}>
+                            <Button variant="secondary" size="sm" className="bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold whitespace-nowrap min-h-[36px]">
+                              View Details
+                            </Button>
+                          </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -358,15 +404,28 @@ export default function AdminGuardiansPage() {
                   },
                 ]}
                 actions={
-                  <Link href={`/admin/guardians/${g.id}`} className="w-full">
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      className="w-full bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold min-h-[44px]"
-                    >
-                      View Details
-                    </Button>
-                  </Link>
+                  <div className="w-full space-y-2">
+                    {currentUser?.roles?.includes("SUPER_ADMIN") && (
+                      <Button
+                        variant="outline"
+                        size="md"
+                        disabled={impersonatingId === g.id}
+                        onClick={() => handleImpersonateGuardian(g.id)}
+                        className="w-full border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold min-h-[44px]"
+                      >
+                        {impersonatingId === g.id ? "Switching..." : "🎭 Impersonate Parent"}
+                      </Button>
+                    )}
+                    <Link href={`/admin/guardians/${g.id}`} className="w-full block">
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        className="w-full bg-[#FDF2F4] text-[#5B0612] hover:bg-[#F9E2E6] font-semibold min-h-[44px]"
+                      >
+                        View Details
+                      </Button>
+                    </Link>
+                  </div>
                 }
               />
             ))}

@@ -76,3 +76,71 @@ export function clearSessionCookieHeader(isProduction?: boolean): string {
 
   return parts.join('; ');
 }
+
+export const IMPERSONATOR_COOKIE_NAME = 'swanford_impersonator';
+export const IMPERSONATION_INFO_COOKIE_NAME = 'swanford_impersonation';
+export const IMPERSONATION_MAX_AGE_SECONDS = 2 * 60 * 60; // 2 hours
+
+/**
+ * Generates Set-Cookie header for storing the Super Admin's original session token during impersonation.
+ */
+export function createImpersonatorCookieHeader(rawToken: string, isProduction?: boolean): string {
+  const prod = isProduction !== undefined ? isProduction : process.env.NODE_ENV === 'production';
+  const parts = [
+    `${IMPERSONATOR_COOKIE_NAME}=${encodeURIComponent(rawToken)}`,
+    'Path=/',
+    `Max-Age=${IMPERSONATION_MAX_AGE_SECONDS}`,
+    'SameSite=Lax',
+    'HttpOnly',
+  ];
+  if (prod) parts.push('Secure');
+  return parts.join('; ');
+}
+
+/**
+ * Generates Set-Cookie header for clearing the impersonator cookie.
+ */
+export function clearImpersonatorCookieHeader(isProduction?: boolean): string {
+  const prod = isProduction !== undefined ? isProduction : process.env.NODE_ENV === 'production';
+  const parts = [
+    `${IMPERSONATOR_COOKIE_NAME}=`,
+    'Path=/',
+    'Max-Age=0',
+    `Expires=${new Date(0).toUTCString()}`,
+    'SameSite=Lax',
+    'HttpOnly',
+  ];
+  if (prod) parts.push('Secure');
+  return parts.join('; ');
+}
+
+/**
+ * Generates Set-Cookie header for clientside impersonation metadata (accessible to UI banner).
+ */
+export function createImpersonationInfoCookieHeader(infoJson: string, isProduction?: boolean): string {
+  const prod = isProduction !== undefined ? isProduction : process.env.NODE_ENV === 'production';
+  const parts = [
+    `${IMPERSONATION_INFO_COOKIE_NAME}=${encodeURIComponent(infoJson)}`,
+    'Path=/',
+    `Max-Age=${IMPERSONATION_MAX_AGE_SECONDS}`,
+    'SameSite=Lax',
+  ];
+  if (prod) parts.push('Secure');
+  return parts.join('; ');
+}
+
+/**
+ * Generates Set-Cookie header for clearing clientside impersonation metadata.
+ */
+export function clearImpersonationInfoCookieHeader(isProduction?: boolean): string {
+  const prod = isProduction !== undefined ? isProduction : process.env.NODE_ENV === 'production';
+  const parts = [
+    `${IMPERSONATION_INFO_COOKIE_NAME}=`,
+    'Path=/',
+    'Max-Age=0',
+    `Expires=${new Date(0).toUTCString()}`,
+    'SameSite=Lax',
+  ];
+  if (prod) parts.push('Secure');
+  return parts.join('; ');
+}

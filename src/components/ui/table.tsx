@@ -1,26 +1,136 @@
-import React from "react";
+"use client";
 
-export function TableWrapper({
-  children,
-  className = "",
-  showScrollHint = false,
-}: {
+import React, { useRef, useState, useEffect, useCallback } from "react";
+
+export interface HorizontalScrollWrapperProps {
   children: React.ReactNode;
   className?: string;
   showScrollHint?: boolean;
-}) {
+  showTopScrollbar?: boolean;
+}
+
+/**
+ * Universal dual-scroll container that provides a synchronized horizontal scrollbar
+ * at the top of wide tables and lists, as well as the native scrollbar at the bottom.
+ */
+export function HorizontalScrollWrapper({
+  children,
+  className = "",
+  showScrollHint = false,
+  showTopScrollbar = true,
+}: HorizontalScrollWrapperProps) {
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const [contentWidth, setContentWidth] = useState<number>(0);
+  const [canScroll, setCanScroll] = useState<boolean>(false);
+  const isSyncing = useRef<boolean>(false);
+
+  const measure = useCallback(() => {
+    if (mainScrollRef.current) {
+      const sw = mainScrollRef.current.scrollWidth;
+      const cw = mainScrollRef.current.clientWidth;
+      setContentWidth(sw);
+      setCanScroll(sw > cw + 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    measure();
+    const handleResize = () => measure();
+    window.addEventListener("resize", handleResize);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && mainScrollRef.current) {
+      ro = new ResizeObserver(() => measure());
+      ro.observe(mainScrollRef.current);
+      if (mainScrollRef.current.firstElementChild) {
+        ro.observe(mainScrollRef.current.firstElementChild);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (ro) ro.disconnect();
+    };
+  }, [measure]);
+
+  const handleTopScroll = () => {
+    if (isSyncing.current) return;
+    if (topScrollRef.current && mainScrollRef.current) {
+      isSyncing.current = true;
+      mainScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+      requestAnimationFrame(() => {
+        isSyncing.current = false;
+      });
+    }
+  };
+
+  const handleMainScroll = () => {
+    if (isSyncing.current) return;
+    if (topScrollRef.current && mainScrollRef.current) {
+      isSyncing.current = true;
+      topScrollRef.current.scrollLeft = mainScrollRef.current.scrollLeft;
+      requestAnimationFrame(() => {
+        isSyncing.current = false;
+      });
+    }
+  };
+
   return (
-    <div className={`w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xs ${className}`}>
+    <div className={`w-full overflow-hidden ${className}`}>
+      {showTopScrollbar && canScroll && (
+        <div className="w-full bg-slate-50 border-b border-slate-200/80 px-2 py-0.5 flex items-center gap-2 select-none transition-opacity duration-150">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap shrink-0 flex items-center gap-1">
+            <span aria-hidden="true" className="text-xs leading-none">↔</span>
+            <span className="hidden sm:inline">Scroll</span>
+          </span>
+          <div
+            ref={topScrollRef}
+            onScroll={handleTopScroll}
+            className="flex-1 overflow-x-auto top-scrollbar"
+            style={{ height: "12px" }}
+            aria-label="Top horizontal scrollbar"
+          >
+            <div style={{ width: `${contentWidth}px`, height: "1px" }} />
+          </div>
+        </div>
+      )}
       {showScrollHint && (
         <div className="sm:hidden px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
           <span>Scroll horizontally to view all columns</span>
           <span aria-hidden="true">&rarr;</span>
         </div>
       )}
-      <div className="w-full overflow-x-auto table-scrollbar">
+      <div
+        ref={mainScrollRef}
+        onScroll={handleMainScroll}
+        className="w-full overflow-x-auto table-scrollbar"
+      >
         {children}
       </div>
     </div>
+  );
+}
+
+export function TableWrapper({
+  children,
+  className = "",
+  showScrollHint = false,
+  showTopScrollbar = true,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  showScrollHint?: boolean;
+  showTopScrollbar?: boolean;
+}) {
+  return (
+    <HorizontalScrollWrapper
+      className={`rounded-xl border border-slate-200/90 bg-white shadow-xs ${className}`}
+      showScrollHint={showScrollHint}
+      showTopScrollbar={showTopScrollbar}
+    >
+      {children}
+    </HorizontalScrollWrapper>
   );
 }
 

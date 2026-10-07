@@ -227,9 +227,10 @@ section[class*="bg-[#3B030A]"] h1, section[class*="bg-[#3B030A]"] h2, section[cl
   outline-offset: 2px;
 }
 
-/* Custom subtle scrollbar for mobile table containers */
+/* Custom subtle scrollbar for mobile and table containers */
 .table-scrollbar::-webkit-scrollbar {
   height: 6px;
+  width: 6px;
 }
 .table-scrollbar::-webkit-scrollbar-track {
   background: #f1f5f9;
@@ -241,6 +242,27 @@ section[class*="bg-[#3B030A]"] h1, section[class*="bg-[#3B030A]"] h2, section[cl
 }
 .table-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Dedicated top synchronized scrollbar */
+.top-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+.top-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.top-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+.top-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+}
+.top-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* Elegant Curved Images and Borders */

@@ -11,6 +11,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
+import { TableWrapper } from "@/components/ui/table";
 
 interface StudentRosterItem {
   id: string;
@@ -171,76 +172,78 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
             ))}
           </div>
 
-          {/* Desktop view: Clean, responsive table */}
-          <div className="hidden md:block bg-white rounded-xl border border-[#EFE9DF] shadow-xs overflow-hidden">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">#</th>
-                  <th className="py-3.5 px-4">Photo</th>
-                  <th className="py-3.5 px-4">Admission No.</th>
-                  <th className="py-3.5 px-4">Student Name</th>
-                  <th className="py-3.5 px-4">Gender</th>
-                  <th className="py-3.5 px-4">Date of Birth</th>
-                  <th className="py-3.5 px-4">Emergency Contact</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EFE9DF]">
-                {students.map((student, idx) => (
-                  <tr key={student.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
-                    <td className="py-3.5 px-4 text-xs text-stone-400 font-mono">{idx + 1}</td>
-                    <td className="py-3.5 px-4">
-                      <Avatar
-                        src={student.profilePhotoId ? `/api/media/${student.profilePhotoId}` : null}
-                        name={`${student.firstName} ${student.lastName}`}
-                        size="sm"
-                      />
-                    </td>
-                    <td className="py-3.5 px-4 text-xs font-mono font-bold text-[#800020]">{student.admissionNumber}</td>
-                    <td className="py-3.5 px-4 font-semibold text-stone-900">
-                      {student.lastName}, {student.firstName} {student.otherNames || ""}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Badge variant="neutral" className="text-xs">
-                        {student.gender}
-                      </Badge>
-                    </td>
-                    <td className="py-3.5 px-4 text-xs text-stone-600">
-                      {student.dateOfBirth
-                        ? new Date(student.dateOfBirth).toLocaleDateString("en-NG", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : "—"}
-                    </td>
-                    <td className="py-3.5 px-4 text-xs text-stone-600">
-                      {student.emergencyContactName ? (
-                        <div>
-                          <p className="font-medium text-stone-900">{student.emergencyContactName}</p>
-                          <p className="text-stone-500">
-                            {student.emergencyContactPhone} ({student.emergencyContactRelationship || "Contact"})
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-stone-400">—</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingStudent(student)}
-                        className="text-xs text-[#800020] hover:bg-[#FAF7F2]"
-                      >
-                        Update Photo
-                      </Button>
-                    </td>
+          {/* Desktop view: Clean, responsive table with Dual Horizontal Scroll */}
+          <div className="hidden md:block">
+            <TableWrapper className="border border-[#EFE9DF]">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">#</th>
+                    <th className="py-3.5 px-4">Photo</th>
+                    <th className="py-3.5 px-4">Admission No.</th>
+                    <th className="py-3.5 px-4">Student Name</th>
+                    <th className="py-3.5 px-4">Gender</th>
+                    <th className="py-3.5 px-4">Date of Birth</th>
+                    <th className="py-3.5 px-4">Emergency Contact</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#EFE9DF]">
+                  {students.map((student, idx) => (
+                    <tr key={student.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
+                      <td className="py-3.5 px-4 text-xs text-stone-400 font-mono">{idx + 1}</td>
+                      <td className="py-3.5 px-4">
+                        <Avatar
+                          src={student.profilePhotoId ? `/api/media/${student.profilePhotoId}` : null}
+                          name={`${student.firstName} ${student.lastName}`}
+                          size="sm"
+                        />
+                      </td>
+                      <td className="py-3.5 px-4 text-xs font-mono font-bold text-[#800020]">{student.admissionNumber}</td>
+                      <td className="py-3.5 px-4 font-semibold text-stone-900">
+                        {student.lastName}, {student.firstName} {student.otherNames || ""}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <Badge variant="neutral" className="text-xs">
+                          {student.gender}
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-stone-600">
+                        {student.dateOfBirth
+                          ? new Date(student.dateOfBirth).toLocaleDateString("en-NG", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : "—"}
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-stone-600">
+                        {student.emergencyContactName ? (
+                          <div>
+                            <p className="font-medium text-stone-900">{student.emergencyContactName}</p>
+                            <p className="text-stone-500">
+                              {student.emergencyContactPhone} ({student.emergencyContactRelationship || "Contact"})
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-stone-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingStudent(student)}
+                          className="text-xs text-[#800020] hover:bg-[#FAF7F2]"
+                        >
+                          Update Photo
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrapper>
           </div>
         </>
       )}

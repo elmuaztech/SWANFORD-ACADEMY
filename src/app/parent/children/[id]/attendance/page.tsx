@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
+import { TableWrapper } from "@/components/ui/table";
 
 interface AttendanceRecordItem {
   id: string;
@@ -182,41 +183,43 @@ export default function ParentChildAttendancePage({
             ))}
           </div>
 
-          {/* Desktop view */}
-          <div className="hidden md:block bg-white rounded-xl border border-[#EFE9DF] shadow-xs overflow-hidden">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Programme & Class</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EFE9DF]">
-                {records.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
-                    <td className="py-3.5 px-4 font-semibold text-stone-900">
-                      {new Date(rec.date).toLocaleDateString("en-NG", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </td>
-                    <td className="py-3.5 px-4 text-stone-700">
-                      {rec.programmeName} — {rec.className}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      {getStatusBadge(rec.status)}
-                    </td>
-                    <td className="py-3.5 px-4 text-xs text-stone-500">
-                      {rec.remarks || "—"}
-                    </td>
+          {/* Desktop view with Dual Horizontal Scroll */}
+          <div className="hidden md:block">
+            <TableWrapper className="border border-[#EFE9DF]">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Date</th>
+                    <th className="py-3.5 px-4">Programme & Class</th>
+                    <th className="py-3.5 px-4 text-center">Status</th>
+                    <th className="py-3.5 px-4">Remarks</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#EFE9DF]">
+                  {records.map((rec) => (
+                    <tr key={rec.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
+                      <td className="py-3.5 px-4 font-semibold text-stone-900">
+                        {new Date(rec.date).toLocaleDateString("en-NG", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </td>
+                      <td className="py-3.5 px-4 text-stone-700">
+                        {rec.programmeName} — {rec.className}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        {getStatusBadge(rec.status)}
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-stone-500">
+                        {rec.remarks || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrapper>
           </div>
         </div>
       )}

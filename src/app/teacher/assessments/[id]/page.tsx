@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, ErrorState } from "@/components/ui/states";
+import { TableWrapper } from "@/components/ui/table";
 
 type AssessmentScoreStatus = "SCORED" | "ABSENT" | "EXEMPT";
 
@@ -358,97 +359,99 @@ export default function AssessmentDetailPage({
           })}
         </div>
 
-        {/* Desktop View: Table */}
-        <div className="hidden md:block bg-white rounded-xl border border-[#EFE9DF] shadow-xs overflow-hidden">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
-                <th className="py-3.5 px-4 w-12">#</th>
-                <th className="py-3.5 px-4">Admission No.</th>
-                <th className="py-3.5 px-4">Student Name</th>
-                <th className="py-3.5 px-4 text-center">Score Status</th>
-                <th className="py-3.5 px-4 w-36">Score (Max: {assessment.maxScore})</th>
-                <th className="py-3.5 px-4 text-center">Resolved Grade</th>
-                <th className="py-3.5 px-4">Teacher Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EFE9DF]">
-              {roster.map((item, idx) => {
-                const current = scores[item.student.id] || { rawScore: "", status: "SCORED", notes: "" };
-                const isScored = current.status === "SCORED";
+        {/* Desktop View: Table with Dual Horizontal Scroll */}
+        <div className="hidden md:block">
+          <TableWrapper className="border border-[#EFE9DF]">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 w-12">#</th>
+                  <th className="py-3.5 px-4">Admission No.</th>
+                  <th className="py-3.5 px-4">Student Name</th>
+                  <th className="py-3.5 px-4 text-center">Score Status</th>
+                  <th className="py-3.5 px-4 w-36">Score (Max: {assessment.maxScore})</th>
+                  <th className="py-3.5 px-4 text-center">Resolved Grade</th>
+                  <th className="py-3.5 px-4">Teacher Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EFE9DF]">
+                {roster.map((item, idx) => {
+                  const current = scores[item.student.id] || { rawScore: "", status: "SCORED", notes: "" };
+                  const isScored = current.status === "SCORED";
 
-                return (
-                  <tr key={item.student.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
-                    <td className="py-3 px-4 text-xs font-mono text-stone-400">{idx + 1}</td>
-                    <td className="py-3 px-4 text-xs font-mono font-bold text-[#800020]">{item.student.admissionNumber}</td>
-                    <td className="py-3 px-4 font-semibold text-stone-900">
-                      {item.student.lastName}, {item.student.firstName}
-                    </td>
-                    <td className="py-3 px-4">
-                      {isEditable ? (
-                        <div className="flex justify-center gap-1">
-                          {(["SCORED", "ABSENT", "EXEMPT"] as AssessmentScoreStatus[]).map((st) => (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={() => handleStatusChange(item.student.id, st)}
-                              className={`px-2 py-1 rounded text-xs select-none cursor-pointer transition-colors ${
-                                current.status === st
-                                  ? "bg-[#800020] text-white font-bold"
-                                  : "bg-[#FAF7F2] text-stone-600 hover:bg-stone-200"
-                              }`}
-                            >
-                              {st}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-center block text-xs font-medium text-stone-600">{current.status}</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      {isScored ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max={assessment.maxScore}
-                          step="0.5"
-                          disabled={!isEditable}
-                          value={current.rawScore}
-                          onChange={(e) => handleScoreChange(item.student.id, e.target.value)}
-                          className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-md px-2.5 py-1.5 text-sm font-bold text-stone-900 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] disabled:bg-stone-100 disabled:text-stone-500"
-                        />
-                      ) : (
-                        <span className="text-center block text-xs text-stone-400 italic">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      {item.score?.grade ? (
-                        <Badge variant="brand" className="bg-[#FAF2F3] text-[#800020] font-bold">
-                          {item.score.grade} ({item.score.remark})
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-stone-400">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      {isEditable ? (
-                        <input
-                          type="text"
-                          placeholder="Optional notes"
-                          value={current.notes}
-                          onChange={(e) => handleNotesChange(item.student.id, e.target.value)}
-                          className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-md px-2.5 py-1.5 text-xs text-stone-800"
-                        />
-                      ) : (
-                        <span className="text-xs text-stone-600">{current.notes || "—"}</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                  return (
+                    <tr key={item.student.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
+                      <td className="py-3 px-4 text-xs font-mono text-stone-400">{idx + 1}</td>
+                      <td className="py-3 px-4 text-xs font-mono font-bold text-[#800020]">{item.student.admissionNumber}</td>
+                      <td className="py-3 px-4 font-semibold text-stone-900">
+                        {item.student.lastName}, {item.student.firstName}
+                      </td>
+                      <td className="py-3 px-4">
+                        {isEditable ? (
+                          <div className="flex justify-center gap-1">
+                            {(["SCORED", "ABSENT", "EXEMPT"] as AssessmentScoreStatus[]).map((st) => (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => handleStatusChange(item.student.id, st)}
+                                className={`px-2 py-1 rounded text-xs select-none cursor-pointer transition-colors ${
+                                  current.status === st
+                                    ? "bg-[#800020] text-white font-bold"
+                                    : "bg-[#FAF7F2] text-stone-600 hover:bg-stone-200"
+                                }`}
+                              >
+                                {st}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-center block text-xs font-medium text-stone-600">{current.status}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        {isScored ? (
+                          <input
+                            type="number"
+                            min="0"
+                            max={assessment.maxScore}
+                            step="0.5"
+                            disabled={!isEditable}
+                            value={current.rawScore}
+                            onChange={(e) => handleScoreChange(item.student.id, e.target.value)}
+                            className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-md px-2.5 py-1.5 text-sm font-bold text-stone-900 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] disabled:bg-stone-100 disabled:text-stone-500"
+                          />
+                        ) : (
+                          <span className="text-center block text-xs text-stone-400 italic">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {item.score?.grade ? (
+                          <Badge variant="brand" className="bg-[#FAF2F3] text-[#800020] font-bold">
+                            {item.score.grade} ({item.score.remark})
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-stone-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        {isEditable ? (
+                          <input
+                            type="text"
+                            placeholder="Optional notes"
+                            value={current.notes}
+                            onChange={(e) => handleNotesChange(item.student.id, e.target.value)}
+                            className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-md px-2.5 py-1.5 text-xs text-stone-800"
+                          />
+                        ) : (
+                          <span className="text-xs text-stone-600">{current.notes || "—"}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </TableWrapper>
         </div>
 
         {/* Action Bar */}
