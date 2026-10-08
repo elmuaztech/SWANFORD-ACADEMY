@@ -212,7 +212,7 @@ export default function ParentDashboardPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {admissions.map((app) => (
-                  <Card key={app.id} className="bg-white border-stone-200 shadow-xs hover:border-stone-300 transition-colors">
+                  <Card key={app.id} className="border border-[#E2D6C5] shadow-xs hover:border-[#800020]/40 transition-all">
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-xs font-bold text-stone-700">{app.applicationNumber}</span>
@@ -277,7 +277,7 @@ export default function ParentDashboardPage() {
       />
 
       {/* Child Switcher Component (Section 9) */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#EFE9DF] shadow-xs space-y-2">
+      <div className="bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] p-4 sm:p-5 rounded-2xl border border-[#E2D6C5] shadow-[0_4px_16px_rgba(0,0,0,0.05)] space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
             Active Child Focus ({profile.children.length} {profile.children.length === 1 ? "Child" : "Children"})

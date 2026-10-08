@@ -7,7 +7,7 @@ export function Card({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`bg-white border border-slate-200/90 rounded-xl shadow-xs overflow-hidden transition-all duration-150 ${className}`}
+      className={`bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] border border-[#E2D6C5] rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] overflow-hidden transition-all duration-200 ${className}`}
       {...props}
     >
       {children}
@@ -22,7 +22,7 @@ export function CardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`p-4 sm:p-6 pb-3 sm:pb-4 border-b border-slate-100 flex flex-col gap-1 ${className}`}
+      className={`p-4 sm:p-6 pb-3 sm:pb-4 border-b border-[#E2D6C5]/70 flex flex-col gap-1 ${className}`}
       {...props}
     >
       {children}
@@ -83,7 +83,7 @@ export function CardFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`p-4 sm:p-6 pt-3 sm:pt-4 bg-slate-50/75 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 ${className}`}
+      className={`p-4 sm:p-6 pt-3 sm:pt-4 bg-[#F5EBDC]/40 border-t border-[#E2D6C5]/70 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 ${className}`}
       {...props}
     >
       {children}

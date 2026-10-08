@@ -36,19 +36,19 @@ const COLOR_MAP: Record<
 > = {
   maroon: {
     topBar: "bg-gradient-to-r from-[#800020] via-[#5B0612] to-[#3B030A]",
-    border: "border-[#EADBDA]/90",
+    border: "border-[#EADBDA]",
     hoverBorder: "hover:border-[#800020]/60",
-    bgGradient: "bg-gradient-to-br from-white via-white to-[#FAF2F4]/60",
+    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#FAF2F4]",
     iconBg: "bg-[#FAF2F4] border border-[#EADBDA]",
     iconText: "text-[#800020]",
-    titleText: "text-[#800020]/80",
+    titleText: "text-[#800020]/90",
     valueText: "text-[#5B0612]",
   },
   emerald: {
     topBar: "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600",
-    border: "border-emerald-100",
+    border: "border-emerald-200/80",
     hoverBorder: "hover:border-emerald-400",
-    bgGradient: "bg-gradient-to-br from-white via-white to-emerald-50/50",
+    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-emerald-50/70",
     iconBg: "bg-emerald-50 border border-emerald-100",
     iconText: "text-emerald-700",
     titleText: "text-emerald-800",
@@ -56,9 +56,9 @@ const COLOR_MAP: Record<
   },
   blue: {
     topBar: "bg-gradient-to-r from-blue-500 via-sky-500 to-indigo-600",
-    border: "border-blue-100",
+    border: "border-blue-200/80",
     hoverBorder: "hover:border-blue-400",
-    bgGradient: "bg-gradient-to-br from-white via-white to-blue-50/50",
+    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-blue-50/70",
     iconBg: "bg-blue-50 border border-blue-100",
     iconText: "text-blue-700",
     titleText: "text-blue-800",
@@ -66,9 +66,9 @@ const COLOR_MAP: Record<
   },
   amber: {
     topBar: "bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600",
-    border: "border-amber-100",
+    border: "border-amber-200/80",
     hoverBorder: "hover:border-amber-400",
-    bgGradient: "bg-gradient-to-br from-white via-white to-amber-50/50",
+    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-amber-50/70",
     iconBg: "bg-amber-50 border border-amber-100",
     iconText: "text-amber-800",
     titleText: "text-amber-800",
@@ -76,9 +76,9 @@ const COLOR_MAP: Record<
   },
   purple: {
     topBar: "bg-gradient-to-r from-purple-500 via-indigo-500 to-violet-600",
-    border: "border-purple-100",
+    border: "border-purple-200/80",
     hoverBorder: "hover:border-purple-400",
-    bgGradient: "bg-gradient-to-br from-white via-white to-purple-50/50",
+    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-purple-50/70",
     iconBg: "bg-purple-50 border border-purple-100",
     iconText: "text-purple-700",
     titleText: "text-purple-800",
@@ -86,9 +86,9 @@ const COLOR_MAP: Record<
   },
   rose: {
     topBar: "bg-gradient-to-r from-rose-500 via-pink-500 to-red-600",
-    border: "border-rose-100",
+    border: "border-rose-200/80",
     hoverBorder: "hover:border-rose-400",
-    bgGradient: "bg-gradient-to-br from-white via-white to-rose-50/50",
+    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-rose-50/70",
     iconBg: "bg-rose-50 border border-rose-100",
     iconText: "text-rose-700",
     titleText: "text-rose-800",
@@ -96,9 +96,9 @@ const COLOR_MAP: Record<
   },
   slate: {
     topBar: "bg-gradient-to-r from-stone-500 via-slate-600 to-stone-700",
-    border: "border-stone-200",
+    border: "border-[#E2D6C5]",
     hoverBorder: "hover:border-stone-400",
-    bgGradient: "bg-gradient-to-br from-white via-white to-stone-50/60",
+    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F2EBE1]",
     iconBg: "bg-stone-100 border border-stone-200",
     iconText: "text-stone-700",
     titleText: "text-stone-600",
@@ -146,7 +146,7 @@ export function StatCard({
         {/* Value Row: Large bold formatted digits & optional badge */}
         <div className="flex items-baseline justify-between gap-2 min-w-0">
           <div
-            className={`text-2xl min-[390px]:text-3xl sm:text-3xl lg:text-3xl xl:text-4xl font-extrabold tracking-tight tabular-nums ${theme.valueText} truncate whitespace-nowrap min-w-0`}
+            className={`text-2xl min-[390px]:text-3xl sm:text-3xl lg:text-2xl xl:text-3xl font-extrabold tracking-tight tabular-nums ${theme.valueText} truncate whitespace-nowrap min-w-0`}
           >
             {value}
           </div>
@@ -156,7 +156,7 @@ export function StatCard({
         {/* Subtitle / Description Row */}
         {subtitle && (
           <p
-            className="text-xs text-stone-500 truncate whitespace-nowrap min-w-0 pt-0.5"
+            className="text-xs text-stone-600 line-clamp-2 leading-relaxed min-w-0 pt-0.5"
             title={subtitle}
           >
             {subtitle}

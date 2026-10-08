@@ -143,21 +143,21 @@ export default function TeacherDashboardPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <Link href="/teacher/attendance">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-nowrap overflow-x-auto no-scrollbar py-0.5 shrink-0 w-full md:w-auto">
+            <Link href="/teacher/attendance" className="shrink-0">
               <Button
                 variant="primary"
-                size="md"
-                className="bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 font-bold shadow-md hover:shadow-lg transition-all min-h-[44px]"
+                size="sm"
+                className="bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 font-bold shadow-md hover:shadow-lg transition-all min-h-[38px] sm:min-h-[40px] px-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap cursor-pointer active:scale-95"
               >
                 📝 Record Attendance
               </Button>
             </Link>
-            <Link href="/teacher/assessments/new">
+            <Link href="/teacher/assessments/new" className="shrink-0">
               <Button
                 variant="outline"
-                size="md"
-                className="border-white/40 text-white hover:bg-white/15 active:bg-white/25 font-bold min-h-[44px] backdrop-blur-xs"
+                size="sm"
+                className="border-white/40 text-white hover:bg-white/15 active:bg-white/25 font-bold min-h-[38px] sm:min-h-[40px] px-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap backdrop-blur-xs cursor-pointer active:scale-95"
               >
                 + New Assessment
               </Button>

@@ -125,7 +125,7 @@ export function TableWrapper({
 }) {
   return (
     <HorizontalScrollWrapper
-      className={`rounded-xl border border-slate-200/90 bg-white shadow-xs ${className}`}
+      className={`rounded-2xl border border-[#E2D6C5] bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] shadow-[0_4px_16px_rgba(0,0,0,0.05)] ${className}`}
       showScrollHint={showScrollHint}
       showTopScrollbar={showTopScrollbar}
     >
@@ -152,7 +152,7 @@ export function TableHead({
   ...props
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead className={`bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-700 tracking-tight uppercase select-none ${className}`} {...props}>
+    <thead className={`bg-[#F5EBDC]/60 border-b border-[#E2D6C5] text-xs font-semibold text-stone-700 tracking-tight uppercase select-none ${className}`} {...props}>
       {children}
     </thead>
   );

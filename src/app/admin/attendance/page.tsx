@@ -452,37 +452,93 @@ export default function AdminAttendancePage() {
           }
         />
 
-        {/* Tab Switcher */}
-        <div className="flex border-b border-stone-200 gap-2 mb-6">
+        {/* Tab Switcher: Beautiful Straight-Line Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6">
+          {/* Card Tab 1: Daily Registers */}
           <button
             type="button"
             onClick={() => setActiveTab("daily")}
-            className={`pb-3 px-4 text-xs font-bold transition-all relative flex items-center gap-2 ${
+            className={`p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${
               activeTab === "daily"
-                ? "text-[#800020] border-b-2 border-[#800020]"
-                : "text-stone-500 hover:text-stone-800"
+                ? "bg-gradient-to-r from-[#5B0612] via-[#6B1420] to-[#3B030A] text-white border-[#5B0612] shadow-md -translate-y-0.5"
+                : "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] text-stone-800 border-[#E2D6C5] hover:border-[#800020]/40 shadow-xs hover:shadow-md hover:-translate-y-0.5"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-            </svg>
-            <span>Daily Roll-Call & Registers</span>
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                  activeTab === "daily"
+                    ? "bg-white/15 text-[#F5D061]"
+                    : "bg-[#FAF2F4] text-[#800020] border border-[#EADBDA]"
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <h3 className={`text-sm font-bold truncate whitespace-nowrap ${activeTab === "daily" ? "text-white" : "text-[#5B0612]"}`}>
+                  Daily Registers
+                </h3>
+                <p className={`text-xs truncate whitespace-nowrap ${activeTab === "daily" ? "text-stone-200" : "text-stone-500"}`}>
+                  Day-to-day class attendance records &amp; logs
+                </p>
+              </div>
+            </div>
+            <span
+              className={`text-xs px-2.5 py-1 rounded-full font-bold whitespace-nowrap shrink-0 ${
+                activeTab === "daily"
+                  ? "bg-[#F59E0B] text-stone-950 shadow-xs"
+                  : "bg-stone-100 text-stone-600 border border-stone-200"
+              }`}
+            >
+              {activeTab === "daily" ? "Active" : "Switch"}
+            </span>
           </button>
 
+          {/* Card Tab 2: General Term Register */}
           <button
             type="button"
             onClick={() => setActiveTab("termRegister")}
-            className={`pb-3 px-4 text-xs font-bold transition-all relative flex items-center gap-2 ${
+            className={`p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${
               activeTab === "termRegister"
-                ? "text-[#800020] border-b-2 border-[#800020]"
-                : "text-stone-500 hover:text-stone-800"
+                ? "bg-gradient-to-r from-[#5B0612] via-[#6B1420] to-[#3B030A] text-white border-[#5B0612] shadow-md -translate-y-0.5"
+                : "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] text-stone-800 border-[#E2D6C5] hover:border-[#800020]/40 shadow-xs hover:shadow-md hover:-translate-y-0.5"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-            </svg>
-            <span>General Term Register (Printable)</span>
-            <Badge variant="brand" size="sm">Official Sheet</Badge>
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                  activeTab === "termRegister"
+                    ? "bg-white/15 text-[#F5D061]"
+                    : "bg-[#FAF2F4] text-[#800020] border border-[#EADBDA]"
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className={`text-sm font-bold truncate whitespace-nowrap ${activeTab === "termRegister" ? "text-white" : "text-[#5B0612]"}`}>
+                    General Term Register
+                  </h3>
+                  <Badge variant="brand" size="sm" className="hidden sm:inline-flex whitespace-nowrap">Official Sheet</Badge>
+                </div>
+                <p className={`text-xs truncate whitespace-nowrap ${activeTab === "termRegister" ? "text-stone-200" : "text-stone-500"}`}>
+                  Cumulative printable academic term register
+                </p>
+              </div>
+            </div>
+            <span
+              className={`text-xs px-2.5 py-1 rounded-full font-bold whitespace-nowrap shrink-0 ${
+                activeTab === "termRegister"
+                  ? "bg-[#F59E0B] text-stone-950 shadow-xs"
+                  : "bg-stone-100 text-stone-600 border border-stone-200"
+              }`}
+            >
+              {activeTab === "termRegister" ? "Active" : "Switch"}
+            </span>
           </button>
         </div>
       </div>
@@ -504,50 +560,60 @@ export default function AdminAttendancePage() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 1: DAILY ATTENDANCE & ROLL CALL                                       */}
+      {/* TAB 1: DAILY ATTENDANCE                                                   */}
       {/* ========================================================================= */}
       {activeTab === "daily" && (
         <div className="space-y-6 no-print">
-          {/* Aligned Filter Controls Card */}
-          <Card className="border border-[#EADBDA]/80 shadow-xs bg-white">
-            <CardContent className="p-4 space-y-3">
-              {/* Period filter buttons */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-stone-500 uppercase tracking-wider mr-1">Period:</span>
-                  <div className="inline-flex rounded-lg p-1 bg-stone-100 border border-stone-200">
-                    {(["day", "week", "month", "term"] as const).map((period) => (
+          {/* Light Cream Filter Controls Card with Visible Stroke and Shadow */}
+          <Card className="border border-[#E2D6C5] shadow-[0_4px_16px_rgba(0,0,0,0.05)] bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6]">
+            <CardContent className="p-4 sm:p-5 space-y-4">
+              {/* Period filter buttons as straight-line cards */}
+              <div className="space-y-2 border-b border-[#E2D6C5]/70 pb-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+                    Filter By Period:
+                  </span>
+                  {periodFilter !== "day" && (
+                    <span className="text-xs font-semibold text-[#800020] bg-[#FAF2F4] px-3 py-1 rounded-lg border border-[#EADBDA] w-fit">
+                      Aggregating records for{" "}
+                      {periodFilter === "week"
+                        ? "the past 7 days"
+                        : periodFilter === "month"
+                        ? "this calendar month"
+                        : "the current academic term"}
+                    </span>
+                  )}
+                </div>
+
+                {/* Period Cards in a single straight line */}
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                  {[
+                    { id: "day", label: "Single Day", icon: "📅" },
+                    { id: "week", label: "This Week", icon: "📆" },
+                    { id: "month", label: "This Month", icon: "📊" },
+                    { id: "term", label: "This Term", icon: "🏛️" },
+                  ].map(({ id, label, icon }) => {
+                    const isActive = periodFilter === id;
+                    return (
                       <button
-                        key={period}
+                        key={id}
                         type="button"
-                        onClick={() => setPeriodFilter(period)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all min-h-[36px] ${
-                          periodFilter === period
-                            ? "bg-white text-stone-900 shadow-xs border border-stone-200 font-bold"
-                            : "text-stone-600 hover:text-stone-900"
+                        onClick={() => setPeriodFilter(id as any)}
+                        className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
+                          isActive
+                            ? "bg-[#5B0612] text-white border border-[#5B0612] shadow-sm -translate-y-0.5"
+                            : "bg-white hover:bg-[#FAF7F2] text-stone-700 hover:text-stone-900 border border-[#E2D6C5] shadow-2xs hover:shadow-xs"
                         }`}
                       >
-                        {period === "day"
-                          ? "Single Day"
-                          : period === "week"
-                          ? "This Week"
-                          : period === "month"
-                          ? "This Month"
-                          : "This Term"}
+                        <span className="text-sm">{icon}</span>
+                        <span>{label}</span>
+                        {isActive && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#F5D061] ml-0.5" />
+                        )}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-                {periodFilter !== "day" && (
-                  <span className="text-xs font-medium text-stone-500 bg-stone-50 px-2.5 py-1 rounded-md border border-stone-200">
-                    Aggregating attendance records across{" "}
-                    {periodFilter === "week"
-                      ? "the past 7 days"
-                      : periodFilter === "month"
-                      ? "this calendar month"
-                      : "the current academic term"}
-                  </span>
-                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
@@ -626,30 +692,30 @@ export default function AdminAttendancePage() {
               onAction={fetchAttendance}
             />
           ) : !data || data.records.length === 0 ? (
-            <Card className="border border-dashed border-stone-300 bg-stone-50/50 p-8 text-center rounded-2xl">
+            <Card className="border border-[#E2D6C5] bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] shadow-[0_4px_16px_rgba(0,0,0,0.05)] p-8 text-center rounded-2xl">
               <div className="max-w-md mx-auto space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto shadow-xs">
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.75" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
                   </svg>
                 </div>
                 <h3 className="text-base font-bold text-stone-900 font-display">
-                  No Roll-Call Records for {new Date(selectedDate + "T00:00:00").toLocaleDateString()}
+                  No Register Records for {new Date(selectedDate + "T00:00:00").toLocaleDateString()}
                 </h3>
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  Attendance has not yet been submitted for this selection. You can record morning roll-call for any active class now.
+                  Attendance has not yet been submitted for this selection. You can record attendance for any active class now.
                 </p>
                 <div className="pt-2 flex justify-center gap-3">
                   <Button
                     variant="primary"
                     size="md"
                     onClick={() => handleOpenTakeModal(selectedProgFilter, selectedClassFilter)}
-                    className="font-bold flex items-center gap-2"
+                    className="font-bold flex items-center gap-2 shadow-xs"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
-                    <span>Record Class Roll-Call Now</span>
+                    <span>Record Class Attendance Now</span>
                   </Button>
                 </div>
               </div>
@@ -658,25 +724,25 @@ export default function AdminAttendancePage() {
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="p-3.5 bg-white rounded-xl border border-[#EADBDA]/80 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-stone-500">Total Entries</span>
-                  <p className="text-2xl font-bold text-stone-900 mt-1 font-display">{total}</p>
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-stone-100/70 rounded-2xl border border-[#E2D6C5] text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wide">Total Entries</span>
+                  <p className="text-2xl font-extrabold text-stone-900 mt-1 tabular-nums">{total}</p>
                 </div>
-                <div className="p-3.5 bg-[#FAFDF7] rounded-xl border border-emerald-200 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-emerald-800">Present</span>
-                  <p className="text-2xl font-bold text-emerald-900 mt-1 font-display">{breakdown.present}</p>
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-emerald-50/70 rounded-2xl border border-emerald-200/90 text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Present</span>
+                  <p className="text-2xl font-extrabold text-emerald-950 mt-1 tabular-nums">{breakdown.present}</p>
                 </div>
-                <div className="p-3.5 bg-[#FDFBF7] rounded-xl border border-amber-200 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-amber-800">Late</span>
-                  <p className="text-2xl font-bold text-amber-900 mt-1 font-display">{breakdown.late}</p>
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-amber-50/70 rounded-2xl border border-amber-200/90 text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">Late</span>
+                  <p className="text-2xl font-extrabold text-amber-950 mt-1 tabular-nums">{breakdown.late}</p>
                 </div>
-                <div className="p-3.5 bg-[#FDF8F7] rounded-xl border border-rose-200 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-rose-800">Absent</span>
-                  <p className="text-2xl font-bold text-rose-900 mt-1 font-display">{breakdown.absent}</p>
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-rose-50/70 rounded-2xl border border-rose-200/90 text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-rose-800 uppercase tracking-wide">Absent</span>
+                  <p className="text-2xl font-extrabold text-rose-950 mt-1 tabular-nums">{breakdown.absent}</p>
                 </div>
-                <div className="p-3.5 bg-[#F8FAFD] rounded-xl border border-blue-200 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-blue-800">Attendance Rate</span>
-                  <p className="text-2xl font-bold text-blue-900 mt-1 font-display">{presentRate}%</p>
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-blue-50/70 rounded-2xl border border-blue-200/90 text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">Attendance Rate</span>
+                  <p className="text-2xl font-extrabold text-blue-950 mt-1 tabular-nums">{presentRate}%</p>
                 </div>
               </div>
 
@@ -823,8 +889,8 @@ export default function AdminAttendancePage() {
       {activeTab === "termRegister" && (
         <div className="space-y-6">
           {/* Controls Bar (Hidden during print) */}
-          <Card className="border border-[#EADBDA]/80 bg-white shadow-xs no-print">
-            <CardContent className="p-4 space-y-3">
+          <Card className="border border-[#E2D6C5] bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] shadow-[0_4px_16px_rgba(0,0,0,0.05)] no-print">
+            <CardContent className="p-4 sm:p-5 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-bold text-stone-600 mb-1">Academic Session</label>
@@ -895,19 +961,19 @@ export default function AdminAttendancePage() {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-3">
+              <div className="pt-2 border-t border-[#E2D6C5]/70 flex items-center justify-between gap-3">
                 <span className="text-xs text-stone-500">
                   Select a specific Class or Programme to generate targeted grade registers.
                 </span>
                 <div className="flex gap-2">
-                  <Button variant="primary" size="sm" onClick={fetchTermRegister} className="font-bold">
+                  <Button variant="primary" size="sm" onClick={fetchTermRegister} className="font-bold shadow-xs">
                     Refresh Register
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => window.print()}
-                    className="font-bold flex items-center gap-1.5"
+                    className="font-bold flex items-center gap-1.5 bg-white"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
@@ -943,35 +1009,35 @@ export default function AdminAttendancePage() {
             <>
               {/* Term Statistics Header Cards (Hidden during print) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
-                <div className="p-3.5 bg-white rounded-xl border border-[#EADBDA]/80 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-stone-500">Enrolled Pupils</span>
-                  <p className="text-2xl font-bold text-stone-900 mt-1 font-display">
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-stone-100/70 rounded-2xl border border-[#E2D6C5] text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wide">Enrolled Pupils</span>
+                  <p className="text-2xl font-extrabold text-stone-900 mt-1 tabular-nums font-display">
                     {termRegisterData.totalStudents}
                   </p>
                 </div>
-                <div className="p-3.5 bg-[#FAFDF7] rounded-xl border border-emerald-200 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-emerald-800">Roll-Calls Conducted</span>
-                  <p className="text-2xl font-bold text-emerald-900 mt-1 font-display">
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-emerald-50/70 rounded-2xl border border-emerald-200/90 text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Registers Held</span>
+                  <p className="text-2xl font-extrabold text-emerald-900 mt-1 tabular-nums font-display">
                     {termRegisterData.totalSessionsHeld} Days
                   </p>
                 </div>
-                <div className="p-3.5 bg-[#F8FAFD] rounded-xl border border-blue-200 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-blue-800">Term Average Rate</span>
-                  <p className="text-2xl font-bold text-blue-900 mt-1 font-display">
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-blue-50/70 rounded-2xl border border-blue-200/90 text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">Term Average Rate</span>
+                  <p className="text-2xl font-extrabold text-blue-900 mt-1 tabular-nums font-display">
                     {termRegisterData.averageAttendanceRate}%
                   </p>
                 </div>
-                <div className="p-3.5 bg-[#FDFBF7] rounded-xl border border-amber-200 text-center shadow-xs">
-                  <span className="text-xs font-semibold text-amber-800">Perfect Attendance</span>
-                  <p className="text-2xl font-bold text-amber-900 mt-1 font-display">
+                <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-amber-50/70 rounded-2xl border border-amber-200/90 text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">Perfect Attendance</span>
+                  <p className="text-2xl font-extrabold text-amber-900 mt-1 tabular-nums font-display">
                     {termRegisterData.register.filter((r) => r.attendancePercentage === 100).length}
                   </p>
                 </div>
               </div>
 
               {/* Official Register Table (Prints beautifully) */}
-              <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs print:border-none print:shadow-none">
-                <div className="px-5 py-3.5 border-b border-stone-200 bg-stone-50/50 flex items-center justify-between no-print">
+              <div className="bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] rounded-2xl border border-[#E2D6C5] overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.05)] print:border-none print:shadow-none">
+                <div className="px-5 py-3.5 border-b border-[#E2D6C5]/70 bg-[#F5EBDC]/50 flex items-center justify-between no-print">
                   <div>
                     <h3 className="text-sm font-bold text-stone-900 font-display">
                       {termRegisterData.schoolClass?.name || "School-Wide"} Register Sheet
