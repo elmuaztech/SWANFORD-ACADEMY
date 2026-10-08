@@ -558,7 +558,7 @@ export default function AdminClassesPage() {
                   },
                 ]}
                 actions={
-                  <div className="flex flex-wrap gap-2 w-full pt-1">
+                  <div className="grid grid-cols-2 gap-2 w-full pt-1">
                     <Button
                       variant="outline"
                       size="sm"

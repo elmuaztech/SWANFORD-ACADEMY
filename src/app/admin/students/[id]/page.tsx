@@ -459,9 +459,9 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               )}
               <span className="text-xs font-mono font-bold text-[#800020]">{student.admissionNumber}</span>
             </CardHeader>
-            <CardContent className="space-y-3 pt-2 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Enrollment Status</span>
+            <CardContent className="space-y-1 pt-2 text-xs divide-y divide-stone-100">
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Enrollment Status</span>
                 <Badge
                   variant={
                     (student.currentStatus || student.status) === "ACTIVE"
@@ -475,27 +475,27 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   {student.currentStatus || student.status}
                 </Badge>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Gender</span>
-                <span className="font-semibold text-stone-900">{student.gender}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Gender</span>
+                <span className="font-semibold text-stone-900 text-right">{student.gender}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Date of Birth</span>
-                <span className="font-semibold text-stone-900">
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Date of Birth</span>
+                <span className="font-semibold text-stone-900 text-right truncate">
                   {student.dateOfBirth
-                    ? new Date(student.dateOfBirth).toLocaleDateString()
+                    ? new Date(student.dateOfBirth).toLocaleDateString("en-NG")
                     : student.dob
-                    ? new Date(student.dob).toLocaleDateString()
+                    ? new Date(student.dob).toLocaleDateString("en-NG")
                     : "—"}
                 </span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Primary Class</span>
-                <span className="font-bold text-stone-900">{student.primaryClass?.name || "Unassigned"}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Primary Class</span>
+                <span className="font-bold text-stone-900 text-right truncate">{student.primaryClass?.name || "Unassigned"}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Tahfeez Class</span>
-                <span className="font-bold text-stone-900">{student.tahfeezClass?.name || "Unassigned"}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Tahfeez Class</span>
+                <span className="font-bold text-stone-900 text-right truncate">{student.tahfeezClass?.name || "Unassigned"}</span>
               </div>
             </CardContent>
           </Card>
@@ -508,32 +508,44 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-xs font-normal text-stone-500">Confidential</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-xs">
-              <div className="flex justify-between py-1 border-b border-stone-100">
-                <span className="text-stone-500">Blood Group</span>
-                <span className="font-bold text-stone-900">{student.bloodGroup || "Not Recorded"}</span>
+            <CardContent className="space-y-1 pt-2 text-xs divide-y divide-stone-100">
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Blood Group</span>
+                <span className="font-bold text-stone-900 text-right">{student.bloodGroup || "Not Recorded"}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-stone-100">
-                <span className="text-stone-500">Genotype</span>
-                <span className="font-bold text-stone-900">{student.genotype || "Not Recorded"}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Genotype</span>
+                <span className="font-bold text-stone-900 text-right">{student.genotype || "Not Recorded"}</span>
               </div>
-              <div className="py-1 border-b border-stone-100">
-                <span className="text-stone-500 block mb-0.5">Allergies</span>
-                <span className="text-stone-900 font-medium">{student.allergies || "None reported"}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Allergies</span>
+                <span
+                  className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                  title={student.allergies || "None reported"}
+                >
+                  {student.allergies || "None reported"}
+                </span>
               </div>
-              <div className="py-1 border-b border-stone-100">
-                <span className="text-stone-500 block mb-0.5">Medical Conditions</span>
-                <span className="text-stone-900 font-medium">{student.medicalConditions || "None reported"}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Medical Conditions</span>
+                <span
+                  className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                  title={student.medicalConditions || "None reported"}
+                >
+                  {student.medicalConditions || "None reported"}
+                </span>
               </div>
-              <div className="py-1">
-                <span className="text-stone-500 block mb-0.5">Emergency Contact</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Emergency Contact</span>
                 {student.emergencyContactName ? (
-                  <p className="font-semibold text-stone-900">
-                    {student.emergencyContactName} ({student.emergencyContactRelationship || "Contact"}) •{" "}
-                    {student.emergencyContactPhone || "No phone"}
-                  </p>
+                  <span
+                    className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                    title={`${student.emergencyContactName} (${student.emergencyContactRelationship || "Contact"}) • ${student.emergencyContactPhone || "No phone"}`}
+                  >
+                    {student.emergencyContactName} {student.emergencyContactPhone ? `(${student.emergencyContactPhone})` : ""}
+                  </span>
                 ) : (
-                  <p className="text-stone-500">None explicitly listed</p>
+                  <span className="text-stone-400 font-medium">None listed</span>
                 )}
               </div>
             </CardContent>

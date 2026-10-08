@@ -137,31 +137,31 @@ export default function AdminConfigPage() {
             <CardTitle className="text-base font-bold text-stone-900">Institution Identity</CardTitle>
             <p className="text-xs text-stone-500">Core parameters governing official documents &amp; records</p>
           </CardHeader>
-          <CardContent className="space-y-3 text-xs p-5">
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 block text-[11px] uppercase tracking-wider font-semibold">Institution Name</span>
-              <span className="font-bold text-stone-900 text-sm">{schoolProfile.name}</span>
+          <CardContent className="space-y-1 text-xs p-5 divide-y divide-stone-100">
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-stone-500 font-semibold shrink-0 uppercase tracking-wider text-[11px]">Institution Name</span>
+              <span className="font-bold text-stone-900 text-sm text-right truncate">{schoolProfile.name}</span>
             </div>
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 block text-[11px] uppercase tracking-wider font-semibold">Subtitle</span>
-              <span className="font-semibold text-stone-800">{schoolProfile.subtitle}</span>
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-stone-500 font-semibold shrink-0 uppercase tracking-wider text-[11px]">Subtitle</span>
+              <span className="font-semibold text-stone-800 text-right truncate">{schoolProfile.subtitle}</span>
             </div>
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 block text-[11px] uppercase tracking-wider font-semibold">Motto</span>
-              <span className="font-semibold text-stone-800">{schoolProfile.motto}</span>
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-stone-500 font-semibold shrink-0 uppercase tracking-wider text-[11px]">Motto</span>
+              <span className="font-semibold text-stone-800 text-right truncate">{schoolProfile.motto}</span>
             </div>
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 block text-[11px] uppercase tracking-wider font-semibold">Campus Address</span>
-              <span className="font-semibold text-stone-800">{schoolProfile.location}</span>
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-stone-500 font-semibold shrink-0 uppercase tracking-wider text-[11px]">Campus Address</span>
+              <span className="font-semibold text-stone-800 text-right truncate max-w-[260px]">{schoolProfile.location}</span>
             </div>
-            <div className="py-1.5">
-              <span className="text-stone-500 block text-[11px] uppercase tracking-wider font-semibold">Settlement Bank Account</span>
-              <div className="font-semibold text-stone-800 mt-0.5">
-                <p className="text-stone-900 font-bold">{schoolProfile.bankAccount?.bank || "Not Configured"}</p>
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-stone-500 font-semibold shrink-0 uppercase tracking-wider text-[11px]">Settlement Bank</span>
+              <div className="font-semibold text-stone-800 text-right">
+                <span className="text-stone-900 font-bold block">{schoolProfile.bankAccount?.bank || "Not Configured"}</span>
                 {schoolProfile.bankAccount?.accountNumber ? (
-                  <p className="font-mono text-xs">{schoolProfile.bankAccount.accountNumber} • {schoolProfile.bankAccount?.accountName || "Swanford Academy"}</p>
+                  <span className="font-mono text-xs text-stone-600 block">{schoolProfile.bankAccount.accountNumber}</span>
                 ) : (
-                  <p className="text-xs text-stone-400">Configure bank account details in Settings.</p>
+                  <span className="text-xs text-stone-400 block">Not configured</span>
                 )}
               </div>
             </div>

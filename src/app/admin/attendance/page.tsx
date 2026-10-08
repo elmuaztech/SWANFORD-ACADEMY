@@ -761,11 +761,11 @@ export default function AdminAttendancePage() {
                   <TableMobileCard
                     key={rec.id}
                     title={
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
                           {index + 1}
                         </span>
-                        <span className="font-bold text-sm text-stone-900">
+                        <span className="font-bold text-sm text-stone-900 truncate">
                           {rec.student.firstName} {rec.student.lastName}
                         </span>
                       </div>

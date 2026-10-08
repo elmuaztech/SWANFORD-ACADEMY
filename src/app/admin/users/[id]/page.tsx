@@ -612,9 +612,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <CardTitle className="text-base font-bold text-stone-900">Security Profile</CardTitle>
               <span className="text-xs font-mono text-stone-500">ID: {user.id.slice(0, 8)}...</span>
             </CardHeader>
-            <CardContent className="space-y-3 pt-2 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Account Status</span>
+            <CardContent className="space-y-1 pt-2 text-xs divide-y divide-stone-100">
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Account Status</span>
                 <Badge
                   variant={
                     user.status === "ACTIVE"
@@ -629,39 +629,39 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 </Badge>
               </div>
 
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Full Name</span>
-                <span className="font-semibold text-stone-900">{fullName || "Not provided"}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Full Name</span>
+                <span className="font-semibold text-stone-900 text-right truncate max-w-[190px]">{fullName || "Not provided"}</span>
               </div>
 
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Email</span>
-                <span className="font-semibold text-stone-900 truncate max-w-[160px]" title={user.email}>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Email</span>
+                <span className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]" title={user.email}>
                   {user.email}
                 </span>
               </div>
 
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Phone Number</span>
-                <span className="font-semibold text-stone-900">{user.phoneNumber || "None"}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Phone Number</span>
+                <span className="font-semibold text-stone-900 text-right">{user.phoneNumber || "None"}</span>
               </div>
 
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Failed Attempts</span>
-                <span className="font-mono font-semibold text-stone-900">{user.failedLoginAttempts}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Failed Attempts</span>
+                <span className="font-mono font-semibold text-stone-900 text-right">{user.failedLoginAttempts}</span>
               </div>
 
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Last Login</span>
-                <span className="font-semibold text-stone-900">
-                  {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "Never"}
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Last Login</span>
+                <span className="font-semibold text-stone-900 text-right truncate max-w-[190px]">
+                  {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("en-NG") : "Never"}
                 </span>
               </div>
 
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
-                <span className="text-stone-500">Created On</span>
-                <span className="font-semibold text-stone-900">
-                  {new Date(user.createdAt).toLocaleDateString()}
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Created On</span>
+                <span className="font-semibold text-stone-900 text-right">
+                  {new Date(user.createdAt).toLocaleDateString("en-NG")}
                 </span>
               </div>
 

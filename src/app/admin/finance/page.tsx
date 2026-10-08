@@ -701,19 +701,19 @@ export default function AdminFinancePage() {
                 <TableMobileCard
                   key={inv.id}
                   title={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
                         {index + 1}
                       </span>
-                      <span className="font-mono text-xs font-bold text-stone-900">
-                        {inv.invoiceNumber}
+                      <span className="text-sm font-bold text-stone-900 truncate">
+                        {inv.student.firstName} {inv.student.lastName}
                       </span>
                     </div>
                   }
                   subtitle={
-                    <div className="text-sm font-bold text-stone-900 mt-1">
-                      {inv.student.firstName} {inv.student.lastName}
-                    </div>
+                    <span className="font-mono text-xs font-semibold text-[#800020] pl-8 block">
+                      {inv.invoiceNumber}
+                    </span>
                   }
                   badge={
                     <Badge
@@ -1027,19 +1027,19 @@ export default function AdminFinancePage() {
                     <TableMobileCard
                       key={r.invoiceId}
                       title={
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
                             {index + 1}
                           </span>
-                          <span className="font-mono text-xs font-bold text-stone-900">
-                            {r.invoiceNumber}
+                          <span className="text-sm font-bold text-stone-900 truncate">
+                            {r.studentName}
                           </span>
                         </div>
                       }
                       subtitle={
-                        <div className="text-sm font-bold text-stone-900 mt-1">
-                          {r.studentName}
-                        </div>
+                        <span className="font-mono text-xs font-semibold text-[#800020] pl-8 block">
+                          {r.invoiceNumber}
+                        </span>
                       }
                       badge={
                         <Badge
@@ -1356,27 +1356,23 @@ export default function AdminFinancePage() {
                 <TableMobileCard
                   key={p.id}
                   title={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
                         {index + 1}
                       </span>
-                      <span className="font-mono text-xs font-bold text-stone-900">
-                        {p.paymentReference}
+                      <span className="text-sm font-bold text-stone-900 truncate">
+                        {p.student.firstName} {p.student.lastName}
                       </span>
+                      {p.type === 'APPLICATION_FEE' && (
+                        <Badge variant="info" size="sm" className="shrink-0">Admission Fee</Badge>
+                      )}
                     </div>
                   }
                   subtitle={
-                    <div>
-                      <div className="text-sm font-bold text-stone-900 mt-1 flex items-center gap-1.5 flex-wrap">
-                        <span>{p.student.firstName} {p.student.lastName}</span>
-                        {p.type === 'APPLICATION_FEE' && (
-                          <Badge variant="info" size="sm">Admission Fee</Badge>
-                        )}
-                      </div>
+                    <div className="font-mono text-xs text-stone-500 pl-8 flex items-center gap-2">
+                      <span className="text-[#800020] font-semibold">{p.paymentReference}</span>
                       {p.student.admissionNumber && (
-                        <span className="text-[11px] font-mono text-stone-500 block">
-                          {p.student.admissionNumber}
-                        </span>
+                        <span>• {p.student.admissionNumber}</span>
                       )}
                     </div>
                   }

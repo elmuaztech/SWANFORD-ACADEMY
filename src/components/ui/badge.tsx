@@ -39,7 +39,7 @@ export function Badge({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border ${variantStyles} ${sizeStyles} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border whitespace-nowrap shrink-0 ${variantStyles} ${sizeStyles} ${className}`}
       {...props}
     >
       {showDot && (
@@ -48,7 +48,7 @@ export function Badge({
           aria-hidden="true"
         />
       )}
-      <span>{children}</span>
+      <span className="whitespace-nowrap">{children}</span>
     </span>
   );
 }

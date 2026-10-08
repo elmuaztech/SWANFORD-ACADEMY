@@ -26,7 +26,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     // Base styles: clear focus ring, smooth transition, active state, minimum touch target height
     const baseStyles =
-      "inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-150 select-none " +
+      "inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-150 select-none whitespace-nowrap " +
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] focus-visible:ring-offset-2 " +
       "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none " +
       "active:scale-[0.98] min-h-[44px]";

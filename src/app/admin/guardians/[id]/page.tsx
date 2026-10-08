@@ -310,31 +310,41 @@ export default function GuardianDetailPage({ params }: { params: Promise<{ id: s
                 {guardian.relationshipType}
               </Badge>
             </CardHeader>
-            <CardContent className="space-y-3 pt-2 text-xs">
-              <div className="py-1.5 border-b border-stone-100">
-                <span className="text-stone-500 block">Primary Phone</span>
-                <span className="font-semibold text-stone-900">{guardian.phonePrimary}</span>
+            <CardContent className="space-y-1 pt-2 text-xs divide-y divide-stone-100">
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Primary Phone</span>
+                <span className="font-semibold text-stone-900 text-right truncate">{guardian.phonePrimary}</span>
               </div>
               {guardian.phoneSecondary && (
-                <div className="py-1.5 border-b border-stone-100">
-                  <span className="text-stone-500 block">Secondary Phone</span>
-                  <span className="font-semibold text-stone-900">{guardian.phoneSecondary}</span>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-stone-500 font-medium shrink-0">Secondary Phone</span>
+                  <span className="font-semibold text-stone-900 text-right truncate">{guardian.phoneSecondary}</span>
                 </div>
               )}
-              <div className="py-1.5 border-b border-stone-100">
-                <span className="text-stone-500 block">Email Address</span>
-                <span className="font-semibold text-stone-900">{guardian.email || "None provided"}</span>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Email Address</span>
+                <span
+                  className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                  title={guardian.email || "None provided"}
+                >
+                  {guardian.email || "None provided"}
+                </span>
               </div>
               {guardian.occupation && (
-                <div className="py-1.5 border-b border-stone-100">
-                  <span className="text-stone-500 block">Occupation</span>
-                  <span className="font-semibold text-stone-900">{guardian.occupation}</span>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-stone-500 font-medium shrink-0">Occupation</span>
+                  <span className="font-semibold text-stone-900 text-right truncate">{guardian.occupation}</span>
                 </div>
               )}
               {guardian.residentialAddress && (
-                <div className="py-1.5">
-                  <span className="text-stone-500 block">Residential Address</span>
-                  <span className="font-semibold text-stone-900">{guardian.residentialAddress}</span>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-stone-500 font-medium shrink-0">Residential Address</span>
+                  <span
+                    className="font-semibold text-stone-900 text-right truncate max-w-[200px]"
+                    title={guardian.residentialAddress}
+                  >
+                    {guardian.residentialAddress}
+                  </span>
                 </div>
               )}
             </CardContent>
@@ -349,7 +359,7 @@ export default function GuardianDetailPage({ params }: { params: Promise<{ id: s
               {guardian.user ? (
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-stone-500">Account:</span>
+                    <span className="text-stone-500 font-medium">Account:</span>
                     <Badge
                       variant={guardian.user.status === "ACTIVE" ? "success" : "warning"}
                       size="sm"
@@ -357,9 +367,14 @@ export default function GuardianDetailPage({ params }: { params: Promise<{ id: s
                       {guardian.user.status}
                     </Badge>
                   </div>
-                  <div className="py-1 border-b border-stone-100">
-                    <span className="text-stone-500 block">Login Email</span>
-                    <span className="font-semibold text-stone-900">{guardian.user.email}</span>
+                  <div className="flex items-center justify-between gap-3 py-2 border-b border-stone-100">
+                    <span className="text-stone-500 font-medium shrink-0">Login Email</span>
+                    <span
+                      className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                      title={guardian.user.email}
+                    >
+                      {guardian.user.email}
+                    </span>
                   </div>
                   <div className="pt-2 flex flex-col gap-2">
                     {guardian.user.status === "PENDING_VERIFICATION" && (

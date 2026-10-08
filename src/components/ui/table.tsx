@@ -222,6 +222,7 @@ export function TableMobileCard({
   fields,
   actions,
   className = "",
+  layout = "rows",
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
@@ -229,27 +230,48 @@ export function TableMobileCard({
   fields: { label: string; value: React.ReactNode }[];
   actions?: React.ReactNode;
   className?: string;
+  layout?: "rows" | "grid";
 }) {
   return (
-    <div className={`p-4 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col gap-3 ${className}`}>
+    <div className={`p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs flex flex-col gap-3 ${className}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-slate-900 text-sm break-words">{title}</div>
-          {subtitle && <div className="text-xs text-slate-500 mt-0.5 break-words">{subtitle}</div>}
+          {subtitle && <div className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</div>}
         </div>
         {badge && <div className="shrink-0">{badge}</div>}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-slate-100 py-2.5">
-        {fields.map((f, i) => (
-          <div key={i} className="flex flex-col min-w-0">
-            <span className="text-slate-500 font-medium">{f.label}</span>
-            <span className="text-slate-800 font-semibold mt-0.5 break-words">{f.value}</span>
-          </div>
-        ))}
-      </div>
+      {layout === "grid" ? (
+        <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-slate-100 py-2.5">
+          {fields.map((f, i) => (
+            <div key={i} className="flex flex-col min-w-0">
+              <span className="text-slate-500 font-medium shrink-0">{f.label}</span>
+              <span className="text-slate-800 font-semibold mt-0.5 truncate">{f.value}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100 border-t border-b border-slate-100 py-1 text-xs">
+          {fields.map((f, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 py-1.5 min-w-0">
+              <span className="text-slate-500 font-medium shrink-0">{f.label}</span>
+              <span
+                className="text-slate-800 font-semibold text-right truncate min-w-0"
+                title={typeof f.value === "string" ? f.value : undefined}
+              >
+                {f.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {actions && <div className="flex items-center justify-end gap-2 pt-1">{actions}</div>}
+      {actions && (
+        <div className="w-full pt-1 flex flex-wrap items-center justify-end gap-2 [&>*]:flex-1 sm:[&>*]:flex-initial">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function Tabs({ tabs, activeTab, onChange, className = "" }: TabsProps) {
               aria-selected={isActive}
               aria-controls={`panel-${tab.id}`}
               onClick={() => onChange(tab.id)}
-              className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors duration-150 min-h-[44px] select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] rounded-t-lg ${
+              className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors duration-150 min-h-[44px] select-none whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] rounded-t-lg ${
                 isActive
                   ? "border-[#800020] text-[#800020] bg-[#FAF2F4]"
                   : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
@@ -44,7 +44,7 @@ export function Tabs({ tabs, activeTab, onChange, className = "" }: TabsProps) {
                   {tab.icon}
                 </span>
               )}
-              <span>{tab.label}</span>
+              <span className="whitespace-nowrap">{tab.label}</span>
               {typeof tab.count === "number" && (
                 <span
                   className={`ml-1 text-[11px] px-2 py-0.5 rounded-full font-bold ${

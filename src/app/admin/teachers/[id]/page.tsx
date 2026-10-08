@@ -444,7 +444,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             <span>/</span>
             <span className="font-mono font-bold text-stone-700">{teacher.staffId || teacher.staffIdNumber || "—"}</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#5B0612] tracking-tight font-display">
               {teacher.firstName} {teacher.lastName}
             </h1>
@@ -468,7 +468,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             variant="outline"
             size="md"
             onClick={handleOpenEditModal}
-            className="font-semibold bg-white border-[#800020] text-[#800020] hover:bg-[#FAF2F4] min-h-[40px]"
+            className="font-semibold bg-white border-[#800020] text-[#800020] hover:bg-[#FAF2F4] min-h-[40px] whitespace-nowrap"
             title="Edit all personal, employment, and account details"
           >
             ✏️ Edit Profile
@@ -478,7 +478,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             variant="outline"
             size="md"
             onClick={() => setShowStatusModal(true)}
-            className="font-semibold min-h-[40px]"
+            className="font-semibold min-h-[40px] whitespace-nowrap"
           >
             Change Status
           </Button>
@@ -487,7 +487,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             variant="primary"
             size="md"
             onClick={() => setShowScopeModal(true)}
-            className="bg-[#800020] text-white font-bold min-h-[40px]"
+            className="bg-[#800020] text-white font-bold min-h-[40px] whitespace-nowrap"
           >
             + Assign Scope
           </Button>
@@ -496,7 +496,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Bio Card */}
-        <Card className="md:col-span-1">
+        <Card className="md:col-span-1 border border-[#EADBDA]/80">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-3">
               <Avatar
@@ -510,34 +510,52 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             </CardTitle>
             <span className="text-xs font-mono font-bold text-[#800020]">{teacher.staffId || teacher.staffIdNumber || "—"}</span>
           </CardHeader>
-          <CardContent className="space-y-3 pt-2 text-xs">
-            <div className="flex justify-between py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 font-medium">Employment Status</span>
-              <span className="font-bold text-stone-900">{(teacher.employmentStatus || teacher.status || "ACTIVE").replace(/_/g, " ")}</span>
+          <CardContent className="space-y-1 pt-2 text-xs divide-y divide-stone-100">
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-stone-500 font-medium shrink-0">Employment Status</span>
+              <span className="font-bold text-stone-900 text-right truncate">
+                {(teacher.employmentStatus || teacher.status || "ACTIVE").replace(/_/g, " ")}
+              </span>
             </div>
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 font-medium block">Email Address</span>
-              <span className="font-semibold text-stone-900 break-words">{teacher.user?.email || "—"}</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-stone-500 font-medium shrink-0">Email Address</span>
+              <span
+                className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                title={teacher.user?.email || "—"}
+              >
+                {teacher.user?.email || "—"}
+              </span>
             </div>
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 font-medium block">Primary Phone</span>
-              <span className="font-semibold text-stone-900">{teacher.phonePrimary || teacher.user?.phoneNumber || "—"}</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-stone-500 font-medium shrink-0">Primary Phone</span>
+              <span className="font-semibold text-stone-900 text-right truncate">
+                {teacher.phonePrimary || teacher.user?.phoneNumber || "—"}
+              </span>
             </div>
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 font-medium block">Department</span>
-              <span className="font-semibold text-stone-900">{teacher.department || "General Academics"}</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-stone-500 font-medium shrink-0">Department</span>
+              <span className="font-semibold text-stone-900 text-right truncate">
+                {teacher.department || "General Academics"}
+              </span>
             </div>
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 font-medium block">Position</span>
-              <span className="font-semibold text-stone-900">{teacher.position || "Teacher"}</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-stone-500 font-medium shrink-0">Position</span>
+              <span className="font-semibold text-stone-900 text-right truncate">
+                {teacher.position || "Teacher"}
+              </span>
             </div>
-            <div className="py-1.5 border-b border-stone-100">
-              <span className="text-stone-500 font-medium block">Qualification</span>
-              <span className="font-semibold text-stone-900">{teacher.qualification || "Unspecified"}</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-stone-500 font-medium shrink-0">Qualification</span>
+              <span
+                className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                title={teacher.qualification || "Unspecified"}
+              >
+                {teacher.qualification || "Unspecified"}
+              </span>
             </div>
-            <div className="py-1.5">
-              <span className="text-stone-500 font-medium block">Date of Employment</span>
-              <span className="font-semibold text-stone-900">
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-stone-500 font-medium shrink-0">Date of Employment</span>
+              <span className="font-semibold text-stone-900 text-right truncate">
                 {teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment).toLocaleDateString("en-GB") : "—"}
               </span>
             </div>
@@ -547,13 +565,13 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
         {/* Right Tabbed Content */}
         <div className="md:col-span-2 space-y-4">
           {/* Tabs Navigation */}
-          <div className="flex items-center gap-2 border-b border-[#EADBDA] pb-2">
+          <div className="flex items-center gap-2 border-b border-[#EADBDA] pb-2 overflow-x-auto no-scrollbar scrollbar-none whitespace-nowrap">
             <button
               type="button"
               onClick={() => setActiveTab("scopes")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors shrink-0 whitespace-nowrap min-h-[38px] ${
                 activeTab === "scopes"
-                  ? "bg-[#800020] text-white"
+                  ? "bg-[#800020] text-white shadow-xs"
                   : "text-stone-600 hover:bg-stone-100"
               }`}
             >
@@ -563,9 +581,9 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             <button
               type="button"
               onClick={() => setActiveTab("probation")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors shrink-0 whitespace-nowrap min-h-[38px] ${
                 activeTab === "probation"
-                  ? "bg-[#800020] text-white"
+                  ? "bg-[#800020] text-white shadow-xs"
                   : "text-stone-600 hover:bg-stone-100"
               }`}
             >
@@ -575,9 +593,9 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             <button
               type="button"
               onClick={() => setActiveTab("documents")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors shrink-0 whitespace-nowrap min-h-[38px] ${
                 activeTab === "documents"
-                  ? "bg-[#800020] text-white"
+                  ? "bg-[#800020] text-white shadow-xs"
                   : "text-stone-600 hover:bg-stone-100"
               }`}
             >
@@ -610,18 +628,18 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                         key={sc.id}
                         className="p-4 rounded-xl border border-stone-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                       >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-stone-900">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-stone-900 truncate">
                               {sc.programme.name} — {sc.schoolClass?.name || "All Classes"}
                             </span>
                             {sc.isClassTeacher && (
-                              <Badge variant="brand" size="sm">
+                              <Badge variant="brand" size="sm" className="shrink-0 whitespace-nowrap">
                                 Class Teacher
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-stone-600 mt-1">
+                          <p className="text-xs text-stone-600 mt-1 truncate">
                             Session: {sc.academicSession?.name || "Active Session"}
                             {sc.subject && ` • Subject: ${sc.subject.name}`}
                           </p>
@@ -630,7 +648,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRevokeScope(sc.id)}
-                          className="text-rose-700 hover:bg-rose-50 font-semibold"
+                          className="text-rose-700 hover:bg-rose-50 font-semibold shrink-0 self-end sm:self-center"
                         >
                           Revoke
                         </Button>
@@ -675,12 +693,12 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                         key={pr.id}
                         className="p-4 rounded-xl border border-stone-200 bg-white space-y-3"
                       >
-                        <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                          <div>
-                            <span className="font-bold text-sm text-[#800020]">
+                        <div className="flex items-center justify-between gap-2 border-b border-stone-100 pb-2">
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-bold text-sm text-[#800020] whitespace-nowrap">
                               Month {pr.monthNumber} Evaluation
                             </span>
-                            <span className="text-xs text-stone-400 ml-2">
+                            <span className="text-xs text-stone-400 whitespace-nowrap">
                               {new Date(pr.createdAt).toLocaleDateString("en-NG")}
                             </span>
                           </div>
@@ -693,6 +711,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                                 : "warning"
                             }
                             size="sm"
+                            className="shrink-0 whitespace-nowrap"
                           >
                             {pr.recommendation.replace(/_/g, " ")}
                           </Badge>
@@ -701,9 +720,9 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                         {/* Core Values Ratings Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                           {Object.entries(pr.ratings || {}).map(([val, rating]) => (
-                            <div key={val} className="flex justify-between p-2 rounded bg-stone-50">
-                              <span className="text-stone-700 font-medium">{val}</span>
-                              <span className="font-bold text-[#800020]">{rating}</span>
+                            <div key={val} className="flex items-center justify-between gap-2 p-2 rounded bg-stone-50">
+                              <span className="text-stone-700 font-medium truncate">{val}</span>
+                              <span className="font-bold text-[#800020] shrink-0">{rating}</span>
                             </div>
                           ))}
                         </div>
@@ -759,28 +778,29 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                         key={doc.id}
                         className="p-4 rounded-xl border border-stone-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                       >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-stone-900">{doc.title}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-stone-900 truncate">{doc.title}</span>
                             <Badge
                               variant={doc.status === "ISSUED" ? "success" : "neutral"}
                               size="sm"
+                              className="shrink-0 whitespace-nowrap"
                             >
                               {doc.status}
                             </Badge>
                           </div>
-                          <p className="text-xs text-stone-500 mt-0.5">
+                          <p className="text-xs text-stone-500 mt-0.5 truncate">
                             Ref: {doc.documentNumber} &bull; Generated:{" "}
                             {new Date(doc.createdAt).toLocaleDateString("en-NG")}
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handlePreviewDoc(doc.id)}
-                            className="font-semibold text-xs"
+                            className="font-semibold text-xs whitespace-nowrap"
                           >
                             Preview
                           </Button>
@@ -789,7 +809,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                               variant="primary"
                               size="sm"
                               onClick={() => handleIssueDoc(doc.id)}
-                              className="bg-[#800020] text-white font-bold text-xs"
+                              className="bg-[#800020] text-white font-bold text-xs whitespace-nowrap"
                             >
                               Issue to Staff
                             </Button>

@@ -310,19 +310,19 @@ export default function ParentFinancePage() {
                 <TableMobileCard
                   key={inv.id}
                   title={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
                         {index + 1}
                       </span>
-                      <span className="font-mono text-xs font-bold text-stone-900">
-                        {inv.invoiceNumber}
+                      <span className="text-sm font-bold text-stone-900 truncate">
+                        {inv.studentName}
                       </span>
                     </div>
                   }
                   subtitle={
-                    <div className="text-sm font-bold text-stone-900 mt-1">
-                      {inv.studentName}
-                    </div>
+                    <span className="font-mono text-xs font-semibold text-[#800020] pl-8 block">
+                      {inv.invoiceNumber}
+                    </span>
                   }
                   badge={
                     <Badge
@@ -418,19 +418,19 @@ export default function ParentFinancePage() {
                 <TableMobileCard
                   key={p.id}
                   title={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
                         {index + 1}
                       </span>
-                      <span className="font-mono text-xs font-bold text-stone-900">
-                        {p.paymentReference}
+                      <span className="text-sm font-bold text-stone-900 truncate">
+                        {p.studentName}
                       </span>
                     </div>
                   }
                   subtitle={
-                    <div className="text-sm font-bold text-stone-900 mt-1">
-                      {p.studentName}
-                    </div>
+                    <span className="font-mono text-xs font-semibold text-[#800020] pl-8 block">
+                      {p.paymentReference}
+                    </span>
                   }
                   badge={
                     <Badge variant="success" size="sm">

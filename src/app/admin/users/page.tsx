@@ -707,19 +707,19 @@ export default function AdminUsersPage() {
                 <TableMobileCard
                   key={u.id}
                   title={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
                         {index + 1}
                       </span>
-                      <span className="font-bold text-sm text-stone-900 break-all">
-                        {u.email}
+                      <span className="font-bold text-sm text-stone-900 truncate">
+                        {profileName}
                       </span>
                     </div>
                   }
                   subtitle={
-                    <div className="text-xs text-stone-600 mt-1">
-                      {profileName}
-                    </div>
+                    <span className="text-xs text-stone-500 pl-8 block truncate" title={u.email}>
+                      {u.email}
+                    </span>
                   }
                   badge={
                     <Badge

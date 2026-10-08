@@ -493,19 +493,19 @@ export default function AdminTeachersPage() {
               <TableMobileCard
                 key={t.id}
                 title={
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold shrink-0">
                       {index + 1}
                     </span>
-                    <span className="font-mono text-xs font-bold text-stone-900">
-                      {t.staffId}
+                    <span className="text-sm font-bold text-stone-900 truncate">
+                      {t.firstName} {t.lastName}
                     </span>
                   </div>
                 }
                 subtitle={
-                  <div className="text-sm font-bold text-stone-900 mt-1">
-                    {t.firstName} {t.lastName}
-                  </div>
+                  <span className="font-mono text-xs font-semibold text-[#800020] pl-8 block">
+                    {t.staffId}
+                  </span>
                 }
                 badge={
                   <Badge variant={t.employmentStatus === "ACTIVE" ? "success" : "neutral"} size="sm">
