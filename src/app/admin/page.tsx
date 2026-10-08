@@ -19,6 +19,7 @@ import {
   TableBody,
   TableCell,
   TableWrapper,
+  StatCard,
 } from "@/components";
 import { formatNaira } from "@/lib/money";
 
@@ -166,41 +167,52 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#5B0612] via-[#800020] to-[#4A0E17] rounded-2xl p-6 sm:p-8 text-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold tracking-wide mb-3">
-            <span className="whitespace-nowrap uppercase">
+      {/* Header Banner: Matches Public Website Hero Maroon Palette */}
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-r from-[#3B030A] via-[#4D0610] to-[#250105] border border-[#6B1420] text-white shadow-xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        {/* Subtle radial dot texture matching hero */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#F5D061_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+
+        <div className="relative z-10 space-y-2">
+          {/* Official Tag Pill: Cream with Maroon text */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F5EBDC] border border-[#DFCBB5] text-[#5B0612] text-xs font-extrabold tracking-wider uppercase font-heading shadow-xs">
+            <span className="whitespace-nowrap">
               {isSuperAdmin ? "Director & Super Admin Dashboard" : "Operational Admin Dashboard"}
             </span>
             {overview.activeSession && (
               <>
-                <span className="hidden sm:inline">•</span>
-                <span className="whitespace-nowrap">
+                <span className="opacity-60">•</span>
+                <span className="whitespace-nowrap text-[#800020] font-bold">
                   {overview.activeSession.name} ({overview.activeSession.currentTerm || "Term In Session"})
                 </span>
               </>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white !text-white" style={{ color: '#FFFFFF' }}>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white font-heading" style={{ color: '#FFFFFF' }}>
             {isSuperAdmin ? "Swanford Academy Governance" : "Admin Operations Center"}
           </h1>
-          <p className="mt-1 text-sm text-stone-200 max-w-xl">
+          <p className="text-sm text-stone-200 max-w-xl leading-relaxed">
             {isSuperAdmin
               ? "Comprehensive institutional oversight: enrollment, academics, financial revenue ledger, and audit history."
               : "Real-time school operations: admissions processing, daily attendance roll-call, and community coordination."}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2.5">
+
+        <div className="relative z-10 flex flex-wrap items-center gap-2.5 shrink-0">
           <Link href="/admin/admissions">
-            <Button variant="secondary" size="md" className="bg-[#FAF7F2] text-[#5B0612] hover:bg-stone-100 font-bold">
-              Review Admissions ({overview.pendingAdmissions})
-            </Button>
+            <button
+              type="button"
+              className="min-h-[44px] px-5 py-2.5 rounded-xl font-sans font-bold text-sm whitespace-nowrap bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Review Admissions</span>
+              <span className="px-1.5 py-0.5 rounded-full bg-stone-950/20 text-xs font-extrabold">
+                {overview.pendingAdmissions}
+              </span>
+            </button>
           </Link>
           <Link href="/admin/attendance">
             <button
               type="button"
-              className="min-h-[44px] px-4 py-2 rounded-lg border border-white/40 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-semibold text-sm transition-colors duration-150 inline-flex items-center justify-center backdrop-blur-xs select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="min-h-[44px] px-4 py-2.5 rounded-xl font-sans font-semibold text-sm whitespace-nowrap bg-white/10 hover:bg-white/20 active:bg-white/30 text-white border border-white/30 backdrop-blur-xs shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center cursor-pointer select-none"
             >
               Attendance Records
             </button>
@@ -209,7 +221,7 @@ export default function AdminDashboardPage() {
             <Link href="/admin/finance">
               <button
                 type="button"
-                className="min-h-[44px] px-4 py-2 rounded-lg border border-white/40 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-semibold text-sm transition-colors duration-150 inline-flex items-center justify-center backdrop-blur-xs select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="min-h-[44px] px-4 py-2.5 rounded-xl font-sans font-bold text-sm whitespace-nowrap bg-white hover:bg-[#FDFBF7] text-[#800020] border border-white shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center cursor-pointer"
               >
                 Finance Hub
               </button>
@@ -250,93 +262,93 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* 4 Stat Overview Grid (Shared across both roles) */}
+      {/* 4 Stat Overview Grid: Multi-Color Animated StatCards with High Visibility & Large Digit Support */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <Card className="border-l-4 border-l-[#5B0612]">
-          <CardHeader className="pb-2">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Active Students</span>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-stone-900 mt-1">
-              {overview.activeStudents.toLocaleString()}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-stone-500">Currently enrolled across Nursery, Primary & Tahfeez</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Active Students"
+          value={overview.activeStudents.toLocaleString()}
+          subtitle="Enrolled across Nursery, Primary & Tahfeez"
+          icon={<span className="text-xl">🎓</span>}
+          badge={<Badge variant="brand" size="sm" className="whitespace-nowrap">Active</Badge>}
+          color="maroon"
+          href="/admin/students"
+        />
 
-        <Card className="border-l-4 border-l-stone-600">
-          <CardHeader className="pb-2">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Registered Guardians</span>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-stone-900 mt-1">
-              {overview.guardians.toLocaleString()}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-stone-500">Verified primary parents and sponsors</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Registered Guardians"
+          value={overview.guardians.toLocaleString()}
+          subtitle="Verified primary parents and sponsors"
+          icon={<span className="text-xl">👨‍👩‍👧</span>}
+          badge={<Badge variant="success" size="sm" className="whitespace-nowrap">Verified</Badge>}
+          color="emerald"
+          href="/admin/guardians"
+        />
 
-        <Card className="border-l-4 border-l-stone-700">
-          <CardHeader className="pb-2">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Teaching Staff</span>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-stone-900 mt-1">
-              {overview.teachers.toLocaleString()}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-stone-500">Instructors with active class & subject scopes</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Teaching Staff"
+          value={overview.teachers.toLocaleString()}
+          subtitle="Active instructors with class scopes"
+          icon={<span className="text-xl">👩‍🏫</span>}
+          badge={<Badge variant="neutral" size="sm" className="whitespace-nowrap">Faculty</Badge>}
+          color="blue"
+          href="/admin/teachers"
+        />
 
-        <Card className="border-l-4 border-l-[#D4AF37]">
-          <CardHeader className="pb-2">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Pending Admissions</span>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-stone-900 mt-1">
-              {overview.pendingAdmissions.toLocaleString()}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-stone-500">Applications awaiting operational review</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Pending Admissions"
+          value={overview.pendingAdmissions.toLocaleString()}
+          subtitle="Applications awaiting operational review"
+          icon={<span className="text-xl">📋</span>}
+          badge={
+            <Badge
+              variant={overview.pendingAdmissions > 0 ? "warning" : "success"}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              {overview.pendingAdmissions > 0 ? "Needs Review" : "Clear"}
+            </Badge>
+          }
+          color="amber"
+          href="/admin/admissions"
+        />
       </div>
 
       {/* MIDDLE SECTION: Attendance + Role-Specific Right Column */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Attendance Breakdown */}
-        <Card>
+        <Card className="shadow-xs hover:shadow-md transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
               <CardTitle className="text-base sm:text-lg font-bold text-stone-900">Today&apos;s Attendance</CardTitle>
               <p className="text-xs text-stone-500 mt-0.5">Recorded daily roll-call compliance</p>
             </div>
-            <Badge variant={attendanceRate >= 80 ? "success" : "warning"} size="md">
+            <Badge variant={attendanceRate >= 80 ? "success" : "warning"} size="md" className="whitespace-nowrap shrink-0">
               {attendanceRate}% Present
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                <span className="text-xs font-semibold text-emerald-800">Present</span>
-                <p className="text-xl font-bold text-emerald-900 mt-1">{todayAttendance.present}</p>
+              <div className="p-3.5 bg-gradient-to-br from-white to-emerald-50/80 rounded-2xl border border-emerald-200/80 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide truncate block">Present</span>
+                <p className="text-2xl font-extrabold text-emerald-950 mt-1 tabular-nums truncate">{todayAttendance.present}</p>
               </div>
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
-                <span className="text-xs font-semibold text-amber-800">Late</span>
-                <p className="text-xl font-bold text-amber-900 mt-1">{todayAttendance.late}</p>
+              <div className="p-3.5 bg-gradient-to-br from-white to-amber-50/80 rounded-2xl border border-amber-200/80 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
+                <span className="text-xs font-bold text-amber-800 uppercase tracking-wide truncate block">Late</span>
+                <p className="text-2xl font-extrabold text-amber-950 mt-1 tabular-nums truncate">{todayAttendance.late}</p>
               </div>
-              <div className="p-3 bg-rose-50 rounded-xl border border-rose-100">
-                <span className="text-xs font-semibold text-rose-800">Absent</span>
-                <p className="text-xl font-bold text-rose-900 mt-1">{todayAttendance.absent}</p>
+              <div className="p-3.5 bg-gradient-to-br from-white to-rose-50/80 rounded-2xl border border-rose-200/80 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
+                <span className="text-xs font-bold text-rose-800 uppercase tracking-wide truncate block">Absent</span>
+                <p className="text-2xl font-extrabold text-rose-950 mt-1 tabular-nums truncate">{todayAttendance.absent}</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <span className="text-xs font-semibold text-blue-800">Excused</span>
-                <p className="text-xl font-bold text-blue-900 mt-1">{todayAttendance.excused}</p>
+              <div className="p-3.5 bg-gradient-to-br from-white to-blue-50/80 rounded-2xl border border-blue-200/80 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
+                <span className="text-xs font-bold text-blue-800 uppercase tracking-wide truncate block">Excused</span>
+                <p className="text-2xl font-extrabold text-blue-950 mt-1 tabular-nums truncate">{todayAttendance.excused}</p>
               </div>
             </div>
 
             <div className="pt-2 flex justify-between items-center text-xs text-stone-500 border-t border-stone-100">
-              <span>Total roll-call entries: {totalAttendanceRecorded}</span>
-              <Link href="/admin/attendance" className="text-[#5B0612] font-semibold hover:underline">
+              <span className="truncate">Total roll-call entries: {totalAttendanceRecorded}</span>
+              <Link href="/admin/attendance" className="text-[#5B0612] font-semibold hover:underline shrink-0 whitespace-nowrap">
                 View Class Logs →
               </Link>
             </div>
@@ -346,42 +358,42 @@ export default function AdminDashboardPage() {
         {/* RIGHT COLUMN: Super Admin gets Finance Ledger; Standard Admin gets Academic Schedule */}
         {isSuperAdmin && finance ? (
           /* Super Admin: Term Finance Ledger */
-          <Card>
+          <Card className="shadow-xs hover:shadow-md transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-base sm:text-lg font-bold text-stone-900">Term Finance Ledger</CardTitle>
                 <p className="text-xs text-stone-500 mt-0.5">Authoritative invoice and collection reconciliation</p>
               </div>
               <Link href="/admin/finance">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="whitespace-nowrap shrink-0">
                   Finance Hub
                 </Button>
               </Link>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
-                  <span className="text-xs font-semibold text-stone-600">Total Invoiced</span>
-                  <p className="text-base sm:text-lg font-bold text-stone-900 mt-1 truncate">
+                <div className="p-3.5 bg-gradient-to-br from-white via-white to-stone-50/80 rounded-2xl border border-stone-200/90 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
+                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wide truncate block">Total Invoiced</span>
+                  <p className="text-lg sm:text-xl font-extrabold text-stone-900 mt-1 tabular-nums truncate whitespace-nowrap">
                     {formatNaira(BigInt(finance.totalInvoicedKobo))}
                   </p>
                 </div>
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                  <span className="text-xs font-semibold text-emerald-800">Total Collected</span>
-                  <p className="text-base sm:text-lg font-bold text-emerald-900 mt-1 truncate">
+                <div className="p-3.5 bg-gradient-to-br from-white via-white to-emerald-50/80 rounded-2xl border border-emerald-200/90 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
+                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide truncate block">Total Collected</span>
+                  <p className="text-lg sm:text-xl font-extrabold text-emerald-950 mt-1 tabular-nums truncate whitespace-nowrap">
                     {formatNaira(BigInt(finance.totalCollectedKobo))}
                   </p>
                 </div>
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
-                  <span className="text-xs font-semibold text-amber-800">Outstanding</span>
-                  <p className="text-base sm:text-lg font-bold text-amber-900 mt-1 truncate">
+                <div className="p-3.5 bg-gradient-to-br from-white via-white to-amber-50/80 rounded-2xl border border-amber-200/90 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
+                  <span className="text-xs font-bold text-amber-800 uppercase tracking-wide truncate block">Outstanding</span>
+                  <p className="text-lg sm:text-xl font-extrabold text-amber-950 mt-1 tabular-nums truncate whitespace-nowrap">
                     {formatNaira(BigInt(finance.outstandingKobo))}
                   </p>
                 </div>
               </div>
               <div className="pt-2 flex justify-between items-center text-xs text-stone-500 border-t border-stone-100">
-                <span>Director-only financial oversight</span>
-                <Link href="/admin/finance?tab=payments" className="text-[#5B0612] font-semibold hover:underline">
+                <span className="truncate">Director-only financial oversight</span>
+                <Link href="/admin/finance?tab=payments" className="text-[#5B0612] font-semibold hover:underline shrink-0 whitespace-nowrap">
                   Reconcile Payments →
                 </Link>
               </div>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
+import { StatCard } from "@/components/ui/stat-card";
 
 interface TeacherDashboardData {
   teacher: {
@@ -118,35 +119,36 @@ export default function TeacherDashboardPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Welcome Hero Card */}
-      <div className="bg-gradient-to-r from-[#5B0612] via-[#800020] to-[#3B020B] rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+      {/* Welcome Hero Card: Matches Public Website Hero Maroon Palette */}
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-r from-[#3B030A] via-[#4D0610] to-[#250105] border border-[#6B1420] text-white shadow-xl p-6 sm:p-8">
+        {/* Subtle radial dot pattern matching hero */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#F5D061_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/15 text-amber-200 backdrop-blur-sm border border-white/10">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#F5EBDC] text-[#5B0612] border border-[#DFCBB5] shadow-xs">
                 <span>👨‍🏫</span> Staff ID: {teacher.staffIdNumber}
               </span>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/10">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/90 border border-white/20">
                 {activeSession?.name || "Active Session"} &bull; {activeTerm?.name || "Term in Session"}
               </span>
             </div>
             
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white font-heading" style={{ color: '#FFFFFF' }}>
               Welcome back, {teacher.firstName} {teacher.lastName}
             </h1>
-            <p className="text-sm sm:text-base text-stone-200 max-w-xl">
-              Today is <span className="font-semibold text-white">{todayStr}</span>. Here is your daily teaching and class overview.
+            <p className="text-sm sm:text-base text-stone-200 max-w-xl leading-relaxed">
+              Today is <span className="font-semibold text-[#F5D061]">{todayStr}</span>. Here is your daily teaching and class overview.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Link href="/teacher/attendance">
               <Button
                 variant="primary"
                 size="md"
-                className="bg-amber-400 hover:bg-amber-300 text-[#5B0612] font-extrabold shadow-sm min-h-[44px]"
+                className="bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 font-bold shadow-md hover:shadow-lg transition-all min-h-[44px]"
               >
                 📝 Record Attendance
               </Button>
@@ -155,7 +157,7 @@ export default function TeacherDashboardPage() {
               <Button
                 variant="outline"
                 size="md"
-                className="border-white/40 text-white hover:bg-white/10 font-bold min-h-[44px]"
+                className="border-white/40 text-white hover:bg-white/15 active:bg-white/25 font-bold min-h-[44px] backdrop-blur-xs"
               >
                 + New Assessment
               </Button>
@@ -164,112 +166,58 @@ export default function TeacherDashboardPage() {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards Grid: Animated Multi-Color StatCards with Large Digit Support */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {/* Card 1: Assigned Classes */}
-        <Card className="bg-white border-[#EADBDA]/80 shadow-xs hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Assigned Classes
-              </span>
-              <div className="w-10 h-10 rounded-xl bg-[#FAF2F4] text-[#800020] flex items-center justify-center font-bold text-lg">
-                📚
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold text-stone-900 tracking-tight">
-                {data.classesCount}
-              </span>
-              <Badge variant="brand" size="sm" className="bg-[#FAF2F4] text-[#800020]">
-                Active Scopes
-              </Badge>
-            </div>
-            <p className="text-xs text-stone-500 mt-2">
-              Classes under your academic supervision
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Assigned Classes"
+          value={data.classesCount}
+          subtitle="Classes under your supervision"
+          icon={<span className="text-xl">📚</span>}
+          badge={<Badge variant="brand" size="sm" className="whitespace-nowrap">Active Scopes</Badge>}
+          color="maroon"
+          href="/teacher/classes"
+        />
 
-        {/* Card 2: Total Students */}
-        <Card className="bg-white border-[#EADBDA]/80 shadow-xs hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Total Students
-              </span>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-lg">
-                👥
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold text-stone-900 tracking-tight">
-                {data.totalStudents}
-              </span>
-              <Badge variant="success" size="sm">
-                Enrolled
-              </Badge>
-            </div>
-            <p className="text-xs text-stone-500 mt-2">
-              Across all assigned classrooms
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Total Students"
+          value={data.totalStudents}
+          subtitle="Across all assigned classrooms"
+          icon={<span className="text-xl">👥</span>}
+          badge={<Badge variant="success" size="sm" className="whitespace-nowrap">Enrolled</Badge>}
+          color="emerald"
+        />
 
-        {/* Card 3: Today's Attendance Register */}
-        <Card className="bg-white border-[#EADBDA]/80 shadow-xs hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Today&apos;s Attendance
-              </span>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-lg">
-                📋
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-lg sm:text-xl font-extrabold text-stone-900">
-                {data.hasRecordedAttendanceToday ? "Marked Today" : "Pending Entry"}
-              </span>
-              <Badge
-                variant={data.hasRecordedAttendanceToday ? "success" : "warning"}
-                size="sm"
-              >
-                {data.hasRecordedAttendanceToday ? "Completed" : "Action Needed"}
-              </Badge>
-            </div>
-            <p className="text-xs text-stone-500 mt-2">
-              {data.hasRecordedAttendanceToday
-                ? "Daily roll call recorded successfully"
-                : "Remember to mark class roll call today"}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Today's Attendance"
+          value={data.hasRecordedAttendanceToday ? "Marked Today" : "Pending Entry"}
+          subtitle={
+            data.hasRecordedAttendanceToday
+              ? "Daily roll call recorded"
+              : "Remember to mark class roll call"
+          }
+          icon={<span className="text-xl">📋</span>}
+          badge={
+            <Badge
+              variant={data.hasRecordedAttendanceToday ? "success" : "warning"}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              {data.hasRecordedAttendanceToday ? "Completed" : "Action Needed"}
+            </Badge>
+          }
+          color="amber"
+          href="/teacher/attendance"
+        />
 
-        {/* Card 4: Assessment Progress */}
-        <Card className="bg-white border-[#EADBDA]/80 shadow-xs hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Pending Assessments
-              </span>
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-lg">
-                ✍️
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold text-stone-900 tracking-tight">
-                {data.draftAssessmentsCount}
-              </span>
-              <Badge variant="brand" size="sm" className="bg-indigo-50 text-indigo-700 border-indigo-200">
-                Drafts
-              </Badge>
-            </div>
-            <p className="text-xs text-stone-500 mt-2">
-              Continuous assessments awaiting finalization
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Pending Assessments"
+          value={data.draftAssessmentsCount}
+          subtitle="Continuous assessment drafts"
+          icon={<span className="text-xl">✍️</span>}
+          badge={<Badge variant="neutral" size="sm" className="whitespace-nowrap">Drafts</Badge>}
+          color="purple"
+          href="/teacher/assessments"
+        />
       </div>
 
       {/* Main Content Layout: Assigned Classes (Left) + Announcements & Quick Links (Right) */}

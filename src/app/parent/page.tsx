@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
+import { StatCard } from "@/components/ui/stat-card";
 import { formatKoboToNaira } from "@/lib/money";
 
 interface LinkedChild {
@@ -340,78 +341,58 @@ export default function ParentDashboardPage() {
             ))}
           </div>
 
-          {/* Quick Metrics Grid */}
+          {/* Quick Metrics Grid: Animated Multi-Color StatCards with Prominent Shadow & Large Digit Support */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {/* Attendance Card */}
-            <Card className="bg-white border-[#EFE9DF] shadow-xs">
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Attendance Rate</span>
-                  <Link href={`/parent/children/${selectedChild.studentId}/attendance`} className="text-xs font-semibold text-[#800020] hover:underline">
-                    View Register →
-                  </Link>
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-3xl font-bold text-stone-900">
-                    {attendance ? `${attendance.attendancePercentage}%` : "—"}
-                  </span>
-                  <span className="text-xs font-medium text-emerald-700">
-                    {attendance ? `${attendance.presentCount} Days Present` : "Loading..."}
-                  </span>
-                </div>
-                <p className="text-xs text-stone-500">
-                  Total Recorded Days: {attendance?.totalDays || 0} (Absent: {attendance?.absentCount || 0})
-                </p>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Attendance Rate"
+              value={attendance ? `${attendance.attendancePercentage}%` : "—"}
+              subtitle={`Total Days: ${attendance?.totalDays || 0} (Absent: ${attendance?.absentCount || 0})`}
+              icon={<span className="text-xl">📅</span>}
+              badge={
+                <Badge variant="success" size="sm" className="whitespace-nowrap">
+                  {attendance ? `${attendance.presentCount} Days Present` : "Loading..."}
+                </Badge>
+              }
+              color="emerald"
+              href={`/parent/children/${selectedChild.studentId}/attendance`}
+            />
 
-            {/* Finance Card */}
-            <Card className="bg-white border-[#EFE9DF] shadow-xs">
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">School Fee Balance</span>
-                  {selectedChild.receivesInvoices && (
-                    <Link href={`/parent/children/${selectedChild.studentId}/finance`} className="text-xs font-semibold text-[#800020] hover:underline">
-                      Invoices & Pay →
-                    </Link>
-                  )}
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-2xl sm:text-3xl font-bold text-stone-900">
-                    {formatKoboToNaira(balanceKobo)}
-                  </span>
-                  <Badge variant={BigInt(balanceKobo) > BigInt(0) ? "warning" : "success"} className="text-[10px]">
-                    {BigInt(balanceKobo) > BigInt(0) ? "Outstanding" : "Cleared"}
-                  </Badge>
-                </div>
-                <p className="text-xs text-stone-500">
-                  {selectedChild.receivesInvoices
-                    ? "Official digital invoices & automated receipting"
-                    : "Not designated to receive financial statements"}
-                </p>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="School Fee Balance"
+              value={formatKoboToNaira(balanceKobo)}
+              subtitle={
+                selectedChild.receivesInvoices
+                  ? "Official digital invoices & receipting"
+                  : "Not designated to receive financial statements"
+              }
+              icon={<span className="text-xl">💳</span>}
+              badge={
+                <Badge
+                  variant={BigInt(balanceKobo) > BigInt(0) ? "warning" : "success"}
+                  size="sm"
+                  className="whitespace-nowrap"
+                >
+                  {BigInt(balanceKobo) > BigInt(0) ? "Outstanding" : "Cleared"}
+                </Badge>
+              }
+              color="amber"
+              href={
+                selectedChild.receivesInvoices
+                  ? `/parent/children/${selectedChild.studentId}/finance`
+                  : undefined
+              }
+            />
 
-            {/* Results Card */}
-            <Card className="bg-white border-[#EFE9DF] shadow-xs sm:col-span-2 lg:col-span-1">
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Academic Results</span>
-                  <Link href={`/parent/children/${selectedChild.studentId}/results`} className="text-xs font-semibold text-[#800020] hover:underline">
-                    Report Card →
-                  </Link>
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-3xl font-bold text-stone-900">
-                    {results.length}
-                  </span>
-                  <span className="text-xs font-medium text-[#800020]">Published Subjects</span>
-                </div>
-                <p className="text-xs text-stone-500">
-                  Strictly showing finalized and published academic evaluations.
-                </p>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Academic Results"
+              value={results.length}
+              subtitle="Finalized evaluations across continuous assessments"
+              icon={<span className="text-xl">📊</span>}
+              badge={<Badge variant="neutral" size="sm" className="whitespace-nowrap">Evaluations</Badge>}
+              color="purple"
+              href={`/parent/children/${selectedChild.studentId}/results`}
+              className="sm:col-span-2 lg:col-span-1"
+            />
           </div>
 
           {/* Child Actions & Subject Breakdown */}

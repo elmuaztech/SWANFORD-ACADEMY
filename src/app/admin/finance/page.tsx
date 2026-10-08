@@ -27,6 +27,7 @@ import {
   Select,
   FormGroup,
   Alert,
+  StatCard,
 } from "@/components";
 import { formatNaira } from "@/lib/money";
 
@@ -545,57 +546,43 @@ export default function AdminFinancePage() {
         </Alert>
       )}
 
-      {/* Summary KPI Cards */}
+      {/* Summary KPI Cards: Animated StatCards with Strong Shadow & Large Digit Support */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border border-[#EADBDA]/80 border-l-4 border-l-[#800020] bg-white shadow-xs">
-          <CardHeader className="pb-2">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Total Invoiced (Term)</span>
-            <CardTitle className="text-xl sm:text-2xl font-extrabold text-[#5B0612] mt-1">
-              {formatNaira(BigInt(summary.totalInvoicedKobo))}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-stone-500">
-              {summary.activeTerm?.name || "Current Term"} ({summary.activeSession?.name || "Session"})
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Total Invoiced (Term)"
+          value={formatNaira(BigInt(summary.totalInvoicedKobo))}
+          subtitle={`${summary.activeTerm?.name || "Current Term"} (${summary.activeSession?.name || "Session"})`}
+          icon={<span className="text-xl">📜</span>}
+          badge={<Badge variant="brand" size="sm" className="whitespace-nowrap">Term Invoices</Badge>}
+          color="maroon"
+        />
 
-        <Card className="border border-emerald-200 border-l-4 border-l-emerald-600 bg-white shadow-xs">
-          <CardHeader className="pb-2">
-            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Total Collected</span>
-            <CardTitle className="text-xl sm:text-2xl font-extrabold text-emerald-900 mt-1">
-              {formatNaira(BigInt(summary.totalCollectedKobo))}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-stone-500">Confirmed receipts &amp; verified payments</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Total Collected"
+          value={formatNaira(BigInt(summary.totalCollectedKobo))}
+          subtitle="Confirmed receipts & verified payments"
+          icon={<span className="text-xl">💰</span>}
+          badge={<Badge variant="success" size="sm" className="whitespace-nowrap">Verified</Badge>}
+          color="emerald"
+        />
 
-        <Card className="border border-amber-200 border-l-4 border-l-amber-500 bg-white shadow-xs">
-          <CardHeader className="pb-2">
-            <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Outstanding Balance</span>
-            <CardTitle className="text-xl sm:text-2xl font-extrabold text-amber-900 mt-1">
-              {formatNaira(BigInt(summary.totalOutstandingKobo))}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-stone-500">Unpaid school fees across enrolled students</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Outstanding Balance"
+          value={formatNaira(BigInt(summary.totalOutstandingKobo))}
+          subtitle="Unpaid fees across enrolled students"
+          icon={<span className="text-xl">⏳</span>}
+          badge={<Badge variant="warning" size="sm" className="whitespace-nowrap">Receivable</Badge>}
+          color="amber"
+        />
 
-        <Card className="border border-rose-200 border-l-4 border-l-rose-600 bg-white shadow-xs">
-          <CardHeader className="pb-2">
-            <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">Operational Expenses</span>
-            <CardTitle className="text-xl sm:text-2xl font-extrabold text-rose-900 mt-1">
-              {formatNaira(totalExpensesKobo)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-stone-500">{summary.expenseCount || expenses.length} recorded vouchers</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Operational Expenses"
+          value={formatNaira(totalExpensesKobo)}
+          subtitle={`${summary.expenseCount || expenses.length} recorded vouchers`}
+          icon={<span className="text-xl">🧾</span>}
+          badge={<Badge variant="danger" size="sm" className="whitespace-nowrap">Disbursed</Badge>}
+          color="rose"
+        />
       </div>
 
       {/* Navigation Tabs */}
