@@ -85,34 +85,34 @@ export default function TeacherSettingsPage() {
           <CardTitle className="text-lg font-bold text-stone-900">Personal Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Full Name</span>
-              <span className="font-bold text-stone-900 mt-1 block">
+          <div className="space-y-2 text-xs sm:text-sm">
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Full Name</span>
+              <span className="font-bold text-stone-900 text-right truncate">
                 {teacher.firstName} {teacher.lastName}
               </span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Staff ID Number</span>
-              <span className="font-mono font-bold text-[#800020] mt-1 block">
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Staff ID Number</span>
+              <span className="font-mono font-bold text-[#800020] text-right truncate">
                 {teacher.staffIdNumber}
               </span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Email Address</span>
-              <span className="text-stone-800 mt-1 block">{teacher.user.email}</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Email Address</span>
+              <span className="font-medium text-stone-900 text-right truncate">{teacher.user.email}</span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Phone Number</span>
-              <span className="text-stone-800 mt-1 block">{teacher.user.phoneNumber || "Not provided"}</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Phone Number</span>
+              <span className="font-medium text-stone-900 text-right truncate">{teacher.user.phoneNumber || "Not provided"}</span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Qualification</span>
-              <span className="text-stone-800 mt-1 block">{teacher.qualification || "Certified Teacher"}</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Qualification</span>
+              <span className="font-medium text-stone-900 text-right truncate">{teacher.qualification || "Certified Teacher"}</span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Status</span>
-              <Badge variant="success" className="mt-1">
+            <div className="flex items-center justify-between gap-3 py-1.5 min-w-0">
+              <span className="text-stone-500 shrink-0">Status</span>
+              <Badge variant="success" className="shrink-0 whitespace-nowrap">
                 {teacher.status}
               </Badge>
             </div>

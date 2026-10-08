@@ -141,24 +141,24 @@ export default function ParentChildProfilePage({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Full Name</span>
-              <span className="font-bold text-stone-900 mt-1 block">
+          <div className="space-y-2 text-xs sm:text-sm">
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Full Name</span>
+              <span className="font-bold text-stone-900 text-right truncate">
                 {student.lastName}, {student.firstName} {student.otherNames || ""}
               </span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Admission Number</span>
-              <span className="font-mono font-bold text-[#800020] mt-1 block">{student.admissionNumber}</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Admission Number</span>
+              <span className="font-mono font-bold text-[#800020] text-right truncate">{student.admissionNumber}</span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Gender</span>
-              <span className="text-stone-800 mt-1 block">{student.gender}</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Gender</span>
+              <span className="font-medium text-stone-800 text-right">{student.gender}</span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Date of Birth</span>
-              <span className="text-stone-800 mt-1 block">
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Date of Birth</span>
+              <span className="font-medium text-stone-800 text-right">
                 {new Date(student.dateOfBirth).toLocaleDateString("en-NG", {
                   year: "numeric",
                   month: "long",
@@ -166,9 +166,9 @@ export default function ParentChildProfilePage({
                 })}
               </span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Admission Date</span>
-              <span className="text-stone-800 mt-1 block">
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Admission Date</span>
+              <span className="font-medium text-stone-800 text-right">
                 {new Date(student.admissionDate).toLocaleDateString("en-NG", {
                   year: "numeric",
                   month: "short",
@@ -176,9 +176,9 @@ export default function ParentChildProfilePage({
                 })}
               </span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Your Relationship</span>
-              <span className="text-stone-800 mt-1 block font-semibold">
+            <div className="flex items-center justify-between gap-3 py-1.5 min-w-0">
+              <span className="text-stone-500 shrink-0">Your Relationship</span>
+              <span className="font-semibold text-stone-900 text-right truncate">
                 {relationship.relationshipType.replace(/_/g, " ")}{" "}
                 {relationship.isPrimaryContact && "· Primary Contact"}
               </span>
@@ -226,24 +226,24 @@ export default function ParentChildProfilePage({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Blood Group / Genotype</span>
-              <span className="text-stone-800 mt-1 block">
+          <div className="space-y-2 text-xs sm:text-sm">
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Blood Group / Genotype</span>
+              <span className="font-medium text-stone-900 text-right">
                 {student.bloodGroup || "Not recorded"} / {student.genotype || "Not recorded"}
               </span>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Known Allergies</span>
-              <span className="text-stone-800 mt-1 block">{student.allergies || "None recorded"}</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Known Allergies</span>
+              <span className="font-medium text-stone-900 text-right truncate">{student.allergies || "None recorded"}</span>
             </div>
-            <div className="sm:col-span-2">
-              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider block">Medical Conditions</span>
-              <span className="text-stone-800 mt-1 block">{student.medicalConditions || "None recorded"}</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100 min-w-0">
+              <span className="text-stone-500 shrink-0">Medical Conditions</span>
+              <span className="font-medium text-stone-900 text-right truncate">{student.medicalConditions || "None recorded"}</span>
             </div>
-            <div className="sm:col-span-2 bg-[#FAF7F2] p-3 rounded-lg border border-[#EFE9DF] text-xs space-y-1">
+            <div className="bg-[#FAF7F2] p-3 rounded-lg border border-[#EFE9DF] text-xs space-y-1 mt-2">
               <span className="font-semibold text-stone-700 block">Designated Emergency Contact</span>
-              <p className="text-stone-900">
+              <p className="text-stone-900 truncate">
                 {student.emergencyContactName || "Guardian on file"} · {student.emergencyContactPhone || "—"} ({student.emergencyContactRelationship || "Parent/Guardian"})
               </p>
             </div>

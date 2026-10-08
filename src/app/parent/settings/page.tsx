@@ -126,22 +126,22 @@ export default function ParentSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-3 bg-stone-50 rounded border border-stone-200">
-              <span className="text-xs text-stone-500 font-semibold uppercase tracking-wider block">Full Name</span>
-              <span className="text-sm font-bold text-stone-900 mt-0.5 block">{profile?.fullName || "—"}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3 bg-stone-50 rounded-lg border border-stone-200 flex items-center justify-between gap-3 min-w-0">
+              <span className="text-xs text-stone-500 font-medium shrink-0">Full Name</span>
+              <span className="text-sm font-bold text-stone-900 truncate text-right">{profile?.fullName || "—"}</span>
             </div>
-            <div className="p-3 bg-stone-50 rounded border border-stone-200">
-              <span className="text-xs text-stone-500 font-semibold uppercase tracking-wider block">Email Address</span>
-              <span className="text-sm font-medium text-stone-900 mt-0.5 block font-mono">{profile?.email || "—"}</span>
+            <div className="p-3 bg-stone-50 rounded-lg border border-stone-200 flex items-center justify-between gap-3 min-w-0">
+              <span className="text-xs text-stone-500 font-medium shrink-0">Email Address</span>
+              <span className="text-sm font-medium text-stone-900 font-mono truncate text-right">{profile?.email || "—"}</span>
             </div>
-            <div className="p-3 bg-stone-50 rounded border border-stone-200">
-              <span className="text-xs text-stone-500 font-semibold uppercase tracking-wider block">Phone Number</span>
-              <span className="text-sm font-medium text-stone-900 mt-0.5 block font-mono">{profile?.phone || "—"}</span>
+            <div className="p-3 bg-stone-50 rounded-lg border border-stone-200 flex items-center justify-between gap-3 min-w-0">
+              <span className="text-xs text-stone-500 font-medium shrink-0">Phone Number</span>
+              <span className="text-sm font-medium text-stone-900 font-mono truncate text-right">{profile?.phone || "—"}</span>
             </div>
-            <div className="p-3 bg-stone-50 rounded border border-stone-200">
-              <span className="text-xs text-stone-500 font-semibold uppercase tracking-wider block">Active Linked Children</span>
-              <span className="text-sm font-bold text-stone-900 mt-0.5 block">{profile?.childrenCount ?? 0} Student(s)</span>
+            <div className="p-3 bg-stone-50 rounded-lg border border-stone-200 flex items-center justify-between gap-3 min-w-0">
+              <span className="text-xs text-stone-500 font-medium shrink-0">Active Linked Children</span>
+              <span className="text-sm font-bold text-stone-900 shrink-0 text-right">{profile?.childrenCount ?? 0} Student(s)</span>
             </div>
           </div>
           <div className="pt-2 pb-2 border-b border-stone-200">
