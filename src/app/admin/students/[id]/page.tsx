@@ -394,7 +394,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   onClick={handleOpenEditModal}
                   className="font-bold min-h-[44px]"
                 >
-                  ✏️ Edit Student Details
+                  Edit Student Details
                 </Button>
                 <Button
                   variant="danger"
@@ -406,7 +406,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   }}
                   className="font-bold min-h-[44px]"
                 >
-                  🗑️ Delete Student
+                  Delete Student
                 </Button>
               </>
             ) : (
@@ -448,7 +448,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   onClick={() => setShowPhotoModal(true)}
                   className="mt-2 text-xs font-semibold text-[#800020] hover:text-[#5B0612] hover:underline transition-colors min-h-[36px] flex items-center justify-center px-2.5 py-1 rounded-md bg-[#FAF7F2] border border-[#EADBDA]/60"
                 >
-                  {student.profilePhotoId ? "📷 Change Photo" : "📷 Upload Photo"}
+                  {student.profilePhotoId ? "Change Photo" : "Upload Photo"}
                 </button>
               </div>
               <CardTitle className="text-lg font-bold text-stone-900">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/request_auth';
 import { releaseTerminalReports } from '@/lib/reports/report_engine';
 import { AuthorizationError } from '@/lib/auth/authorization';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,11 +14,31 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { academicSessionId, academicTermId, schoolClassId, studentId, notes } = body;
+    let { academicSessionId, academicTermId, schoolClassId, studentId, notes } = body;
+
+    // Automatically resolve current term & session if not explicitly provided
+    if (!academicSessionId || !academicTermId) {
+      const activeTerm = await prisma.academicTerm.findFirst({
+        where: { isCurrent: true },
+      });
+
+      if (activeTerm) {
+        academicTermId = academicTermId || activeTerm.id;
+        academicSessionId = academicSessionId || activeTerm.academicSessionId;
+      } else {
+        const fallbackTerm = await prisma.academicTerm.findFirst({
+          orderBy: { createdAt: 'desc' },
+        });
+        if (fallbackTerm) {
+          academicTermId = academicTermId || fallbackTerm.id;
+          academicSessionId = academicSessionId || fallbackTerm.academicSessionId;
+        }
+      }
+    }
 
     if (!academicSessionId || !academicTermId) {
       return NextResponse.json(
-        { error: 'academicSessionId and academicTermId are required to release reports.' },
+        { error: 'Please choose an academic term or configure an active term before releasing report sheets.' },
         { status: 400 }
       );
     }

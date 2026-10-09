@@ -133,6 +133,7 @@ export default function AdminProgrammesPage() {
             description: formData.description.trim() || undefined,
             displayOrder: Number(formData.displayOrder),
             isActive: formData.isActive,
+            isMainAcademic: formData.isMainAcademic,
           }
         : {
             code: formData.code,
@@ -448,20 +449,18 @@ export default function AdminProgrammesPage() {
               />
             </FormGroup>
 
-            {!editingProg && (
-              <div className="flex items-center gap-2 pt-6">
-                <input
-                  type="checkbox"
-                  id="isMainAcademic"
-                  checked={formData.isMainAcademic}
-                  onChange={(e) => setFormData({ ...formData, isMainAcademic: e.target.checked })}
-                  className="w-4 h-4 text-[#800020] rounded border-stone-300 focus:ring-[#800020]"
-                />
-                <label htmlFor="isMainAcademic" className="text-sm font-medium text-stone-700">
-                  Main Academic Track
-                </label>
-              </div>
-            )}
+            <div className="flex items-center gap-2 pt-6">
+              <input
+                type="checkbox"
+                id="isMainAcademic"
+                checked={formData.isMainAcademic}
+                onChange={(e) => setFormData({ ...formData, isMainAcademic: e.target.checked })}
+                className="w-4 h-4 text-[#800020] rounded border-stone-300 focus:ring-[#800020]"
+              />
+              <label htmlFor="isMainAcademic" className="text-sm font-medium text-stone-700">
+                Main Academic Track
+              </label>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 pt-2">

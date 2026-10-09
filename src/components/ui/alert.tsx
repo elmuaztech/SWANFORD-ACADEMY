@@ -18,14 +18,16 @@ export function Alert({
   onClose,
   className = "",
 }: AlertProps) {
-  // If error provided, override title & message with human-readable version
+  // If error provided or variant is error with string child, override title & message with human-readable version
   let displayTitle = title;
   let displayContent = children;
 
-  if (error) {
-    const translated = toUserFacingError(error);
-    displayTitle = title || translated.title;
-    displayContent = displayContent || translated.message;
+  const errorSource = error || (variant === "error" && typeof children === "string" ? children : null);
+
+  if (errorSource) {
+    const translated = toUserFacingError(errorSource);
+    displayTitle = title || (translated.title !== "Action Notice" ? translated.title : undefined);
+    displayContent = translated.message;
   }
 
   const styles = {

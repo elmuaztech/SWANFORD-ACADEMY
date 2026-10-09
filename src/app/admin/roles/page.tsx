@@ -88,7 +88,6 @@ export default function AdminRolesPage() {
     RoleCode.ADMIN,
     RoleCode.TEACHER,
     RoleCode.PARENT,
-    RoleCode.ACCOUNTANT,
   ];
 
   const assignedPermissions = config.rolePermissions[selectedRole] || [];

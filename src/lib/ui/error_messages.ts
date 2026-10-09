@@ -35,6 +35,58 @@ export function toUserFacingError(error: unknown): TranslatedMessage {
     ? String((error as Record<string, unknown>).code)
     : "";
 
+  // 0. Handle JSON error strings (e.g. Zod validation arrays or JSON error responses)
+  if (rawMessage.trim().startsWith("[") || rawMessage.trim().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawMessage);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const first = parsed[0];
+        const path = Array.isArray(first?.path) ? first.path.join(" ").toLowerCase() : "";
+        const msg = String(first?.message || "");
+        if (path.includes("code") || /code/i.test(msg)) {
+          return {
+            title: "Subject Code Incorrect",
+            message: "PLEASE ENTER THE SUBJECT CODE CORRECTLY. Use letters and numbers (for example: MATH, ENG101).",
+          };
+        }
+        if (path.includes("name") || /name/i.test(msg)) {
+          return {
+            title: "Invalid Name",
+            message: "Please enter a valid name with at least 2 characters.",
+          };
+        }
+        if (path.includes("programme") || /programme/i.test(msg)) {
+          return {
+            title: "Programme Selection Required",
+            message: "Please select a valid academic programme.",
+          };
+        }
+        if (msg) {
+          return {
+            title: "Invalid Input",
+            message: msg.endsWith(".") ? msg : `${msg}.`,
+          };
+        }
+      } else if (parsed && typeof parsed === "object") {
+        const errText = parsed.error || parsed.message;
+        if (errText && typeof errText === "string") {
+          return toUserFacingError(errText);
+        }
+      }
+    } catch {
+      // not JSON
+    }
+  }
+
+  // 0b. Next.js Server Reference ID mismatch
+  if (/server reference id/i.test(rawMessage)) {
+    return {
+      title: "System Update Available",
+      message: "A new version of the portal is available. Please refresh your browser to continue.",
+      actionText: "Refresh Page",
+    };
+  }
+
   // 1. Prisma Unique Constraint / Duplicate Records (P2002)
   if (rawCode === "P2002" || /unique constraint/i.test(rawMessage)) {
     if (/email/i.test(rawMessage)) {
@@ -43,7 +95,7 @@ export function toUserFacingError(error: unknown): TranslatedMessage {
         message: "An account with this email address is already registered in the system.",
       };
     }
-    if (/phone/i.test(rawMessage)) {
+    if (/phone/i.test(rawMessage) || /phone_number/i.test(rawMessage)) {
       return {
         title: "Phone Number Already in Use",
         message: "This phone number is already registered to another guardian or staff member.",

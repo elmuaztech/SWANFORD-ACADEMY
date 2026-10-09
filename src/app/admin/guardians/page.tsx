@@ -344,7 +344,7 @@ export default function AdminGuardiansPage() {
                               className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold text-xs whitespace-nowrap min-h-[36px]"
                               title="Directly impersonate this parent and open Parent Dashboard"
                             >
-                              {impersonatingId === g.id ? "Loading..." : "🎭 Impersonate"}
+                              {impersonatingId === g.id ? "Loading..." : "Impersonate"}
                             </Button>
                           )}
                           <Link href={`/admin/guardians/${g.id}`}>
@@ -413,7 +413,7 @@ export default function AdminGuardiansPage() {
                         onClick={() => handleImpersonateGuardian(g.id)}
                         className="w-full border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold min-h-[44px]"
                       >
-                        {impersonatingId === g.id ? "Switching..." : "🎭 Impersonate Parent"}
+                        {impersonatingId === g.id ? "Switching..." : "Impersonate Parent"}
                       </Button>
                     )}
                     <Link href={`/admin/guardians/${g.id}`} className="w-full block">

@@ -66,7 +66,6 @@ interface UserDetail {
 const ALL_ROLES: RoleCode[] = [
   RoleCode.SUPER_ADMIN,
   RoleCode.ADMIN,
-  RoleCode.ACCOUNTANT,
   RoleCode.TEACHER,
   RoleCode.PARENT,
 ];

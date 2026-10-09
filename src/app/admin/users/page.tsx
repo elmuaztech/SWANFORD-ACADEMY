@@ -463,7 +463,7 @@ export default function AdminUsersPage() {
                 onClick={() => setShowImpersonateModal(true)}
                 className="font-bold border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 min-h-[44px]"
               >
-                🎭 Impersonate Portal
+                Impersonate Portal
               </Button>
               <Button
                 variant="primary"
@@ -654,7 +654,7 @@ export default function AdminUsersPage() {
                                     className="whitespace-nowrap min-h-[36px] border-amber-300 text-amber-900 bg-amber-50/60 hover:bg-amber-100 font-semibold"
                                     title="Impersonate into this user's portal dashboard directly"
                                   >
-                                    🎭 Impersonate
+                                    Impersonate
                                   </Button>
                                 )}
                                 <Button
@@ -764,7 +764,7 @@ export default function AdminUsersPage() {
                               disabled={Boolean(impersonatingId)}
                               className="min-h-[44px] border-amber-300 text-amber-900 bg-amber-50/60 font-semibold"
                             >
-                              🎭 Impersonate
+                              Impersonate
                             </Button>
                           )}
                           <Button
@@ -851,7 +851,7 @@ export default function AdminUsersPage() {
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-2">Assigned Roles</label>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                {[RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.ACCOUNTANT, RoleCode.TEACHER, RoleCode.PARENT].map((role) => (
+                {[RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.TEACHER, RoleCode.PARENT].map((role) => (
                   <label
                     key={role}
                     className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
@@ -1011,7 +1011,6 @@ export default function AdminUsersPage() {
                 onChange={(e) => setCreateRole(e.target.value as RoleCode)}
               >
                 <option value="ADMIN">Admin</option>
-                <option value="ACCOUNTANT">Accountant</option>
                 <option value="TEACHER">Teacher</option>
                 <option value="PARENT">Parent</option>
               </Select>

@@ -3,6 +3,8 @@ import { getAuthUser } from '@/lib/auth/request_auth';
 import { getSubject, updateSubject, deleteSubject } from '@/lib/academic/subject_service';
 import { AuthorizationError } from '@/lib/auth/authorization';
 
+import { z } from 'zod';
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(
@@ -47,6 +49,10 @@ export async function PATCH(
       message: 'Subject updated successfully.',
     });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      const issue = error.issues[0];
+      return NextResponse.json({ error: issue?.message || 'Invalid subject details.' }, { status: 400 });
+    }
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }

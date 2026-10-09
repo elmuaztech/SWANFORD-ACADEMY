@@ -460,7 +460,7 @@ export default function AdminTeachersPage() {
                               className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold text-xs whitespace-nowrap min-h-[36px]"
                               title="Directly impersonate this educator and open Teacher Dashboard"
                             >
-                              {impersonatingId === t.id ? "Loading..." : "🎭 Impersonate"}
+                              {impersonatingId === t.id ? "Loading..." : "Impersonate"}
                             </Button>
                           )}
                           <Link href={`/admin/teachers/${t.id}?edit=true`}>
@@ -470,7 +470,7 @@ export default function AdminTeachersPage() {
                               className="border-stone-300 text-stone-700 hover:bg-stone-50 font-semibold text-xs whitespace-nowrap min-h-[36px]"
                               title="Edit teacher profile details"
                             >
-                              ✏️ Edit
+                              Edit
                             </Button>
                           </Link>
                           <Link href={`/admin/teachers/${t.id}`}>
@@ -531,7 +531,7 @@ export default function AdminTeachersPage() {
                         onClick={() => handleImpersonateTeacher(t.id)}
                         className="w-full border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold min-h-[44px]"
                       >
-                        {impersonatingId === t.id ? "Switching..." : "🎭 Impersonate Teacher"}
+                        {impersonatingId === t.id ? "Switching..." : "Impersonate Teacher"}
                       </Button>
                     )}
                     <Link href={`/admin/teachers/${t.id}?edit=true`} className="w-full block">
@@ -540,7 +540,7 @@ export default function AdminTeachersPage() {
                         size="md"
                         className="w-full font-semibold min-h-[44px]"
                       >
-                        ✏️ Edit Details
+                        Edit Details
                       </Button>
                     </Link>
                     <Link href={`/admin/teachers/${t.id}`} className="w-full block">

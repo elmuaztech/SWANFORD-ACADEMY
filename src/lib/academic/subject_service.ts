@@ -15,16 +15,44 @@ import { getProgramme } from '@/lib/academic/programme_service';
  */
 
 export const CreateSubjectSchema = z.object({
-  programmeId: z.string().uuid(),
-  code: z.string().min(2).max(20).regex(/^[A-Z0-9_]+$/, 'Subject code must be uppercase alphanumeric/underscores (e.g. MATH)'),
-  name: z.string().min(2),
+  programmeId: z.string().uuid('PLEASE SELECT A VALID PROGRAMME.'),
+  code: z
+    .string()
+    .trim()
+    .min(2, 'PLEASE ENTER THE SUBJECT CODE CORRECTLY (at least 2 characters).')
+    .max(20, 'Subject code cannot exceed 20 characters.')
+    .transform((v) => v.toUpperCase())
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^[A-Z0-9_]+$/,
+          'PLEASE ENTER THE SUBJECT CODE CORRECTLY. Use only uppercase letters and numbers (e.g. MATH, ENG101).'
+        )
+    ),
+  name: z.string().trim().min(2, 'PLEASE ENTER A VALID SUBJECT NAME (at least 2 characters).'),
   description: z.string().optional(),
   displayOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
 });
 
 export const UpdateSubjectSchema = z.object({
-  name: z.string().min(2).optional(),
+  code: z
+    .string()
+    .trim()
+    .min(2, 'PLEASE ENTER THE SUBJECT CODE CORRECTLY (at least 2 characters).')
+    .max(20, 'Subject code cannot exceed 20 characters.')
+    .transform((v) => v.toUpperCase())
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^[A-Z0-9_]+$/,
+          'PLEASE ENTER THE SUBJECT CODE CORRECTLY. Use only uppercase letters and numbers (e.g. MATH, ENG101).'
+        )
+    )
+    .optional(),
+  name: z.string().trim().min(2, 'PLEASE ENTER A VALID SUBJECT NAME (at least 2 characters).').optional(),
   description: z.string().optional(),
   displayOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),

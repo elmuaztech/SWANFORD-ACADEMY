@@ -136,9 +136,9 @@ export default function AdminMessagesPage() {
     try {
       setIsSendingReply(true);
       const recipientId =
-        thread.senderUser.id === thread.recipientUser?.id
-          ? undefined
-          : thread.senderUser.id;
+        thread.senderUser?.id === thread.recipientUser?.id
+          ? thread.recipientUser?.id
+          : thread.senderUser?.id || thread.recipientUser?.id;
 
       const res = await fetch(`/api/messages/${thread.id}`, {
         method: "POST",
@@ -354,7 +354,7 @@ export default function AdminMessagesPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-stone-900 truncate">
-                          {tab === "inbox" ? item.senderUser.email : `To: ${item.recipientUser?.email || "Broadcast"}`}
+                          {tab === "inbox" ? item.senderUser?.email || "System" : `To: ${item.recipientUser?.email || "Broadcast"}`}
                         </span>
                         <span className="text-[10px] text-stone-400 shrink-0">
                           {new Date(item.createdAt).toLocaleDateString("en-NG", {
@@ -404,7 +404,7 @@ export default function AdminMessagesPage() {
                         {thread.subject}
                       </h2>
                       <div className="flex items-center gap-2 mt-1 text-xs text-stone-500">
-                        <span>From: <strong>{thread.senderUser.email}</strong></span>
+                        <span>From: <strong>{thread.senderUser?.email || "System"}</strong></span>
                         <span>&bull;</span>
                         <span>
                           {new Date(thread.createdAt).toLocaleString("en-NG", {
@@ -441,7 +441,7 @@ export default function AdminMessagesPage() {
                           className="p-3.5 rounded-xl bg-white border border-[#EADBDA] text-xs space-y-1.5 shadow-2xs"
                         >
                           <div className="flex items-center justify-between text-[11px] text-stone-500">
-                            <span className="font-bold text-stone-800">{reply.senderUser.email}</span>
+                            <span className="font-bold text-stone-800">{reply.senderUser?.email || "System"}</span>
                             <span>
                               {new Date(reply.createdAt).toLocaleTimeString("en-NG", {
                                 hour: "2-digit",

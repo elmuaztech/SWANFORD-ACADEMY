@@ -30,10 +30,11 @@ export const CreateProgrammeSchema = z.object({
 });
 
 export const UpdateProgrammeSchema = z.object({
-  name: z.string().min(2).optional(),
+  name: z.string().trim().min(2, 'Programme name must be at least 2 characters.').optional(),
   description: z.string().optional(),
   displayOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
+  isMainAcademic: z.boolean().optional(),
 });
 
 export type CreateProgrammeInput = z.input<typeof CreateProgrammeSchema>;

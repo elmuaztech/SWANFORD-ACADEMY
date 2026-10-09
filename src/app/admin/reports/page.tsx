@@ -221,8 +221,22 @@ export default function AdminReportsPage() {
 
   // Handle single release
   const handleReleaseStudent = async (studentId: string) => {
-    if (!selectedSessionId || !selectedTermId) {
-      alert("Academic Session and Term are required.");
+    let effSessionId = selectedSessionId;
+    let effTermId = selectedTermId;
+
+    if (!effSessionId || !effTermId) {
+      const curSess = sessions.find((s) => s.isCurrent) || sessions[0];
+      if (curSess) {
+        effSessionId = effSessionId || curSess.id;
+        const curTerm = curSess.terms.find((t) => t.isCurrent) || curSess.terms[0];
+        if (curTerm) {
+          effTermId = effTermId || curTerm.id;
+        }
+      }
+    }
+
+    if (!effSessionId || !effTermId) {
+      alert("Please select or configure an academic term first.");
       return;
     }
 
@@ -233,8 +247,8 @@ export default function AdminReportsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          academicSessionId: selectedSessionId,
-          academicTermId: selectedTermId,
+          academicSessionId: effSessionId,
+          academicTermId: effTermId,
           studentId,
         }),
       });
@@ -258,8 +272,22 @@ export default function AdminReportsPage() {
 
   // Handle class bulk release
   const handleReleaseAllInClass = async () => {
-    if (!selectedSessionId || !selectedTermId) {
-      alert("Please select an Academic Session and Term.");
+    let effSessionId = selectedSessionId;
+    let effTermId = selectedTermId;
+
+    if (!effSessionId || !effTermId) {
+      const curSess = sessions.find((s) => s.isCurrent) || sessions[0];
+      if (curSess) {
+        effSessionId = effSessionId || curSess.id;
+        const curTerm = curSess.terms.find((t) => t.isCurrent) || curSess.terms[0];
+        if (curTerm) {
+          effTermId = effTermId || curTerm.id;
+        }
+      }
+    }
+
+    if (!effSessionId || !effTermId) {
+      alert("Please select or configure an academic term first.");
       return;
     }
 
@@ -277,8 +305,8 @@ export default function AdminReportsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          academicSessionId: selectedSessionId,
-          academicTermId: selectedTermId,
+          academicSessionId: effSessionId,
+          academicTermId: effTermId,
           schoolClassId: selectedClassId !== "ALL" ? selectedClassId : undefined,
         }),
       });

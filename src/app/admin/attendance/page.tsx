@@ -183,11 +183,11 @@ export default function AdminAttendancePage() {
 
     fetch(url)
       .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
           throw new Error(json.error || "Failed to load attendance records.");
         }
-        return res.json();
+        return json;
       })
       .then((json) => {
         setData(json);
@@ -210,11 +210,11 @@ export default function AdminAttendancePage() {
     setRosterError(null);
     fetch(`/api/teacher/attendance?programmeId=${takeProgId}&schoolClassId=${takeClassId}&date=${takeDate}`)
       .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Failed to load class roster.");
+          throw new Error(json.error || "Failed to load class roster.");
         }
-        return res.json();
+        return json;
       })
       .then((d) => {
         // Robust fallback: support both d.roster and d.students
@@ -253,11 +253,11 @@ export default function AdminAttendancePage() {
 
     fetch(`/api/admin/attendance/term-register?${params.toString()}`)
       .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Failed to load term register.");
+          throw new Error(json.error || "Failed to load term register.");
         }
-        return res.json();
+        return json;
       })
       .then((data: TermRegisterData) => {
         setTermRegisterData(data);
@@ -316,7 +316,7 @@ export default function AdminAttendancePage() {
         }),
       });
 
-      const resData = await res.json();
+      const resData = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(resData.error || "Failed to save attendance register.");
 
       setShowTakeModal(false);
@@ -363,7 +363,7 @@ export default function AdminAttendancePage() {
           remarks: correctionRemarks.trim() || undefined,
         }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Failed to correct attendance.");
       setCorrectionRecord(null);
       setActionSuccess("Attendance record corrected and audit entry logged.");
@@ -588,11 +588,11 @@ export default function AdminAttendancePage() {
                 {/* Period Cards in a single straight line */}
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
                   {[
-                    { id: "day", label: "Single Day", icon: "📅" },
-                    { id: "week", label: "This Week", icon: "📆" },
-                    { id: "month", label: "This Month", icon: "📊" },
-                    { id: "term", label: "This Term", icon: "🏛️" },
-                  ].map(({ id, label, icon }) => {
+                    { id: "day", label: "Single Day" },
+                    { id: "week", label: "This Week" },
+                    { id: "month", label: "This Month" },
+                    { id: "term", label: "This Term" },
+                  ].map(({ id, label }) => {
                     const isActive = periodFilter === id;
                     return (
                       <button
@@ -605,7 +605,6 @@ export default function AdminAttendancePage() {
                             : "bg-white hover:bg-[#FAF7F2] text-stone-700 hover:text-stone-900 border border-[#E2D6C5] shadow-2xs hover:shadow-xs"
                         }`}
                       >
-                        <span className="text-sm">{icon}</span>
                         <span>{label}</span>
                         {isActive && (
                           <span className="w-1.5 h-1.5 rounded-full bg-[#F5D061] ml-0.5" />
