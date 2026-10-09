@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { ApplicationStatus, ProgrammeSelectionStatus } from '@prisma/client';
 import { readMediaFile } from '@/lib/media/storage';
 import { VERIFIED_SCHOOL_INFO } from '@/lib/notifications/templates/theme';
+import { toUserFacingError } from '@/lib/ui/error_messages';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,12 +13,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const cleanId = (id || '').trim();
 
-    // Support lookup by UUID or applicationNumber (e.g. APP-2026-0001)
+    // Safely distinguish between UUID primary key and alphanumeric applicationNumber (e.g. APP-2026-0001)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
     const application = await prisma.application.findFirst({
-      where: {
-        OR: [{ id }, { applicationNumber: id }],
-      },
+      where: isUuid ? { id: cleanId } : { applicationNumber: cleanId },
       include: {
         admissionCycle: {
           include: {
@@ -113,8 +114,7 @@ export async function GET(
 
     return NextResponse.json(payload);
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : 'Failed to retrieve admission letter.';
+    const message = toUserFacingError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

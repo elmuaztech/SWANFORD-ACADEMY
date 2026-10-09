@@ -148,8 +148,8 @@ export function PrintedApplicationForm({
             </div>
           </div>
 
-          {/* Blue Ribbon Banner */}
-          <div className="mt-2 bg-[#0D47A1] text-white rounded-md px-3 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] sm:text-xs font-medium shadow-xs">
+          {/* School Brand Ribbon Banner */}
+          <div className="mt-2 bg-[#5B0612] border border-[#D4AF37] text-white rounded-md px-3 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] sm:text-xs font-medium shadow-xs">
             <div className="flex items-center gap-1.5 text-center sm:text-left">
               <svg className="w-4 h-4 shrink-0 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />

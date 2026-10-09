@@ -130,7 +130,7 @@ export default function AdmissionStatusPage() {
                   disabled={loading}
                   className="w-full py-3"
                 >
-                  {loading ? 'Checking Application...' : 'Check Status &rarr;'}
+                  {loading ? 'Checking Application...' : 'Check Status'}
                 </Button>
               </form>
             </CardContent>

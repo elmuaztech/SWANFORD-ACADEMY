@@ -125,14 +125,14 @@ function PaymentCallbackContent() {
               )}
               <div className="flex justify-between">
                 <span className="text-slate-700">Application Status:</span>
-                <span className="font-medium text-blue-700">Under Review</span>
+                <span className="font-semibold text-[#5B0612]">Under Review</span>
               </div>
             </div>
           </CardContent>
           <CardFooter className="bg-slate-50 border-t border-slate-200 flex justify-center py-4">
             <Link href="/admissions">
               <Button variant="primary" size="md">
-                Go to Admissions Portal &rarr;
+                Go to Admissions Portal
               </Button>
             </Link>
           </CardFooter>

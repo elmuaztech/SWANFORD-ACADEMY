@@ -6,6 +6,8 @@ import {
 } from '@/lib/admissions/application_service';
 import { AuthorizationError } from '@/lib/auth/authorization';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate_limiter';
+import { toUserFacingError } from '@/lib/ui/error_messages';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Swanford Academy — Public Admission Application Endpoint
@@ -36,7 +38,52 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = CreateApplicationSchema.parse(body);
 
+    // If submitted from public applicant web form, enforce all compulsory form fields:
+    // Pupil Date of Birth, Passport Photograph, State of Origin, LGA, and Guardian Occupation
+    if (body.isWebFormSubmission) {
+      if (!body.applicantDob) {
+        return NextResponse.json({ error: 'Pupil Date of Birth is compulsory.' }, { status: 400 });
+      }
+      if (!body.profilePhotoId) {
+        return NextResponse.json({ error: 'Pupil Passport Photograph is compulsory. Please upload a passport photo.' }, { status: 400 });
+      }
+      if (!body.stateOfOrigin || !body.stateOfOrigin.trim()) {
+        return NextResponse.json({ error: 'State of Origin is compulsory.' }, { status: 400 });
+      }
+      if (!body.lga || !body.lga.trim()) {
+        return NextResponse.json({ error: 'Local Government Area (LGA) is compulsory.' }, { status: 400 });
+      }
+      if (!body.guardianOccupation || !body.guardianOccupation.trim()) {
+        return NextResponse.json({ error: 'Parent / Guardian Occupation is compulsory.' }, { status: 400 });
+      }
+    }
+
     const draft = await createDraftApplication(validated);
+
+    // If pre-verified payment reference is provided, link payment and mark confirmed
+    if (body.paymentReference && typeof body.paymentReference === 'string') {
+      const cleanRef = body.paymentReference.trim();
+      const tx = await prisma.paymentTransaction.findUnique({
+        where: { gatewayReference: cleanRef },
+      });
+
+      if (tx && tx.status === 'SUCCESS') {
+        await prisma.application.update({
+          where: { id: draft.id },
+          data: {
+            paymentStatus: 'PAYMENT_CONFIRMED',
+            paymentReference: cleanRef,
+            amountPaidKobo: draft.totalAmountKobo,
+          },
+        });
+
+        await prisma.paymentTransaction.update({
+          where: { id: tx.id },
+          data: { applicationId: draft.id },
+        });
+      }
+    }
+
     const application = await submitApplication(draft.id);
 
     return NextResponse.json({
@@ -55,7 +102,8 @@ export async function POST(request: NextRequest) {
         { status: error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 400 }
       );
     }
-    const message = error instanceof Error ? error.message : 'Failed to submit admission application.';
+    const userError = toUserFacingError(error);
+    const message = userError.message || userError.title || (error instanceof Error ? error.message : 'Failed to submit admission application.');
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

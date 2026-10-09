@@ -30,6 +30,7 @@ import {
   StatCard,
 } from "@/components";
 import { formatNaira } from "@/lib/money";
+import { FeeConfigurationSection } from "./fee-configuration";
 
 interface InvoiceItem {
   id: string;
@@ -152,7 +153,7 @@ interface ScheduledReminderItem {
 }
 
 export default function AdminFinancePage() {
-  const [activeTab, setActiveTab] = useState<"invoices" | "outstanding" | "payments" | "expenses">("invoices");
+  const [activeTab, setActiveTab] = useState<"invoices" | "outstanding" | "payments" | "expenses" | "fees">("invoices");
   const [outstandingData, setOutstandingData] = useState<OutstandingOverview | null>(null);
   const [scheduledReminders, setScheduledReminders] = useState<ScheduledReminderItem[]>([]);
   const [outstandingFilter, setOutstandingFilter] = useState<"ALL" | "NO_PAYMENT" | "PARTIAL_PAYMENT" | "FULLY_PAID">("ALL");
@@ -261,8 +262,8 @@ export default function AdminFinancePage() {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const tabParam = urlParams.get("tab");
-      if (tabParam === "outstanding" || tabParam === "payments" || tabParam === "expenses" || tabParam === "invoices") {
-        setActiveTab(tabParam as "invoices" | "outstanding" | "payments" | "expenses");
+      if (tabParam === "outstanding" || tabParam === "payments" || tabParam === "expenses" || tabParam === "invoices" || tabParam === "fees") {
+        setActiveTab(tabParam as "invoices" | "outstanding" | "payments" | "expenses" | "fees");
       }
     }
     fetchFinanceData();
@@ -599,10 +600,11 @@ export default function AdminFinancePage() {
           },
           { id: "payments", label: `Payments & Receipts (${payments.length})` },
           { id: "expenses", label: `Expenses & Procurement (${expenses.length})` },
+          { id: "fees", label: "Fee Structures & Form Fee" },
         ]}
         activeTab={activeTab}
         onChange={(tabId) =>
-          setActiveTab(tabId as "invoices" | "outstanding" | "payments" | "expenses")
+          setActiveTab(tabId as "invoices" | "outstanding" | "payments" | "expenses" | "fees")
         }
       />
 
@@ -1565,6 +1567,11 @@ export default function AdminFinancePage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Fee Structures & Form Fee Configuration Tab */}
+      {activeTab === "fees" && (
+        <FeeConfigurationSection />
       )}
 
       {/* Official Receipt Modal */}
