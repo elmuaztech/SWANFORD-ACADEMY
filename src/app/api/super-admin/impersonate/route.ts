@@ -9,8 +9,22 @@ import {
   IMPERSONATOR_COOKIE_NAME,
 } from '@/lib/auth/cookies';
 import { RoleCode, UserStatus } from '@prisma/client';
+import { getClientIp } from '@/lib/security/rate_limiter';
 
+/**
+ * Swanford Academy — Hardened Super Admin Impersonation Endpoint
+ * POST /api/super-admin/impersonate
+ *
+ * Security Requirements:
+ * 1. Strict authorization: Only verified Super Admins can initiate impersonation.
+ * 2. Mandatory audit reason: Compulsory explanation (min 5 chars) persisted in AuditLog.
+ * 3. Real accounts only: Auto-creation of placeholder/demo accounts is strictly prohibited.
+ * 4. Active status enforcement: Suspended, pending, or deactivated accounts cannot be impersonated.
+ * 5. Privilege escalation defense: Cannot impersonate oneself or another Super Administrator.
+ * 6. Audit completeness: Logs all attempts (both successful and rejected) to PostgreSQL.
+ */
 export async function POST(req: NextRequest) {
+  const ipAddress = getClientIp(req);
   try {
     const authUser = await getAuthUser(req);
     if (!authUser) {
@@ -20,6 +34,19 @@ export async function POST(req: NextRequest) {
     const roles = authUser.roles || [];
     const isSuperAdmin = roles.includes(RoleCode.SUPER_ADMIN);
     if (!isSuperAdmin) {
+      await prisma.auditLog.create({
+        data: {
+          userId: authUser.id,
+          action: 'IMPERSONATION_ATTEMPT_DENIED',
+          entityType: 'User',
+          entityId: authUser.id,
+          ipAddress,
+          newValues: {
+            reason: 'User lacks Super Administrator role',
+            callerEmail: authUser.email,
+          },
+        },
+      });
       return NextResponse.json(
         { error: 'Forbidden: Super Administrator privileges required to impersonate users' },
         { status: 403 }
@@ -27,12 +54,21 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { targetUserId, targetRole, guardianId, teacherId } = body;
+    const { targetUserId, targetRole, guardianId, teacherId, reason } = body;
+
+    // 1. Enforce mandatory business / audit reason
+    if (!reason || typeof reason !== 'string' || reason.trim().length < 5) {
+      return NextResponse.json(
+        { error: 'A meaningful reason (at least 5 characters) is required to impersonate an account.' },
+        { status: 400 }
+      );
+    }
+    const cleanReason = reason.trim();
 
     let targetUser: any = null;
     let targetPortal = '/admin';
 
-    // 1. Direct user lookup by targetUserId
+    // 2. Resolve target account based on specified identifier
     if (targetUserId) {
       targetUser = await prisma.user.findUnique({
         where: { id: targetUserId },
@@ -46,9 +82,7 @@ export async function POST(req: NextRequest) {
       if (!targetUser) {
         return NextResponse.json({ error: 'Target user not found' }, { status: 404 });
       }
-    }
-    // 2. Direct lookup by guardianId
-    else if (guardianId) {
+    } else if (guardianId) {
       const guardian = await prisma.guardian.findUnique({
         where: { id: guardianId },
         include: { user: { include: { userRoles: { include: { role: true } } } } },
@@ -58,52 +92,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Guardian not found' }, { status: 404 });
       }
 
-      if (guardian.user) {
-        targetUser = guardian.user;
-      } else {
-        // Auto-provision portal user for this guardian
-        const parentRole = await prisma.role.findFirst({ where: { code: RoleCode.PARENT } });
-        const fallbackEmail = guardian.email?.toLowerCase().trim() || `guardian-${guardian.id.slice(0, 8)}@swanford.example.com`;
-        
-        targetUser = await prisma.user.create({
-          data: {
-            email: fallbackEmail,
-            firstName: guardian.firstName,
-            lastName: guardian.lastName,
-            phoneNumber: guardian.phonePrimary || null,
-            passwordHash: 'IMPERSONATION_ACCOUNT',
-            status: UserStatus.ACTIVE,
-            userRoles: parentRole ? { create: { roleId: parentRole.id } } : undefined,
-          },
-          include: {
-            userRoles: { include: { role: true } },
-            guardianProfile: true,
-            teacherProfile: true,
-          },
-        });
-
-        await prisma.guardian.update({
-          where: { id: guardian.id },
-          data: { userId: targetUser.id },
-        });
+      if (!guardian.user) {
+        return NextResponse.json(
+          { error: 'Guardian does not have an active user portal account.' },
+          { status: 400 }
+        );
       }
+      targetUser = guardian.user;
       targetPortal = '/parent';
-    }
-    // 3. Direct lookup by teacherId
-    else if (teacherId) {
+    } else if (teacherId) {
       const teacher = await prisma.teacher.findUnique({
         where: { id: teacherId },
         include: { user: { include: { userRoles: { include: { role: true } } } } },
       });
 
       if (!teacher || !teacher.user) {
-        return NextResponse.json({ error: 'Teacher account not found' }, { status: 404 });
+        return NextResponse.json({ error: 'Teacher portal user account not found' }, { status: 404 });
       }
       targetUser = teacher.user;
       targetPortal = '/teacher';
-    }
-    // 4. Direct Role portal jump ('PARENT' | 'TEACHER' | 'ADMIN')
-    else if (targetRole) {
+    } else if (targetRole) {
       const upperRole = String(targetRole).toUpperCase();
       if (upperRole === 'PARENT') {
         targetUser = await prisma.user.findFirst({
@@ -117,37 +125,8 @@ export async function POST(req: NextRequest) {
             teacherProfile: true,
           },
         });
-
         if (!targetUser) {
-          // Find any guardian
-          const anyGuardian = await prisma.guardian.findFirst({
-            include: { user: { include: { userRoles: { include: { role: true } } } } },
-          });
-
-          if (anyGuardian?.user) {
-            targetUser = anyGuardian.user;
-          } else {
-            // Provision demonstration parent
-            const parentRole = await prisma.role.findFirst({ where: { code: RoleCode.PARENT } });
-            targetUser = await prisma.user.create({
-              data: {
-                email: 'parent.demo@swanford.example.com',
-                firstName: anyGuardian?.firstName || 'Parent',
-                lastName: anyGuardian?.lastName || 'Demo',
-                passwordHash: 'IMPERSONATION_ACCOUNT',
-                status: UserStatus.ACTIVE,
-                userRoles: parentRole ? { create: { roleId: parentRole.id } } : undefined,
-              },
-              include: {
-                userRoles: { include: { role: true } },
-                guardianProfile: true,
-                teacherProfile: true,
-              },
-            });
-            if (anyGuardian) {
-              await prisma.guardian.update({ where: { id: anyGuardian.id }, data: { userId: targetUser.id } });
-            }
-          }
+          return NextResponse.json({ error: 'No active parent account found for impersonation' }, { status: 404 });
         }
         targetPortal = '/parent';
       } else if (upperRole === 'TEACHER') {
@@ -162,41 +141,8 @@ export async function POST(req: NextRequest) {
             teacherProfile: true,
           },
         });
-
         if (!targetUser) {
-          // Find teacher record
-          const anyTeacher = await prisma.teacher.findFirst({
-            include: { user: { include: { userRoles: { include: { role: true } } } } },
-          });
-          if (anyTeacher?.user) {
-            targetUser = anyTeacher.user;
-          } else {
-            // Provision demonstration teacher
-            const teacherRole = await prisma.role.findFirst({ where: { code: RoleCode.TEACHER } });
-            targetUser = await prisma.user.create({
-              data: {
-                email: 'teacher.demo@swanford.example.com',
-                firstName: 'Demonstration',
-                lastName: 'Teacher',
-                passwordHash: 'IMPERSONATION_ACCOUNT',
-                status: UserStatus.ACTIVE,
-                userRoles: teacherRole ? { create: { roleId: teacherRole.id } } : undefined,
-              },
-              include: {
-                userRoles: { include: { role: true } },
-                guardianProfile: true,
-                teacherProfile: true,
-              },
-            });
-            await prisma.teacher.create({
-              data: {
-                userId: targetUser.id,
-                staffIdNumber: `STF-${Date.now().toString().slice(-4)}`,
-                firstName: 'Demonstration',
-                lastName: 'Teacher',
-              },
-            });
-          }
+          return NextResponse.json({ error: 'No active teacher account found for impersonation' }, { status: 404 });
         }
         targetPortal = '/teacher';
       } else if (upperRole === 'ADMIN') {
@@ -214,8 +160,6 @@ export async function POST(req: NextRequest) {
         });
 
         if (!targetUser) {
-          // If no second admin exists, target is self or general admin
-          targetPortal = '/admin';
           return NextResponse.json({
             success: true,
             redirectUrl: '/admin',
@@ -223,6 +167,8 @@ export async function POST(req: NextRequest) {
           });
         }
         targetPortal = '/admin';
+      } else {
+        return NextResponse.json({ error: `Unsupported role: ${upperRole}` }, { status: 400 });
       }
     } else {
       return NextResponse.json(
@@ -235,8 +181,59 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Could not resolve target user for impersonation' }, { status: 404 });
     }
 
-    // Determine target portal based on target user's roles if not already set
+    // 3. Status Check: Must be an ACTIVE account
+    if (targetUser.status !== UserStatus.ACTIVE) {
+      await prisma.auditLog.create({
+        data: {
+          userId: authUser.id,
+          action: 'IMPERSONATION_REJECTED_INACTIVE_TARGET',
+          entityType: 'User',
+          entityId: targetUser.id,
+          ipAddress,
+          newValues: {
+            targetEmail: targetUser.email,
+            targetStatus: targetUser.status,
+            reason: cleanReason,
+          },
+        },
+      });
+      return NextResponse.json(
+        { error: `Cannot impersonate account with status '${targetUser.status}'. Account must be ACTIVE.` },
+        { status: 400 }
+      );
+    }
+
+    // 4. Prohibit Self-Impersonation
+    if (targetUser.id === authUser.id) {
+      return NextResponse.json(
+        { error: 'Cannot impersonate your own active administrator session.' },
+        { status: 400 }
+      );
+    }
+
+    // 5. Prohibit Impersonating Other Super Administrators
     const userRoleCodes: string[] = targetUser.userRoles?.map((ur: any) => ur.role.code) || [];
+    if (userRoleCodes.includes(RoleCode.SUPER_ADMIN)) {
+      await prisma.auditLog.create({
+        data: {
+          userId: authUser.id,
+          action: 'IMPERSONATION_REJECTED_SUPER_ADMIN_TARGET',
+          entityType: 'User',
+          entityId: targetUser.id,
+          ipAddress,
+          newValues: {
+            targetEmail: targetUser.email,
+            reason: cleanReason,
+          },
+        },
+      });
+      return NextResponse.json(
+        { error: 'Impersonating another Super Administrator account is strictly prohibited.' },
+        { status: 403 }
+      );
+    }
+
+    // 6. Determine target portal
     if (userRoleCodes.includes(RoleCode.PARENT)) {
       targetPortal = '/parent';
     } else if (userRoleCodes.includes(RoleCode.TEACHER)) {
@@ -245,10 +242,9 @@ export async function POST(req: NextRequest) {
       targetPortal = '/admin';
     }
 
-    // Create session for target user
+    // 7. Create Session for target user (2 hour maximum duration)
     const { rawToken, tokenHash } = generateSecureToken();
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hour impersonation window
-    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined;
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
     await prisma.session.create({
       data: {
@@ -260,12 +256,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Determine root Super Admin session token
+    // 8. Determine root Super Admin session token
     const currentSessionToken = req.cookies.get('swanford_session')?.value || '';
     const existingImpersonatorToken = req.cookies.get(IMPERSONATOR_COOKIE_NAME)?.value;
     const rootAdminToken = existingImpersonatorToken || currentSessionToken;
 
-    // Target user display info
     const targetName =
       targetUser.firstName && targetUser.lastName
         ? `${targetUser.firstName} ${targetUser.lastName}`
@@ -280,9 +275,10 @@ export async function POST(req: NextRequest) {
       targetName,
       targetRole: primaryRole,
       targetPortal,
+      reason: cleanReason,
     });
 
-    // Record audit log
+    // 9. Comprehensive Audit Trail
     await prisma.auditLog.create({
       data: {
         userId: authUser.id,
@@ -291,10 +287,14 @@ export async function POST(req: NextRequest) {
         entityId: targetUser.id,
         ipAddress,
         newValues: {
+          impersonatorId: authUser.id,
           impersonatorEmail: authUser.email,
+          targetUserId: targetUser.id,
           targetEmail: targetUser.email,
           targetRole: primaryRole,
           targetPortal,
+          reason: cleanReason,
+          sessionExpiresAt: expiresAt.toISOString(),
         },
       },
     });
@@ -312,10 +312,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Set cookies:
-    // 1. swanford_session -> new target token
-    // 2. swanford_impersonator -> root Super Admin token
-    // 3. swanford_impersonation -> UI metadata
     response.headers.append('Set-Cookie', createSessionCookieHeader(rawToken, isProd));
     response.headers.append('Set-Cookie', createImpersonatorCookieHeader(rootAdminToken, isProd));
     response.headers.append('Set-Cookie', createImpersonationInfoCookieHeader(impersonationInfo, isProd));

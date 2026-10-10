@@ -134,18 +134,6 @@ function AdmissionContent() {
     loadAdmissionOptions();
   }, []);
 
-  // Check URL parameters or session storage for payment reference
-  useEffect(() => {
-    const urlRef = searchParams.get('payment_reference') || searchParams.get('reference');
-    const storedRef = typeof window !== 'undefined' ? sessionStorage.getItem('swanford_admission_verified_ref') : null;
-
-    const refToVerify = urlRef || storedRef;
-
-    if (refToVerify && !isPaymentVerified) {
-      verifyPaymentRef(refToVerify);
-    }
-  }, [searchParams, isPaymentVerified]);
-
   const verifyPaymentRef = async (ref: string) => {
     setVerifyingPayment(true);
     setPaymentGateError(null);
@@ -189,6 +177,18 @@ function AdmissionContent() {
       setVerifyingPayment(false);
     }
   };
+
+  // Check URL parameters or session storage for payment reference
+  useEffect(() => {
+    const urlRef = searchParams.get('payment_reference') || searchParams.get('reference');
+    const storedRef = typeof window !== 'undefined' ? sessionStorage.getItem('swanford_admission_verified_ref') : null;
+
+    const refToVerify = urlRef || storedRef;
+
+    if (refToVerify && !isPaymentVerified) {
+      verifyPaymentRef(refToVerify);
+    }
+  }, [searchParams, isPaymentVerified]);
 
   const handleInitiateFormFeePayment = async (e: React.FormEvent) => {
     e.preventDefault();

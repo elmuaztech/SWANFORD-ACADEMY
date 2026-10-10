@@ -1134,7 +1134,7 @@ export default function AdminAttendancePage() {
                 <div className="hidden print:block pt-12 pb-6 px-4 mt-6 border-t-2 border-stone-800 text-xs">
                   <div className="grid grid-cols-3 gap-6">
                     <div>
-                      <p className="font-bold text-stone-800 mb-8">Class Teacher's Signature:</p>
+                      <p className="font-bold text-stone-800 mb-8">Class Teacher&apos;s Signature:</p>
                       <div className="border-b border-stone-400 w-44" />
                       <p className="text-[10px] text-stone-500 mt-1">Date: ________________________</p>
                     </div>

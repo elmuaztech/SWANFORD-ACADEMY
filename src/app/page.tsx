@@ -71,6 +71,17 @@ export default async function HomePage() {
               {/* Foreground Centered Content */}
               <div className="relative z-10 space-y-4 sm:space-y-5">
                 
+                {/* Complete Sacred Basmalah in Classical Arabic Calligraphy */}
+                <div className="flex items-center justify-center mx-auto" dir="rtl" lang="ar">
+                  <p 
+                    className="font-arabic text-2xl min-[360px]:text-[26px] min-[390px]:text-3xl sm:text-4xl md:text-[40px] text-[#F5D061] font-normal leading-normal sm:leading-relaxed tracking-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] select-none antialiased py-0.5"
+                    title="بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
+                    aria-label="بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
+                  >
+                    بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                  </p>
+                </div>
+
                 {/* Single Centered "WELCOME TO" Pill: Cream Background with Maroon Text */}
                 <div className="inline-flex items-center justify-center px-5 sm:px-6 py-1.5 sm:py-2 rounded-full bg-[#F5EBDC] border border-[#DFCBB5] text-[#5B0612] text-xs sm:text-sm font-extrabold tracking-widest font-heading shadow-sm mx-auto animate-welcome-pulse">
                   <span>WELCOME TO</span>

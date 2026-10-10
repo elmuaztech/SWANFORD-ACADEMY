@@ -8,6 +8,7 @@ import { AuthorizationError } from '@/lib/auth/authorization';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate_limiter';
 import { toUserFacingError } from '@/lib/ui/error_messages';
 import { prisma } from '@/lib/prisma';
+import { ApplicationPaymentStatus, GatewayTransactionStatus } from '@prisma/client';
 
 /**
  * Swanford Academy — Public Admission Application Endpoint
@@ -57,31 +58,81 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Parent / Guardian Occupation is compulsory.' }, { status: 400 });
       }
     }
-
     const draft = await createDraftApplication(validated);
 
     // If pre-verified payment reference is provided, link payment and mark confirmed
     if (body.paymentReference && typeof body.paymentReference === 'string') {
       const cleanRef = body.paymentReference.trim();
-      const tx = await prisma.paymentTransaction.findUnique({
-        where: { gatewayReference: cleanRef },
-      });
 
-      if (tx && tx.status === 'SUCCESS') {
-        await prisma.application.update({
-          where: { id: draft.id },
+      await prisma.$transaction(async (tx) => {
+        const pTx = await tx.paymentTransaction.findUnique({
+          where: { gatewayReference: cleanRef },
+        });
+
+        if (!pTx) {
+          throw new AuthorizationError('Payment reference not found.', 404, 'PAYMENT_NOT_FOUND');
+        }
+
+        if (pTx.status !== GatewayTransactionStatus.SUCCESS) {
+          throw new AuthorizationError('Payment reference has not been verified and confirmed by the payment gateway.', 400, 'PAYMENT_NOT_CONFIRMED');
+        }
+
+        if (pTx.currency !== 'NGN') {
+          throw new AuthorizationError('Invalid payment currency. Expected NGN.', 400, 'CURRENCY_MISMATCH');
+        }
+
+        if (pTx.invoiceId !== null) {
+          throw new AuthorizationError('Invalid payment target: reference belongs to a school fee invoice.', 400, 'INVALID_PAYMENT_TARGET');
+        }
+
+        if (pTx.applicationId !== null) {
+          throw new AuthorizationError('This payment reference has already been claimed by another admission application.', 400, 'PAYMENT_REFERENCE_REPLAY');
+        }
+
+        if (pTx.amountKobo < draft.totalAmountKobo) {
+          throw new AuthorizationError(
+            `Payment amount (₦${(Number(pTx.amountKobo) / 100).toLocaleString()}) is less than the required application fee (₦${(Number(draft.totalAmountKobo) / 100).toLocaleString()}).`,
+            400,
+            'AMOUNT_MISMATCH'
+          );
+        }
+
+        // Atomically claim the payment transaction for this draft (prevents concurrent claim races)
+        const claimUpdate = await tx.paymentTransaction.updateMany({
+          where: {
+            id: pTx.id,
+            applicationId: null,
+          },
           data: {
-            paymentStatus: 'PAYMENT_CONFIRMED',
-            paymentReference: cleanRef,
-            amountPaidKobo: draft.totalAmountKobo,
+            applicationId: draft.id,
           },
         });
 
-        await prisma.paymentTransaction.update({
-          where: { id: tx.id },
-          data: { applicationId: draft.id },
+        if (claimUpdate.count === 0) {
+          throw new AuthorizationError('Payment reference was claimed concurrently.', 409, 'PAYMENT_REFERENCE_REPLAY');
+        }
+
+        await tx.application.update({
+          where: { id: draft.id },
+          data: {
+            paymentStatus: ApplicationPaymentStatus.PAYMENT_CONFIRMED,
+            paymentReference: cleanRef,
+            amountPaidKobo: pTx.amountKobo,
+          },
         });
-      }
+
+        await tx.auditLog.create({
+          data: {
+            action: 'APPLICATION_PAYMENT_CLAIMED',
+            entityType: 'Application',
+            entityId: draft.id,
+            newValues: {
+              reference: cleanRef,
+              amountKobo: pTx.amountKobo.toString(),
+            },
+          },
+        });
+      });
     }
 
     const application = await submitApplication(draft.id);

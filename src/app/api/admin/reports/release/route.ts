@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    let { academicSessionId, academicTermId, schoolClassId, studentId, notes } = body;
+    const { schoolClassId, studentId, notes } = body;
+    let { academicSessionId, academicTermId } = body;
 
     // Automatically resolve current term & session if not explicitly provided
     if (!academicSessionId || !academicTermId) {

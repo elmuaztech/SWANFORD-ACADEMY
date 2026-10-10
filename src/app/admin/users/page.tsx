@@ -98,13 +98,13 @@ export default function AdminUsersPage() {
       const res = await fetch("/api/super-admin/impersonate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetUserId: user.id }),
+        body: JSON.stringify({ targetUserId: user.id, reason: "Administrative troubleshooting from User Management" }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to impersonate account");
       }
-      window.location.href = data.redirectUrl || "/admin";
+      window.location.assign(data.redirectUrl || "/admin");
     } catch (err: any) {
       setError(err?.message || "Failed to impersonate user.");
       setImpersonatingId(null);

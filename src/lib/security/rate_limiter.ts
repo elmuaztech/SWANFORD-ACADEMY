@@ -76,17 +76,44 @@ export function checkRateLimit(
   };
 }
 
+const IPV4_REGEX = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+const IPV6_REGEX = /^(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}$|^::1$|^[a-fA-F0-9:]+$/;
+
+function isValidIp(ip: string): boolean {
+  const clean = ip.trim();
+  return IPV4_REGEX.test(clean) || IPV6_REGEX.test(clean);
+}
+
 /**
- * Extracts client IP or fallback identifier from NextRequest headers.
+ * Extracts client IP with proxy-trust hierarchy.
+ * In production behind Nginx reverse proxy, X-Real-IP is set directly from the TCP $remote_addr
+ * and cannot be spoofed by incoming client headers.
  */
 export function getClientIp(req: Request): string {
+  // 1. Authoritative proxy socket IP (set by Nginx)
+  const xRealIp = req.headers.get('x-real-ip');
+  if (xRealIp && isValidIp(xRealIp)) {
+    return xRealIp.trim();
+  }
+
+  // 2. CF-Connecting-IP (if behind Cloudflare)
+  const cfConnectingIp = req.headers.get('cf-connecting-ip');
+  if (cfConnectingIp && isValidIp(cfConnectingIp)) {
+    return cfConnectingIp.trim();
+  }
+
+  // 3. Fallback: Parse X-Forwarded-For taking the last valid proxy entry rather than spoofable first
   const xForwardedFor = req.headers.get('x-forwarded-for');
   if (xForwardedFor) {
-    const ips = xForwardedFor.split(',');
-    return ips[0].trim();
+    const ips = xForwardedFor.split(',').map((s) => s.trim()).filter(Boolean);
+    // Scan backwards from closest proxy
+    for (let i = ips.length - 1; i >= 0; i--) {
+      if (isValidIp(ips[i])) {
+        return ips[i];
+      }
+    }
   }
-  const xRealIp = req.headers.get('x-real-ip');
-  if (xRealIp) return xRealIp.trim();
+
   return '127.0.0.1';
 }
 

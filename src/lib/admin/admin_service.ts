@@ -2357,7 +2357,7 @@ export async function updateAdminTeacher(
   }
 
   // Validate staffIdNumber if changed
-  let staffId = input.staffIdNumber?.trim();
+  const staffId = input.staffIdNumber?.trim();
   if (staffId && staffId !== teacher.staffIdNumber) {
     const staffConflict = await prisma.teacher.findUnique({
       where: { staffIdNumber: staffId },

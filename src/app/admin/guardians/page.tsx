@@ -81,13 +81,13 @@ export default function AdminGuardiansPage() {
       const res = await fetch("/api/super-admin/impersonate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guardianId }),
+        body: JSON.stringify({ guardianId, reason: "Administrative verification from Guardian Directory" }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to impersonate parent account");
       }
-      window.location.href = data.redirectUrl || "/parent";
+      window.location.assign(data.redirectUrl || "/parent");
     } catch (err: any) {
       setError(err?.message || "Failed to impersonate parent.");
       setImpersonatingId(null);

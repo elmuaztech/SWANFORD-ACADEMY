@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { Avatar } from "@/components/ui/avatar";
 import { Alert } from "@/components";
+import { sanitizeDocumentHtml } from "@/lib/security/html_sanitizer";
 
 interface TeacherDetail {
   id: string;
@@ -1293,7 +1294,7 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex-1 overflow-y-auto p-4 bg-stone-100">
               <div
                 className="bg-white p-6 shadow-sm mx-auto max-w-3xl"
-                dangerouslySetInnerHTML={{ __html: previewDocHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizeDocumentHtml(previewDocHtml) }}
               />
             </div>
           </div>

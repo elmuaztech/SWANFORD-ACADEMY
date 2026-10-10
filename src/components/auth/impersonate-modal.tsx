@@ -32,15 +32,6 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      setError(null);
-      setSelectedUser(null);
-      setSearchQuery("");
-      fetchUserList();
-    }
-  }, [isOpen]);
-
   const fetchUserList = async () => {
     try {
       setLoadingUsers(true);
@@ -57,15 +48,30 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
     }
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setSelectedUser(null);
+      setSearchQuery("");
+      fetchUserList();
+    }
+  }, [isOpen]);
+
+  const [reason, setReason] = useState("Administrative troubleshooting and support verification");
+
   const handleDirectRoleImpersonate = async (role: "PARENT" | "TEACHER" | "ADMIN") => {
     try {
+      if (!reason.trim() || reason.trim().length < 5) {
+        setError("Please provide a valid reason (at least 5 characters) for audit logging.");
+        return;
+      }
       setLoadingDirect(role);
       setError(null);
 
       const res = await fetch("/api/super-admin/impersonate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetRole: role }),
+        body: JSON.stringify({ targetRole: role, reason: reason.trim() }),
       });
 
       const data = await res.json();
@@ -74,7 +80,7 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
       }
 
       // Hard redirect to clear router cache and load target portal immediately
-      window.location.href = data.redirectUrl || (role === "PARENT" ? "/parent" : role === "TEACHER" ? "/teacher" : "/admin");
+      window.location.assign(data.redirectUrl || (role === "PARENT" ? "/parent" : role === "TEACHER" ? "/teacher" : "/admin"));
     } catch (err: any) {
       setError(err?.message || "Failed to switch account.");
       setLoadingDirect(null);
@@ -83,13 +89,17 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
 
   const handleUserImpersonate = async (user: UserOption) => {
     try {
+      if (!reason.trim() || reason.trim().length < 5) {
+        setError("Please provide a valid reason (at least 5 characters) for audit logging.");
+        return;
+      }
       setLoadingDirect(user.id);
       setError(null);
 
       const res = await fetch("/api/super-admin/impersonate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetUserId: user.id }),
+        body: JSON.stringify({ targetUserId: user.id, reason: reason.trim() }),
       });
 
       const data = await res.json();
@@ -97,7 +107,7 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
         throw new Error(data.error || "Failed to impersonate user");
       }
 
-      window.location.href = data.redirectUrl || "/admin";
+      window.location.assign(data.redirectUrl || "/admin");
     } catch (err: any) {
       setError(err?.message || "Failed to switch account.");
       setLoadingDirect(null);
@@ -129,6 +139,22 @@ export function ImpersonateModal({ isOpen, onClose }: ImpersonateModalProps) {
             {error}
           </Alert>
         )}
+
+        {/* Mandatory Audit Reason */}
+        <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-xl p-3.5 space-y-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-[#800020]">
+            Audit Reason <span className="text-red-500">*</span>
+          </label>
+          <Input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Diagnosing parent report card issue, testing teacher gradebook"
+            className="text-xs bg-white border-[#EADBDA]"
+          />
+          <p className="text-[11px] text-stone-500">
+            Mandatory for administrative audit log: Provide the business or support justification.
+          </p>
+        </div>
 
         {/* Section 1: Direct Portal Jump */}
         <div>

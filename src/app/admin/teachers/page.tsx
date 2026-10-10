@@ -217,13 +217,13 @@ export default function AdminTeachersPage() {
       const res = await fetch("/api/super-admin/impersonate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teacherId }),
+        body: JSON.stringify({ teacherId, reason: "Administrative verification from Teacher Directory" }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to impersonate teacher account");
       }
-      window.location.href = data.redirectUrl || "/teacher";
+      window.location.assign(data.redirectUrl || "/teacher");
     } catch (err: any) {
       setError(err?.message || "Failed to impersonate teacher.");
       setImpersonatingId(null);

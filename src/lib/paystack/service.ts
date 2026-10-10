@@ -712,6 +712,44 @@ export async function processVerifiedTransaction(
       };
     }
 
+    // -------------------------------------------------------------------------
+    // CASE C: PRE-APPLICATION FORM FEE PAYMENT (Not yet attached to draft)
+    // -------------------------------------------------------------------------
+    if (!existingTx.applicationId && !existingTx.invoiceId) {
+      await tx.paymentTransaction.update({
+        where: { id: existingTx.id },
+        data: {
+          status: GatewayTransactionStatus.SUCCESS,
+          gatewayTransactionId: String(gatewayData.id),
+          amountKobo: gatewayAmountKobo,
+          gatewayFeeKobo,
+          netAmountKobo,
+          paidAt: gatewayData.paid_at ? new Date(gatewayData.paid_at) : new Date(),
+          channel: gatewayData.channel || null,
+          customerEmail: gatewayData.customer?.email || null,
+          authorizationCode: gatewayData.authorization?.authorization_code || null,
+          ipAddress: gatewayData.ip_address || null,
+          gatewayResponseJson: gatewayData as unknown as Prisma.InputJsonValue,
+          settlementStatus: SettlementStatus.PENDING,
+          reconciliationStatus: ReconciliationStatus.UNRECONCILED,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "PRE_APPLICATION_PAYSTACK_PAYMENT_CONFIRMED",
+          entityType: "PaymentTransaction",
+          entityId: existingTx.id,
+          newValues: {
+            reference,
+            amountKobo: gatewayAmountKobo.toString(),
+            status: GatewayTransactionStatus.SUCCESS,
+            customerEmail: gatewayData.customer?.email || null,
+          },
+        },
+      });
+    }
+
     return { schoolPaymentId, receiptNumber, notificationPayload };
   };
 
@@ -803,7 +841,7 @@ export async function processVerifiedTransaction(
     success: true,
     status: GatewayTransactionStatus.SUCCESS,
     reference,
-    targetType: existingTx.applicationId ? PaymentTargetType.APPLICATION_FEE : PaymentTargetType.INVOICE,
+    targetType: existingTx.invoiceId ? PaymentTargetType.INVOICE : PaymentTargetType.APPLICATION_FEE,
     targetId: existingTx.applicationId || existingTx.invoiceId || "",
     amountKobo: gatewayAmountKobo,
     schoolPaymentId,

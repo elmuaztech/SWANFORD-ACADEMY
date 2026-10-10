@@ -253,13 +253,14 @@ export async function getAuthorizedMedia(
  * no Student, User, or Application still references it.
  */
 export async function cleanupOrphanedMediaAsset(assetId: string): Promise<boolean> {
-  const [studentRefs, userRefs, appRefs] = await Promise.all([
+  const [studentRefs, userRefs, appRefs, galleryRefs] = await Promise.all([
     prisma.student.count({ where: { profilePhotoId: assetId } }),
     prisma.user.count({ where: { profilePhotoId: assetId } }),
     prisma.application.count({ where: { profilePhotoId: assetId } }),
+    prisma.galleryItem.count({ where: { mediaAssetId: assetId } }),
   ]);
 
-  const totalRefs = studentRefs + userRefs + appRefs;
+  const totalRefs = studentRefs + userRefs + appRefs + galleryRefs;
   if (totalRefs > 0) {
     // Media is still actively referenced by other entities — preserve it!
     return false;
@@ -280,6 +281,28 @@ export async function cleanupOrphanedMediaAsset(assetId: string): Promise<boolea
   });
 
   return true;
+}
+
+/**
+ * Bulk cleanup utility for unclaimed / abandoned media uploads older than specified threshold.
+ * Runs safely against orphaned media files without touching active references.
+ */
+export async function cleanupAbandonedMediaUploads(olderThanHours = 24): Promise<{ inspected: number; deleted: number }> {
+  const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+  const potentialOrphans = await prisma.mediaAsset.findMany({
+    where: {
+      createdAt: { lt: cutoff },
+    },
+    select: { id: true },
+  });
+
+  let deletedCount = 0;
+  for (const item of potentialOrphans) {
+    const wasDeleted = await cleanupOrphanedMediaAsset(item.id);
+    if (wasDeleted) deletedCount++;
+  }
+
+  return { inspected: potentialOrphans.length, deleted: deletedCount };
 }
 
 /**

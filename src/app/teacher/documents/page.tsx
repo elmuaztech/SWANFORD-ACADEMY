@@ -12,6 +12,7 @@ import {
   PageHeader,
   Modal,
 } from "@/components";
+import { sanitizeDocumentHtml } from "@/lib/security/html_sanitizer";
 
 interface IssuedDocument {
   id: string;
@@ -183,7 +184,7 @@ export default function TeacherDocumentsPage() {
 
             <div
               className="p-6 bg-white border border-stone-200 rounded-lg max-h-[70vh] overflow-y-auto print:max-h-none print:border-none print:p-0"
-              dangerouslySetInnerHTML={{ __html: viewingDoc.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeDocumentHtml(viewingDoc.content) }}
             />
           </div>
         </Modal>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/request_auth';
 import { uploadAndStoreProfilePhoto } from '@/lib/media/media_service';
 import { ImageValidationError, isImageValidationError } from '@/lib/media/image_processor';
+import { checkRateLimit, getClientIp } from '@/lib/security/rate_limiter';
 
 /**
  * Swanford Academy — Shared Media Upload Endpoint
@@ -12,6 +13,19 @@ import { ImageValidationError, isImageValidationError } from '@/lib/media/image_
  */
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rateLimit = checkRateLimit(`media_upload:${ip}`, {
+      windowMs: 60_000,
+      maxRequests: 15,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many upload attempts. Please wait a moment before trying again.' },
+        { status: 429 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
