@@ -356,12 +356,12 @@ describe('Admin Portal Shell, Scopes & Notification Read Isolation Gate', () => 
       const suRes = await getSuperAdminAudit(suReq);
       expect(suRes.status).toBe(200);
 
-      // Admin: Allowed (Admin has AUDIT_LOG_VIEW permission)
+      // Admin: Denied (Audit logs strictly reserved for Super Admin)
       const aReq = new NextRequest('http://localhost/api/super-admin/audit', {
         headers: { cookie: `swanford_session=${adminTokenA}` },
       });
       const aRes = await getSuperAdminAudit(aReq);
-      expect(aRes.status).toBe(200);
+      expect(aRes.status).toBe(403);
 
       // Accountant: Denied (403)
       const accReq = new NextRequest('http://localhost/api/super-admin/audit', {
@@ -371,7 +371,7 @@ describe('Admin Portal Shell, Scopes & Notification Read Isolation Gate', () => 
       expect(accRes.status).toBe(403);
     });
 
-    it('Finance Summary: SUPER_ADMIN, ADMIN, and ACCOUNTANT all have access (200)', async () => {
+    it('Finance Summary: SUPER_ADMIN and ACCOUNTANT have access (200), ordinary ADMIN is DENIED (403)', async () => {
       const suReq = new NextRequest('http://localhost/api/admin/finance/summary', {
         headers: { cookie: `swanford_session=${superAdminToken}` },
       });
@@ -382,7 +382,7 @@ describe('Admin Portal Shell, Scopes & Notification Read Isolation Gate', () => 
         headers: { cookie: `swanford_session=${adminTokenA}` },
       });
       const aRes = await getFinanceSummary(aReq);
-      expect(aRes.status).toBe(200);
+      expect(aRes.status).toBe(403);
 
       const accReq = new NextRequest('http://localhost/api/admin/finance/summary', {
         headers: { cookie: `swanford_session=${accountantToken}` },

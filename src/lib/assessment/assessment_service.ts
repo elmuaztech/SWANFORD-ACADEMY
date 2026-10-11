@@ -22,7 +22,7 @@ export interface CreateAssessmentInput {
   subjectId?: string | null;
   academicSessionId?: string;
   academicTermId?: string;
-  gradingScaleId: string;
+  gradingScaleId?: string;
   maxScore: number;
   weightPercentage?: number;
   structureConfigId?: string | null;
@@ -56,7 +56,8 @@ export async function createAssessment(
   input: CreateAssessmentInput
 ) {
   const actorUserId = typeof actor === 'string' ? actor : actor.id;
-  await requirePermission(actorUserId, PermissionCode.ASSESSMENT_ENTER);
+  // Assessment creation is an administrative function (ADMIN & SUPER_ADMIN only)
+  await requirePermission(actorUserId, PermissionCode.SUBJECT_MANAGE);
 
   if (!input.title || input.title.trim().length === 0) {
     throw new AuthorizationError('Assessment title is required.', 400, 'TITLE_REQUIRED');
@@ -109,16 +110,28 @@ export async function createAssessment(
     );
   }
 
-  // Assert TeacherScope
-  await assertTeacherScope(actorUserId, {
-    programmeId: input.programmeId,
-    schoolClassId: input.schoolClassId,
-    subjectId: input.subjectId || undefined,
-    academicSessionId: sessionId,
-  });
-
-  // Verify grading scale exists
-  await getGradingScale(input.gradingScaleId);
+  // Verify or resolve grading scale
+  let gradingScaleId = input.gradingScaleId;
+  if (!gradingScaleId) {
+    const defaultScale =
+      (await prisma.gradingScale.findFirst({
+        where: { programmeId: input.programmeId, isActive: true },
+        select: { id: true },
+      })) ||
+      (await prisma.gradingScale.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      })) ||
+      (await prisma.gradingScale.findFirst({
+        select: { id: true },
+      }));
+    if (!defaultScale) {
+      throw new AuthorizationError('No grading scale found in system.', 400, 'NO_GRADING_SCALE');
+    }
+    gradingScaleId = defaultScale.id;
+  } else {
+    await getGradingScale(gradingScaleId);
+  }
 
   // Create assessment inside transaction with audit
   const assessment = await prisma.$transaction(async (tx) => {
@@ -131,7 +144,7 @@ export async function createAssessment(
         subjectId: input.subjectId || null,
         academicSessionId: sessionId,
         academicTermId: termId,
-        gradingScaleId: input.gradingScaleId,
+        gradingScaleId,
         maxScore: new Prisma.Decimal(input.maxScore),
         weightPercentage: new Prisma.Decimal(weight),
         status: AssessmentStatus.DRAFT,

@@ -346,7 +346,7 @@ describe('Stage 11 — Integration: Teacher Scope, Attendance & Assessment Lifec
         maxScore: 100,
         weightPercentage: 20,
       })
-    ).rejects.toThrow(/outside teacher assigned scope/);
+    ).rejects.toThrow(/subjects:manage|outside teacher assigned scope/);
   });
 
   it('rejects Teacher A creating assessment in another session outside their active scope (403 Forbidden)', async () => {
@@ -362,7 +362,7 @@ describe('Stage 11 — Integration: Teacher Scope, Attendance & Assessment Lifec
         maxScore: 100,
         weightPercentage: 20,
       })
-    ).rejects.toThrow(/Academic term does not belong to the requested academic session|outside teacher assigned scope/);
+    ).rejects.toThrow(/subjects:manage|Academic term does not belong to the requested academic session|outside teacher assigned scope/);
   });
 
   it('rejects Teacher B creating assessment for unauthorized subject (403 Forbidden)', async () => {
@@ -379,7 +379,7 @@ describe('Stage 11 — Integration: Teacher Scope, Attendance & Assessment Lifec
         maxScore: 100,
         weightPercentage: 20,
       })
-    ).rejects.toThrow(/outside teacher assigned scope/);
+    ).rejects.toThrow(/subjects:manage|outside teacher assigned scope/);
   });
 
   // 2. Attendance Validation & Idempotency
@@ -468,8 +468,8 @@ describe('Stage 11 — Integration: Teacher Scope, Attendance & Assessment Lifec
 
   // 3. Assessment Lifecycle & Immutability
   it('enforces complete assessment lifecycle: DRAFT -> SUBMITTED -> FINALIZED -> REOPEN', async () => {
-    // A. Teacher creates DRAFT assessment
-    const assessment = await createAssessment(teacherAUser, {
+    // A. Administrator schedules DRAFT assessment for teacher's class
+    const assessment = await createAssessment(adminUser, {
       title: 'Math Continuous Assessment 1',
       type: AssessmentType.CONTINUOUS_ASSESSMENT,
       programmeId: primaryProgrammeId,

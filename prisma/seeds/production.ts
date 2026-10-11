@@ -68,10 +68,12 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
     const roleId = rolesMap.get(roleCode);
     if (!roleId) continue;
 
+    const validPermIds: string[] = [];
     for (const permCode of permCodes) {
       const permId = permMap.get(permCode);
       if (!permId) continue;
 
+      validPermIds.push(permId);
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: {
@@ -86,6 +88,14 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
         },
       });
     }
+
+    // Prune stale role permissions for system roles to maintain strict least privilege
+    await prisma.rolePermission.deleteMany({
+      where: {
+        roleId,
+        permissionId: { notIn: validPermIds },
+      },
+    });
   }
 
   // 3. Programmes (Including Tahfeez as a standalone programme)
@@ -363,20 +373,9 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
     },
   });
 
-  // 8. Wipe All Old/Mock Users and Accounts to Ensure Clean Slate
-  console.log("-> Purging any existing user accounts for clean production state...");
-  await prisma.guardianStudentRelationship.deleteMany().catch(() => {});
-  await prisma.guardian.deleteMany().catch(() => {});
-  await prisma.teacherScope.deleteMany().catch(() => {});
-  await prisma.teacherAssignmentHistory.deleteMany().catch(() => {});
-  await prisma.staffDocument.deleteMany().catch(() => {});
-  await prisma.staffProbationRecord.deleteMany().catch(() => {});
-  await prisma.teacher.deleteMany().catch(() => {});
-  await prisma.userRole.deleteMany().catch(() => {});
-  await prisma.session.deleteMany().catch(() => {});
-  await prisma.passwordReset.deleteMany().catch(() => {});
-  await prisma.emailVerification.deleteMany().catch(() => {});
-  await prisma.user.deleteMany().catch(() => {});
+  // 8. Ensure Production Identity Non-Destructive Invariant
+  // Production seeds must NEVER purge existing user accounts, roles, profiles, or relationships.
+  console.log("-> Ensuring production foundation without altering existing user accounts...");
 
   // 9. Create Exactly ONE Super Admin Account (swanford99@gmail.com / admin123)
   // Bcrypt hash with 12 rounds for 'admin123'

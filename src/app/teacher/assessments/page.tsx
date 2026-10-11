@@ -81,18 +81,11 @@ export default function TeacherAssessmentsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Academic Assessments"
-        subtitle="Create continuous assessments, enter marks, and submit for administrative finalization."
+        subtitle="View scheduled continuous assessments and exams, enter marks for your assigned classes, and submit for administrative review."
         breadcrumbs={[
           { label: "Teacher Portal", href: "/teacher" },
           { label: "Assessments" },
         ]}
-        primaryAction={
-          <Link href="/teacher/assessments/new">
-            <Button variant="primary" className="bg-[#800020] hover:bg-[#6b001a] text-white">
-              + Create Assessment
-            </Button>
-          </Link>
-        }
       />
 
       {/* Filter Tabs */}

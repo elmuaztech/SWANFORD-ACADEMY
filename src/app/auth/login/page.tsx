@@ -14,7 +14,8 @@ function LoginFormContent() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const initialError = searchParams.get('error') || null;
+  const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

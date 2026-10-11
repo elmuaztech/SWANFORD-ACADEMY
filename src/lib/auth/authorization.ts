@@ -1,7 +1,7 @@
-import { UserStatus } from '@prisma/client';
+import { UserStatus, RoleCode } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { SafeUser } from '@/lib/auth/service';
-import { PermissionCodeType } from '@/lib/auth/permissions';
+import { PermissionCode, PermissionCodeType, SYSTEM_ROLE_PERMISSIONS } from '@/lib/auth/permissions';
 
 /**
  * Swanford Academy — Authorization Service
@@ -120,9 +120,28 @@ export async function getUserPermissions(
 
   const permissions = new Set<PermissionCodeType>();
 
+  const isSuperAdmin = user.userRoles.some((ur) => ur.role.code === RoleCode.SUPER_ADMIN);
+  if (isSuperAdmin) {
+    for (const perm of Object.values(PermissionCode)) {
+      permissions.add(perm);
+    }
+    return permissions;
+  }
+
   for (const userRole of user.userRoles) {
+    // 1. Add database-persisted permissions
     for (const rp of userRole.role.rolePermissions) {
       permissions.add(rp.permission.code as PermissionCodeType);
+    }
+
+    // 2. Fallback to system canonical permissions for this specific role
+    // Guarantees ordinary ADMIN does not receive SUPER_ADMIN or accountant permissions
+    const roleCode = userRole.role.code as RoleCode;
+    const fallbackPerms = SYSTEM_ROLE_PERMISSIONS[roleCode];
+    if (fallbackPerms) {
+      for (const fp of fallbackPerms) {
+        permissions.add(fp);
+      }
     }
   }
 

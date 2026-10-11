@@ -96,6 +96,29 @@ export default function AdminAssessmentsPage() {
   const [releaseSubmitting, setReleaseSubmitting] = useState(false);
   const [releaseError, setReleaseError] = useState<string | null>(null);
 
+  // Schedule Assessment Modal State (Admin Assessment Creation)
+  const [showCreateAssessmentModal, setShowCreateAssessmentModal] = useState(false);
+  const [createAssessmentLoading, setCreateAssessmentLoading] = useState(false);
+  const [createAssessmentError, setCreateAssessmentError] = useState<string | null>(null);
+  const [subjects, setSubjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [newAssessment, setNewAssessment] = useState<{
+    title: string;
+    type: AssessmentType;
+    programmeId: string;
+    schoolClassId: string;
+    subjectId: string;
+    maxScore: string;
+    weightPercentage: string;
+  }>({
+    title: "",
+    type: AssessmentType.CONTINUOUS_ASSESSMENT,
+    programmeId: "",
+    schoolClassId: "",
+    subjectId: "",
+    maxScore: "100",
+    weightPercentage: "100",
+  });
+
   // Assessment Structure Configs (Super Admin)
   const [configs, setConfigs] = useState<AssessmentConfigItem[]>([]);
   const [configsLoading, setConfigsLoading] = useState(false);
@@ -167,7 +190,8 @@ export default function AdminAssessmentsPage() {
       fetch("/api/super-admin/config").then((r) => r.json()).catch(() => ({})),
       fetch("/api/admin/classes?includeInactive=false").then((r) => r.json()).catch(() => ({})),
       fetch("/api/admin/programmes?includeInactive=false").then((r) => r.json()).catch(() => ({})),
-    ]).then(([configData, classesData, progData]) => {
+      fetch("/api/admin/subjects?includeInactive=false").then((r) => r.json()).catch(() => ({})),
+    ]).then(([configData, classesData, progData, subjectsData]) => {
       if (configData.academicSessions) {
         setSessions(configData.academicSessions);
         const curr = configData.academicSessions.find((s: any) => s.isCurrent);
@@ -180,6 +204,7 @@ export default function AdminAssessmentsPage() {
       }
       if (classesData.items) setClasses(classesData.items);
       if (progData.items) setProgrammes(progData.items);
+      if (subjectsData.items) setSubjects(subjectsData.items);
     });
   };
 
@@ -378,6 +403,56 @@ export default function AdminAssessmentsPage() {
     }
   };
 
+  // Action: Create / Schedule Assessment (Admin Only)
+  const handleCreateAssessmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAssessment.title.trim()) {
+      setCreateAssessmentError("Assessment title is required.");
+      return;
+    }
+    if (!newAssessment.programmeId || !newAssessment.schoolClassId) {
+      setCreateAssessmentError("Programme and class are required.");
+      return;
+    }
+    setCreateAssessmentLoading(true);
+    setCreateAssessmentError(null);
+    try {
+      const res = await fetch("/api/admin/assessments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newAssessment.title.trim(),
+          type: newAssessment.type,
+          programmeId: newAssessment.programmeId,
+          schoolClassId: newAssessment.schoolClassId,
+          subjectId: newAssessment.subjectId || null,
+          academicSessionId: releaseSessionId || undefined,
+          academicTermId: releaseTermId || undefined,
+          maxScore: Number(newAssessment.maxScore) || 100,
+          weightPercentage: Number(newAssessment.weightPercentage) || 100,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create assessment.");
+      setActionSuccess(`Assessment "${newAssessment.title}" created successfully.`);
+      setShowCreateAssessmentModal(false);
+      setNewAssessment({
+        title: "",
+        type: AssessmentType.CONTINUOUS_ASSESSMENT,
+        programmeId: "",
+        schoolClassId: "",
+        subjectId: "",
+        maxScore: "100",
+        weightPercentage: "100",
+      });
+      fetchAssessments();
+    } catch (err: unknown) {
+      setCreateAssessmentError(err instanceof Error ? err.message : "Failed to create assessment.");
+    } finally {
+      setCreateAssessmentLoading(false);
+    }
+  };
+
   const getStatusBadge = (status: AssessmentStatus) => {
     switch (status) {
       case AssessmentStatus.FINALIZED:
@@ -405,6 +480,25 @@ export default function AdminAssessmentsPage() {
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {activeTab === "assessments" && (
+              <Button
+                variant="primary"
+                size="md"
+                className="font-bold bg-[#800020] hover:bg-[#6b001a] text-white"
+                onClick={() => {
+                  setCreateAssessmentError(null);
+                  if (programmes.length > 0 && !newAssessment.programmeId) {
+                    setNewAssessment((prev) => ({ ...prev, programmeId: programmes[0].id }));
+                  }
+                  if (classes.length > 0 && !newAssessment.schoolClassId) {
+                    setNewAssessment((prev) => ({ ...prev, schoolClassId: classes[0].id }));
+                  }
+                  setShowCreateAssessmentModal(true);
+                }}
+              >
+                + Schedule Assessment
+              </Button>
+            )}
             <Button
               variant="outline"
               size="md"
@@ -1187,6 +1281,183 @@ export default function AdminAssessmentsPage() {
               disabled={configSubmitting}
             >
               {configSubmitting ? "Creating..." : "Save Configuration"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Admin Create / Schedule Assessment Modal */}
+      <Modal
+        isOpen={showCreateAssessmentModal}
+        onClose={() => {
+          if (!createAssessmentLoading) setShowCreateAssessmentModal(false);
+        }}
+        title="Schedule New Assessment"
+        size="lg"
+      >
+        <form onSubmit={handleCreateAssessmentSubmit} className="space-y-4">
+          {createAssessmentError && (
+            <Alert variant="danger">
+              {createAssessmentError}
+            </Alert>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-stone-700 mb-1">
+              Assessment Title *
+            </label>
+            <Input
+              value={newAssessment.title}
+              onChange={(e) =>
+                setNewAssessment((prev) => ({ ...prev, title: e.target.value }))
+              }
+              placeholder="e.g. Mid-Term Continuous Assessment 1"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Assessment Type *
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-lg border border-stone-300 bg-white text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 focus:border-[#800020]"
+                value={newAssessment.type}
+                onChange={(e) =>
+                  setNewAssessment((prev) => ({
+                    ...prev,
+                    type: e.target.value as AssessmentType,
+                  }))
+                }
+              >
+                <option value={AssessmentType.CONTINUOUS_ASSESSMENT}>Continuous Assessment</option>
+                <option value={AssessmentType.EXAMINATION}>Examination</option>
+                <option value={AssessmentType.TAHFEEZ_EVALUATION}>Tahfeez Evaluation</option>
+                <option value={AssessmentType.PROJECT}>Project</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Programme *
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-lg border border-stone-300 bg-white text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 focus:border-[#800020]"
+                value={newAssessment.programmeId}
+                onChange={(e) =>
+                  setNewAssessment((prev) => ({ ...prev, programmeId: e.target.value }))
+                }
+                required
+              >
+                <option value="">Select Programme</option>
+                {programmes.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Class *
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-lg border border-stone-300 bg-white text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 focus:border-[#800020]"
+                value={newAssessment.schoolClassId}
+                onChange={(e) =>
+                  setNewAssessment((prev) => ({ ...prev, schoolClassId: e.target.value }))
+                }
+                required
+              >
+                <option value="">Select Class</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Subject (Optional)
+              </label>
+              <select
+                className="w-full h-10 px-3 rounded-lg border border-stone-300 bg-white text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#800020]/20 focus:border-[#800020]"
+                value={newAssessment.subjectId}
+                onChange={(e) =>
+                  setNewAssessment((prev) => ({ ...prev, subjectId: e.target.value }))
+                }
+              >
+                <option value="">All Subjects / Class-wide</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Maximum Score *
+              </label>
+              <Input
+                type="number"
+                min="1"
+                max="1000"
+                value={newAssessment.maxScore}
+                onChange={(e) =>
+                  setNewAssessment((prev) => ({ ...prev, maxScore: e.target.value }))
+                }
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Weight Percentage (%) *
+              </label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={newAssessment.weightPercentage}
+                onChange={(e) =>
+                  setNewAssessment((prev) => ({
+                    ...prev,
+                    weightPercentage: e.target.value,
+                  }))
+                }
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={() => setShowCreateAssessmentModal(false)}
+              disabled={createAssessmentLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              className="font-bold bg-[#800020] hover:bg-[#6b001a] text-white min-w-[170px]"
+              disabled={createAssessmentLoading}
+            >
+              {createAssessmentLoading ? "Creating..." : "Schedule Assessment"}
             </Button>
           </div>
         </form>

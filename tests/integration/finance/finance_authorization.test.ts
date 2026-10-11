@@ -173,14 +173,15 @@ describe('Stage 8 — Integration: Finance Authorization Boundaries & Scopes', (
     expect(summary.totalInvoicedKobo).toBeGreaterThan(BigInt(0));
   });
 
-  it('allows Admin to view invoices and reports, but DENIES modifying ledger (create fee structure, issue invoice, record payment)', async () => {
+  it('allows Admin to view invoices, but DENIES financial reports and modifying ledger', async () => {
     // Admin can view invoice
     const inv = await getInvoiceById(adminUser, invoiceId);
     expect(inv.id).toBe(invoiceId);
 
-    // Admin can view financial report
-    const summary = await getFeeCollectionSummary(adminUser, { academicSessionId });
-    expect(summary).toBeDefined();
+    // Admin CANNOT view financial report (reserved for ACCOUNTANT & SUPER_ADMIN)
+    await expect(
+      getFeeCollectionSummary(adminUser, { academicSessionId })
+    ).rejects.toThrow(/Access denied|Missing required permission/i);
 
     // Admin CANNOT create fee structures
     await expect(

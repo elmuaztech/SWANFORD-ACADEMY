@@ -484,9 +484,11 @@ async function seedProductionFoundation(prisma2) {
   for (const [roleCode, permCodes] of Object.entries(SYSTEM_ROLE_PERMISSIONS2)) {
     const roleId = rolesMap.get(roleCode);
     if (!roleId) continue;
+    const validPermIds = [];
     for (const permCode of permCodes) {
       const permId = permMap.get(permCode);
       if (!permId) continue;
+      validPermIds.push(permId);
       await prisma2.rolePermission.upsert({
         where: {
           roleId_permissionId: {
@@ -501,6 +503,12 @@ async function seedProductionFoundation(prisma2) {
         }
       });
     }
+    await prisma2.rolePermission.deleteMany({
+      where: {
+        roleId,
+        permissionId: { notIn: validPermIds }
+      }
+    });
   }
   const programmesData = [
     { code: ProgrammeCode.CRECHE, name: "Creche", isMainAcademic: true, displayOrder: 1 },
@@ -745,31 +753,7 @@ async function seedProductionFoundation(prisma2) {
       }
     }
   });
-  console.log("-> Purging any existing user accounts for clean production state...");
-  await prisma2.guardianStudentRelationship.deleteMany().catch(() => {
-  });
-  await prisma2.guardian.deleteMany().catch(() => {
-  });
-  await prisma2.teacherScope.deleteMany().catch(() => {
-  });
-  await prisma2.teacherAssignmentHistory.deleteMany().catch(() => {
-  });
-  await prisma2.staffDocument.deleteMany().catch(() => {
-  });
-  await prisma2.staffProbationRecord.deleteMany().catch(() => {
-  });
-  await prisma2.teacher.deleteMany().catch(() => {
-  });
-  await prisma2.userRole.deleteMany().catch(() => {
-  });
-  await prisma2.session.deleteMany().catch(() => {
-  });
-  await prisma2.passwordReset.deleteMany().catch(() => {
-  });
-  await prisma2.emailVerification.deleteMany().catch(() => {
-  });
-  await prisma2.user.deleteMany().catch(() => {
-  });
+  console.log("-> Ensuring production foundation without altering existing user accounts...");
   const superAdminPasswordHash = "$2b$12$N2wHzTdfQrwu6fUQJTwrz.bpZjz/mMPpflEBrpX6iKGTETKuz9Spi";
   const superAdminRoleId = rolesMap.get(RoleCode2.SUPER_ADMIN);
   const adminRoleId = rolesMap.get(RoleCode2.ADMIN);

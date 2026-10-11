@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
       where: { id: actor.id },
       include: {
         userRoles: { include: { role: true } },
+        teacherProfile: { select: { id: true } },
+        guardianProfile: { select: { id: true } },
       },
     });
 
@@ -107,14 +109,14 @@ export async function POST(req: NextRequest) {
 
     // Determine target portal based on authoritative database roles
     const userRoles = user.userRoles.map((ur) => ur.role.code);
-    let redirectUrl = '/parent';
+    let redirectUrl = '/admin';
     if (userRoles.includes(RoleCode.SUPER_ADMIN) || userRoles.includes(RoleCode.ADMIN)) {
       redirectUrl = '/admin';
     } else if (userRoles.includes(RoleCode.ACCOUNTANT)) {
       redirectUrl = '/admin/finance';
-    } else if (userRoles.includes(RoleCode.TEACHER)) {
+    } else if (userRoles.includes(RoleCode.TEACHER) || Boolean(user.teacherProfile)) {
       redirectUrl = '/teacher';
-    } else if (userRoles.includes(RoleCode.PARENT)) {
+    } else if (userRoles.includes(RoleCode.PARENT) || Boolean(user.guardianProfile)) {
       redirectUrl = '/parent';
     }
 
