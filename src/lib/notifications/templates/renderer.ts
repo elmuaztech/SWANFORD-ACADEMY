@@ -360,7 +360,7 @@ export function renderMasterEmail(subject: string, input: EmailRenderInput): Ren
                 <p style="margin: 0; font-size: 11px; color: ${BRAND_COLORS.textLight}; line-height: 1.4;">
                   This is an official administrative transmission from ${VERIFIED_SCHOOL_INFO.name}. Never disclose account passwords or verification codes.<br>
                   &copy; 2026 ${VERIFIED_SCHOOL_INFO.name}. All rights reserved.<br>
-                  Powered by: Elmuaz Technologies LTD &bull; info@elmuaztech.com.ng
+                  Developed by: Elmuaz Technologies LTD &bull; info@elmuaztech.com.ng
                 </p>
               </div>
             </td>
@@ -425,6 +425,7 @@ export function renderMasterEmail(subject: string, input: EmailRenderInput): Ren
   text += `${VERIFIED_SCHOOL_INFO.email}\n`;
   text += `${VERIFIED_SCHOOL_INFO.address}\n\n`;
   text += `(C) 2026 ${VERIFIED_SCHOOL_INFO.name}. All rights reserved.\n`;
+  text += `Developed by: Elmuaz Technologies LTD • info@elmuaztech.com.ng\n`;
 
   return {
     subject,

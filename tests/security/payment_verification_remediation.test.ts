@@ -82,7 +82,12 @@ describe('Security Regression — Admission Payment Verification & Replay Defens
   afterAll(async () => {
     // Clean up created test transactions and applications
     await prisma.application.deleteMany({
-      where: { guardianEmail: { contains: 'paysec.test' } },
+      where: {
+        OR: [
+          { guardianEmail: { contains: 'paysec' } },
+          { applicantLastName: 'PaySec' },
+        ],
+      },
     });
     await prisma.paymentTransaction.deleteMany({
       where: { gatewayReference: { startsWith: testRefPrefix } },
@@ -296,9 +301,72 @@ describe('Security Regression — Admission Payment Verification & Replay Defens
       expect(json.reference).toBe(validRef);
       expect(json.metadata.guardianFullName).toBe('Ibrahim Danladi');
     });
+
+    it('rejects verification if caller specifies an email that does not match payment reference owner', async () => {
+      const ownedRef = `${testRefPrefix}-OWNED-VERIFY`;
+      await prisma.paymentTransaction.create({
+        data: {
+          gatewayReference: ownedRef,
+          gatewayProvider: GatewayProvider.PAYSTACK,
+          amountKobo: BigInt(1500000),
+          currency: 'NGN',
+          status: GatewayTransactionStatus.SUCCESS,
+          customerEmail: 'actual.payer@example.com',
+        },
+      });
+
+      const res = await verifyPaymentRoute(
+        new NextRequest('http://localhost:3000/api/admissions/payment/verify', {
+          method: 'POST',
+          body: JSON.stringify({ reference: ownedRef, email: 'impostor@example.com' }),
+        })
+      );
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toMatch(/belongs to a different email address/i);
+    });
   });
 
   describe('Admissions Application Submission Atomic Linking (/api/admissions/apply)', () => {
+    it('rejects submission if payment reference belongs to a different guardian email', async () => {
+      const ownedRef = `${testRefPrefix}-OWNED-APPLY`;
+      await prisma.paymentTransaction.create({
+        data: {
+          gatewayReference: ownedRef,
+          gatewayProvider: GatewayProvider.PAYSTACK,
+          amountKobo: BigInt(50000000), // ₦500,000 to cover any dynamic fee configuration
+          currency: 'NGN',
+          status: GatewayTransactionStatus.SUCCESS,
+          customerEmail: 'original.payer@example.com',
+        },
+      });
+
+      const res = await applyRoute(
+        new NextRequest('http://localhost:3000/api/admissions/apply', {
+          method: 'POST',
+          body: JSON.stringify({
+            admissionCycleId,
+            applicantFirstName: 'HijackStudent',
+            applicantLastName: 'PaySec',
+            applicantDob: '2017-06-01',
+            applicantGender: 'MALE',
+            guardianFirstName: 'Hijacker',
+            guardianLastName: 'Guardian',
+            guardianEmail: 'paysec.different@example.com',
+            guardianPhone: '08099999999',
+            guardianRelationship: 'FATHER',
+            programmeSelections: [{ programmeId: primaryProgrammeId }],
+            paymentReference: ownedRef,
+          }),
+        })
+      );
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toMatch(/belongs to a different email address/i);
+    });
+
     it('rejects submission if payment reference has already been claimed by another application', async () => {
       const alreadyClaimedRef = `${testRefPrefix}-CLAIMED-02`;
 

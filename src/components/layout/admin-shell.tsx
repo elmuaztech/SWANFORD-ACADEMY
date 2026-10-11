@@ -79,7 +79,7 @@ export function AdminShell({
           {/* Canonical Admin Footer */}
           <footer className="border-t border-[#EADBDA]/80 bg-[#EFE8DC]/80 py-4 px-4 sm:px-6 text-center text-xs text-stone-500">
             <div className="max-w-7xl mx-auto flex items-center justify-center">
-              <p>© {new Date().getFullYear()} Swanford Academy — Admin Dashboard. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} Swanford Academy — Admin Dashboard. All rights reserved. • Developed by Elmuaz Technologies LTD</p>
             </div>
           </footer>
         </div>

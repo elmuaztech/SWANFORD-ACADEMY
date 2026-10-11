@@ -89,6 +89,15 @@ export async function POST(request: NextRequest) {
           throw new AuthorizationError('This payment reference has already been claimed by another admission application.', 400, 'PAYMENT_REFERENCE_REPLAY');
         }
 
+        // Ownership check: Enforce that the payment reference belongs to the applying guardian
+        const rawMeta = (pTx.gatewayResponseJson as any)?.metadata || {};
+        const registeredEmail = pTx.customerEmail?.toLowerCase().trim() ||
+          rawMeta.guardianEmail?.toLowerCase().trim() ||
+          (pTx.gatewayResponseJson as any)?.customer?.email?.toLowerCase().trim();
+        if (registeredEmail && registeredEmail !== validated.guardianEmail.toLowerCase().trim()) {
+          throw new AuthorizationError('Payment reference belongs to a different email address.', 400, 'PAYMENT_OWNERSHIP_MISMATCH');
+        }
+
         if (pTx.amountKobo < draft.totalAmountKobo) {
           throw new AuthorizationError(
             `Payment amount (₦${(Number(pTx.amountKobo) / 100).toLocaleString()}) is less than the required application fee (₦${(Number(draft.totalAmountKobo) / 100).toLocaleString()}).`,

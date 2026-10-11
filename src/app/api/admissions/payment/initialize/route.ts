@@ -76,11 +76,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 6. Record initialized transaction in database
     await prisma.paymentTransaction.create({
       data: {
         gatewayProvider: GatewayProvider.PAYSTACK,
         gatewayReference: reference,
+        customerEmail: validated.guardianEmail.toLowerCase().trim(),
         amountKobo: formFeeKobo,
         currency: 'NGN',
         status: GatewayTransactionStatus.INITIALIZED,

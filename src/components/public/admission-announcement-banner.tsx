@@ -59,56 +59,59 @@ export function AdmissionAnnouncementBanner({ initialData }: { initialData?: Adm
       className="relative w-full max-w-full overflow-hidden bg-gradient-to-r from-[#42040D] via-[#5B0612] to-[#42040D] border-b border-[#D4AF37]/35 text-white shadow-2xs marquee-container select-none z-20 font-sans"
       aria-label="Admissions Announcement"
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-3 min-h-[44px] w-full max-w-full overflow-hidden">
-        {/* Left Indicator Pill */}
-        <div className="shrink-0 flex items-center gap-2 py-1.5 z-10 bg-[#5B0612]/95 pr-1.5 sm:pr-2">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 flex items-center justify-between gap-1.5 sm:gap-3 min-h-[40px] sm:min-h-[44px] w-full max-w-full overflow-hidden">
+        {/* Left Indicator Pill (Yellow Card with Maroon Text) */}
+        <div className="shrink-0 flex items-center gap-1 sm:gap-2 py-1 z-10 bg-[#5B0612]/95 pr-1 sm:pr-2">
           {isOpen ? (
-            <span className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold tracking-wider uppercase bg-[#D4AF37] text-[#3B030A] shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#5B0612] animate-ping" />
-              <span className="whitespace-nowrap">Admissions Open</span>
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9.5px] sm:text-xs font-extrabold tracking-wider uppercase bg-[#F5D061] text-[#3B030A] shadow-xs border border-[#E5C158]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#5B0612] animate-ping shrink-0" />
+              <span className="whitespace-nowrap">
+                <span className="hidden sm:inline">Admissions Open</span>
+                <span className="sm:hidden">Open</span>
+              </span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold tracking-wider uppercase bg-white/20 text-[#FAF7F2] border border-white/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9.5px] sm:text-xs font-extrabold tracking-wider uppercase bg-[#F5D061] text-[#3B030A] shadow-xs border border-[#E5C158]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#5B0612] animate-pulse shrink-0" />
               <span className="whitespace-nowrap">Notice</span>
             </span>
           )}
         </div>
 
-        {/* Center Marquee Track */}
-        <div className="flex-1 min-w-0 overflow-hidden relative py-1.5 flex items-center" style={{ contain: "paint" }}>
-          {/* Subtle gradient fades on left and right edges */}
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#5B0612] to-transparent z-10 hidden sm:block" />
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#5B0612] to-transparent z-10 hidden sm:block" />
+        {/* Center Marquee Track - Maximized width on mobile */}
+        <div className="flex-1 min-w-0 overflow-hidden relative py-1 flex items-center" style={{ contain: "paint" }}>
+          {/* Subtle gradient fades on left and right edges (desktop only to preserve mobile screen real estate) */}
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 sm:w-6 bg-gradient-to-r from-[#5B0612] to-transparent z-10 hidden sm:block" />
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-4 sm:w-6 bg-gradient-to-l from-[#5B0612] to-transparent z-10 hidden sm:block" />
 
-          {/* Marquee Content with duplicate segments for continuous loop, pauses on hover/focus, static on reduced motion */}
-          <div className="animate-marquee motion-reduce:animate-none flex items-center gap-10 whitespace-nowrap text-xs sm:text-sm font-medium tracking-wide">
+          {/* Marquee Content with duplicate segments for continuous loop, pauses on hover/focus */}
+          <div className="animate-marquee motion-reduce:animate-none flex items-center gap-8 sm:gap-10 whitespace-nowrap text-[11px] sm:text-sm font-medium tracking-wide">
             {/* Segment 1 */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 sm:gap-6">
               <span className="text-[#FAF7F2] font-semibold">
                 {primaryMessage}
               </span>
-              <span className="text-[#D4AF37] text-xs">&bull;</span>
+              <span className="text-[#F5D061] text-xs">&bull;</span>
               <span className="text-stone-200">
                 {secondaryMessage}
               </span>
-              <span className="text-[#D4AF37] text-xs">&bull;</span>
+              <span className="text-[#F5D061] text-xs">&bull;</span>
               <span className="text-[#F5D061] font-medium italic">
                 {tertiaryMessage}
               </span>
             </div>
 
             {/* Segment 2 (Duplicate for seamless loop) */}
-            <div className="flex items-center gap-6" aria-hidden="true">
-              <span className="text-[#D4AF37] text-xs">&bull;</span>
+            <div className="flex items-center gap-4 sm:gap-6" aria-hidden="true">
+              <span className="text-[#F5D061] text-xs">&bull;</span>
               <span className="text-[#FAF7F2] font-semibold">
                 {primaryMessage}
               </span>
-              <span className="text-[#D4AF37] text-xs">&bull;</span>
+              <span className="text-[#F5D061] text-xs">&bull;</span>
               <span className="text-stone-200">
                 {secondaryMessage}
               </span>
-              <span className="text-[#D4AF37] text-xs">&bull;</span>
+              <span className="text-[#F5D061] text-xs">&bull;</span>
               <span className="text-[#F5D061] font-medium italic">
                 {tertiaryMessage}
               </span>
@@ -116,22 +119,24 @@ export function AdmissionAnnouncementBanner({ initialData }: { initialData?: Adm
           </div>
         </div>
 
-        {/* Right Action Button (Pinned, min 44px touch target) */}
-        <div className="shrink-0 py-1 z-10 bg-[#5B0612]/95 pl-2">
+        {/* Right Action Button (Yellow text with compact mobile footprint) */}
+        <div className="shrink-0 py-1 z-10 bg-[#5B0612]/95 pl-1 sm:pl-2">
           {isOpen ? (
             <Link
               href="/admissions"
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-[#D4AF37] hover:bg-[#E5C158] text-[#3B030A] shadow-xs hover:shadow transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-bold bg-[#F5D061] hover:bg-[#E5C158] text-[#3B030A] shadow-xs hover:shadow transition-all min-h-[32px] sm:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              <span>Apply Online</span>
+              <span className="hidden sm:inline">Apply Online</span>
+              <span className="sm:hidden">Apply</span>
               <span aria-hidden="true">&rarr;</span>
             </Link>
           ) : (
             <Link
               href="/contact"
-              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-bold bg-[#F5D061] hover:bg-[#E5C158] text-[#3B030A] border border-[#E5C158] shadow-xs hover:shadow transition-all min-h-[32px] sm:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white shrink-0"
             >
-              <span>Contact Admissions</span>
+              <span className="hidden sm:inline">Contact Admissions</span>
+              <span className="sm:hidden">Contact</span>
               <span aria-hidden="true">&rarr;</span>
             </Link>
           )}

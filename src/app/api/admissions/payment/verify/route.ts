@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { reference } = body;
+    const { reference, email } = body;
 
     if (!reference || typeof reference !== 'string') {
       return NextResponse.json({ error: 'Payment reference is required.' }, { status: 400 });
@@ -59,6 +59,21 @@ export async function POST(req: NextRequest) {
         { error: 'Payment reference not found or unauthorized.' },
         { status: 404 }
       );
+    }
+
+    // Ownership check: If caller provides their email, verify it matches the payment reference's registered email
+    if (email && typeof email === 'string') {
+      const cleanEmail = email.trim().toLowerCase();
+      const rawMetadata = (existingTx.gatewayResponseJson as any)?.metadata || {};
+      const registeredEmail = existingTx.customerEmail?.toLowerCase().trim() ||
+        rawMetadata.guardianEmail?.toLowerCase().trim() ||
+        (existingTx.gatewayResponseJson as any)?.customer?.email?.toLowerCase().trim();
+      if (registeredEmail && registeredEmail !== cleanEmail) {
+        return NextResponse.json(
+          { error: 'Payment reference belongs to a different email address.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Replay check: cannot verify a reference already claimed by another application
