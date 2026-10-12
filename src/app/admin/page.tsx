@@ -167,43 +167,43 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Header Banner: Matches Public Website Hero Maroon Palette with Streamlined Compact Height */}
-      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-r from-[#3B030A] via-[#4D0610] to-[#250105] border border-[#6B1420] text-white shadow-xl p-5 sm:p-7 flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
+      {/* Header Banner: Matches Public Website Hero Maroon Palette with Executive Command Layout */}
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-r from-[#3B030A] via-[#4D0610] to-[#250105] border border-[#6B1420] text-white shadow-xl p-5 sm:p-6 lg:p-7 flex flex-col gap-4 sm:gap-5">
         {/* Subtle radial dot texture matching hero */}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#F5D061_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
-        <div className="relative z-10 space-y-2 min-w-0">
+        <div className="relative z-10 space-y-2 max-w-4xl">
           {/* Official Tag Pills in clean responsive flex row - 100% visible on mobile and desktop */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#F5EBDC] border border-[#DFCBB5] text-[#5B0612] text-[10px] sm:text-xs font-extrabold tracking-wider uppercase font-heading shadow-xs whitespace-nowrap">
+            <span className="inline-flex items-center px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[#F5EBDC] border border-[#DFCBB5] text-[#5B0612] text-[10px] sm:text-xs font-extrabold tracking-wider uppercase font-heading shadow-xs whitespace-nowrap">
               {isSuperAdmin ? "Director & Super Admin Dashboard" : "Operational Admin Dashboard"}
             </span>
             {overview.activeSession && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/10 border border-white/20 text-[#F5D061] text-[10px] sm:text-xs font-bold tracking-wide whitespace-nowrap">
+              <span className="inline-flex items-center px-2.5 py-0.5 sm:py-1 rounded-full bg-white/10 border border-white/20 text-[#F5D061] text-[10px] sm:text-xs font-bold tracking-wide whitespace-nowrap">
                 {overview.activeSession.name}
                 {overview.activeSession.currentTerm ? ` • ${overview.activeSession.currentTerm}` : ""}
               </span>
             )}
           </div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-heading" style={{ color: '#FFFFFF' }}>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-heading leading-tight" style={{ color: '#FFFFFF' }}>
             {isSuperAdmin ? "Swanford Academy Governance" : "Admin Operations Center"}
           </h1>
-          <p className="text-xs sm:text-sm text-stone-200 max-w-xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-stone-200/90 max-w-3xl leading-relaxed">
             {isSuperAdmin
               ? "Comprehensive institutional oversight: enrollment, academics, financial revenue ledger, and audit history."
               : "Real-time school operations: admissions processing, daily attendance roll-call, and community coordination."}
           </p>
         </div>
 
-        {/* Action Buttons: Rendered in the SAME LINE on both mobile and desktop with streamlined compact height */}
-        <div className="relative z-10 flex items-center gap-2 sm:gap-2.5 flex-nowrap overflow-x-auto no-scrollbar py-0.5 shrink-0 w-full md:w-auto">
+        {/* Action Buttons: Positioned below text in a clean, executive horizontal row with streamlined compact height */}
+        <div className="relative z-10 pt-3 border-t border-white/10 flex items-center gap-2 sm:gap-2.5 flex-wrap">
           <Link href="/admin/admissions" className="shrink-0">
             <button
               type="button"
-              className="min-h-[38px] sm:min-h-[40px] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-sans font-bold text-xs sm:text-sm whitespace-nowrap bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              className="h-8 sm:h-8.5 px-3 sm:px-3.5 rounded-lg font-sans font-bold text-xs whitespace-nowrap bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 shadow-xs hover:shadow-sm transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
             >
               <span>Review Admissions</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-stone-950/20 text-[11px] sm:text-xs font-black tabular-nums">
+              <span className="px-1.5 py-0.5 rounded-full bg-stone-950/20 text-[10px] font-black tabular-nums leading-none">
                 {overview.pendingAdmissions}
               </span>
             </button>
@@ -211,7 +211,7 @@ export default function AdminDashboardPage() {
           <Link href="/admin/attendance" className="shrink-0">
             <button
               type="button"
-              className="min-h-[38px] sm:min-h-[40px] px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl font-sans font-semibold text-xs sm:text-sm whitespace-nowrap bg-white/10 hover:bg-white/20 active:bg-white/30 text-white border border-white/30 backdrop-blur-xs shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center cursor-pointer select-none"
+              className="h-8 sm:h-8.5 px-3 sm:px-3.5 rounded-lg font-sans font-semibold text-xs whitespace-nowrap bg-white/10 hover:bg-white/20 active:bg-white/30 text-white border border-white/25 backdrop-blur-xs shadow-xs hover:shadow-sm transition-all inline-flex items-center justify-center cursor-pointer select-none"
             >
               Attendance Records
             </button>
@@ -220,7 +220,7 @@ export default function AdminDashboardPage() {
             <Link href="/admin/finance" className="shrink-0">
               <button
                 type="button"
-                className="min-h-[38px] sm:min-h-[40px] px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl font-sans font-bold text-xs sm:text-sm whitespace-nowrap bg-white hover:bg-[#FDFBF7] text-[#800020] border border-white shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center cursor-pointer active:scale-95"
+                className="h-8 sm:h-8.5 px-3 sm:px-3.5 rounded-lg font-sans font-bold text-xs whitespace-nowrap bg-white hover:bg-[#FDFBF7] text-[#800020] border border-white shadow-xs hover:shadow-sm transition-all inline-flex items-center justify-center cursor-pointer active:scale-95"
               >
                 Finance Hub
               </button>

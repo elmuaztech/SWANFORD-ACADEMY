@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, use } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,13 @@ import { LoadingState, ErrorState } from "@/components/ui/states";
 import { TableWrapper } from "@/components/ui/table";
 
 type AssessmentScoreStatus = "SCORED" | "ABSENT" | "EXEMPT";
+
+interface AssessmentComponent {
+  name: string;
+  shortCode: string;
+  maxScore: number;
+  weightPercentage?: number;
+}
 
 interface RosterScoreItem {
   student: {
@@ -23,6 +31,7 @@ interface RosterScoreItem {
   score: {
     id: string;
     rawScore: number | null;
+    componentScores?: Record<string, number> | null;
     grade: string | null;
     points: number | null;
     remark: string | null;
@@ -44,6 +53,7 @@ interface AssessmentDetail {
   subject?: { name: string; code: string } | null;
   session: { name: string };
   term: { name: string };
+  components?: AssessmentComponent[];
   createdAt: string;
   latestReview?: {
     comment: string;
@@ -51,6 +61,53 @@ interface AssessmentDetail {
     reviewerName: string;
     createdAt: string;
   } | null;
+}
+
+interface StudentScoreState {
+  components: Record<string, string>; // e.g. { CA: "10", EXAM: "50" }
+  status: AssessmentScoreStatus;
+  notes: string;
+}
+
+// Live Grade & Remark Resolver based on Nigerian / Islamic Academic standard
+function computeGradeAndRemark(total: number): {
+  grade: string;
+  remark: string;
+  badgeClass: string;
+} {
+  if (total >= 70) {
+    return {
+      grade: "A (Mumtaz)",
+      remark: "Mumtaz (Excellent)",
+      badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-300 font-bold",
+    };
+  }
+  if (total >= 60) {
+    return {
+      grade: "B (Jayyid Jiddan)",
+      remark: "Jayyid Jiddan (Very Good)",
+      badgeClass: "bg-blue-50 text-blue-800 border-blue-300 font-bold",
+    };
+  }
+  if (total >= 50) {
+    return {
+      grade: "C (Jayyid)",
+      remark: "Jayyid (Good)",
+      badgeClass: "bg-amber-50 text-amber-900 border-amber-300 font-bold",
+    };
+  }
+  if (total >= 40) {
+    return {
+      grade: "D (Maqbul)",
+      remark: "Maqbul (Pass)",
+      badgeClass: "bg-orange-50 text-orange-900 border-orange-300 font-bold",
+    };
+  }
+  return {
+    grade: "F (Rasib)",
+    remark: "Rasib (Needs Improvement)",
+    badgeClass: "bg-rose-50 text-rose-800 border-rose-300 font-bold",
+  };
 }
 
 export default function AssessmentDetailPage({
@@ -63,12 +120,23 @@ export default function AssessmentDetailPage({
 
   const [assessment, setAssessment] = useState<AssessmentDetail | null>(null);
   const [roster, setRoster] = useState<RosterScoreItem[]>([]);
-  const [scores, setScores] = useState<Record<string, { rawScore: string; status: AssessmentScoreStatus; notes: string }>>({});
+  const [scores, setScores] = useState<Record<string, StudentScoreState>>({});
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Default CA & Exam components
+  const defaultComponents: AssessmentComponent[] = [
+    { name: "Continuous Assessment", shortCode: "CA", maxScore: 30 },
+    { name: "Term Examination", shortCode: "EXAM", maxScore: 70 },
+  ];
+
+  const activeComponents: AssessmentComponent[] =
+    assessment?.components && assessment.components.length > 0
+      ? assessment.components
+      : defaultComponents;
 
   // Load assessment & roster
   useEffect(() => {
@@ -82,11 +150,26 @@ export default function AssessmentDetailPage({
         const rosterData: RosterScoreItem[] = d.roster || [];
         setRoster(rosterData);
 
+        const comps = d.assessment?.components || defaultComponents;
+
         // Pre-fill score state
-        const initialMap: Record<string, { rawScore: string; status: AssessmentScoreStatus; notes: string }> = {};
+        const initialMap: Record<string, StudentScoreState> = {};
         for (const item of rosterData) {
+          const compMap: Record<string, string> = {};
+          const savedComp = item.score?.componentScores || {};
+
+          for (const c of comps) {
+            if (savedComp[c.shortCode] !== undefined && savedComp[c.shortCode] !== null) {
+              compMap[c.shortCode] = String(savedComp[c.shortCode]);
+            } else if (item.score?.rawScore !== null && item.score?.rawScore !== undefined && comps.length === 1) {
+              compMap[c.shortCode] = String(item.score.rawScore);
+            } else {
+              compMap[c.shortCode] = "";
+            }
+          }
+
           initialMap[item.student.id] = {
-            rawScore: item.score?.rawScore !== null && item.score?.rawScore !== undefined ? String(item.score.rawScore) : "",
+            components: compMap,
             status: item.score?.scoreStatus || "SCORED",
             notes: item.score?.teacherNotes || "",
           };
@@ -100,35 +183,58 @@ export default function AssessmentDetailPage({
       });
   }, [assessmentId]);
 
-  const handleScoreChange = (studentId: string, val: string) => {
-    setScores((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        rawScore: val,
-      },
-    }));
+  const handleComponentScoreChange = (studentId: string, shortCode: string, val: string) => {
+    setScores((prev) => {
+      const current = prev[studentId] || { components: {}, status: "SCORED", notes: "" };
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          components: {
+            ...current.components,
+            [shortCode]: val,
+          },
+        },
+      };
+    });
   };
 
   const handleStatusChange = (studentId: string, status: AssessmentScoreStatus) => {
-    setScores((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        status,
-        rawScore: status === "SCORED" ? prev[studentId]?.rawScore || "" : "",
-      },
-    }));
+    setScores((prev) => {
+      const current = prev[studentId] || { components: {}, status: "SCORED", notes: "" };
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          status,
+        },
+      };
+    });
   };
 
   const handleNotesChange = (studentId: string, notes: string) => {
-    setScores((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        notes,
-      },
-    }));
+    setScores((prev) => {
+      const current = prev[studentId] || { components: {}, status: "SCORED", notes: "" };
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          notes,
+        },
+      };
+    });
+  };
+
+  // Helper to compute student total score
+  const getStudentTotal = (studentId: string): number => {
+    const s = scores[studentId];
+    if (!s || s.status !== "SCORED") return 0;
+    let sum = 0;
+    for (const c of activeComponents) {
+      const val = parseFloat(s.components[c.shortCode] || "0");
+      if (!isNaN(val)) sum += val;
+    }
+    return Math.round(sum * 100) / 100;
   };
 
   const handleSaveDraft = async () => {
@@ -138,10 +244,18 @@ export default function AssessmentDetailPage({
 
     const payload = roster.map((item) => {
       const s = scores[item.student.id];
-      const parsedScore = s?.rawScore && s.status === "SCORED" ? parseFloat(s.rawScore) : null;
+      const compMap: Record<string, number> = {};
+      let sum = 0;
+      for (const c of activeComponents) {
+        const val = parseFloat(s?.components[c.shortCode] || "0");
+        const numeric = isNaN(val) ? 0 : val;
+        compMap[c.shortCode] = numeric;
+        sum += numeric;
+      }
       return {
         studentId: item.student.id,
-        rawScore: parsedScore,
+        componentScores: compMap,
+        rawScore: s?.status === "SCORED" ? sum : null,
         scoreStatus: s?.status || "SCORED",
         teacherNotes: s?.notes || null,
       };
@@ -159,7 +273,7 @@ export default function AssessmentDetailPage({
         throw new Error(data.error || "Failed to update scores");
       }
 
-      setFeedback({ type: "success", message: "Scores draft saved successfully." });
+      setFeedback({ type: "success", message: "Scores draft saved successfully! You can continue editing or submit for review." });
     } catch (err: unknown) {
       setFeedback({ type: "error", message: err instanceof Error ? err.message : "Error saving draft." });
     } finally {
@@ -168,7 +282,11 @@ export default function AssessmentDetailPage({
   };
 
   const handleSubmitForReview = async () => {
-    if (!confirm("Are you sure you want to submit this assessment for administrative review? You will not be able to make further edits once submitted.")) {
+    if (
+      !confirm(
+        "Are you sure you want to submit this assessment to Super Admin and Admin for review? You will be able to review status, and if returned for correction you will be notified."
+      )
+    ) {
       return;
     }
 
@@ -176,7 +294,7 @@ export default function AssessmentDetailPage({
     setFeedback(null);
 
     try {
-      // First save current values
+      // First save current scores
       await handleSaveDraft();
 
       const res = await fetch(`/api/teacher/assessments/${assessmentId}/submit`, {
@@ -188,7 +306,10 @@ export default function AssessmentDetailPage({
         throw new Error(data.error || "Failed to submit assessment");
       }
 
-      setFeedback({ type: "success", message: "Assessment submitted for administrative review." });
+      setFeedback({
+        type: "success",
+        message: "Assessment submitted to Super Admin and Admin for review! Status is now SUBMITTED.",
+      });
       setAssessment((prev) => (prev ? { ...prev, status: "SUBMITTED" } : null));
     } catch (err: unknown) {
       setFeedback({ type: "error", message: err instanceof Error ? err.message : "Error submitting assessment." });
@@ -198,7 +319,7 @@ export default function AssessmentDetailPage({
   };
 
   if (isLoading) {
-    return <LoadingState description="Loading assessment details and class roster..." />;
+    return <LoadingState description="Loading assessment details and score sheet..." />;
   }
 
   if (!assessment) {
@@ -216,7 +337,7 @@ export default function AssessmentDetailPage({
     <div className="space-y-6">
       <PageHeader
         title={assessment.title}
-        subtitle={`${assessment.schoolClass.name} ${assessment.schoolClass.arm ? `(${assessment.schoolClass.arm})` : ""} · ${assessment.programme.name} · Max Score: ${assessment.maxScore} · Weight: ${assessment.weightPercentage}%`}
+        subtitle={`${assessment.schoolClass.name} ${assessment.schoolClass.arm ? `(${assessment.schoolClass.arm})` : ""} · ${assessment.programme.name} · ${assessment.subject?.name || "General Subject"} · Max Score: 100`}
         breadcrumbs={[
           { label: "Teacher Portal", href: "/teacher" },
           { label: "Assessments", href: "/teacher/assessments" },
@@ -224,15 +345,45 @@ export default function AssessmentDetailPage({
         ]}
         badge={
           assessment.status === "FINALIZED" ? (
-            <Badge variant="success">Finalized & Published</Badge>
+            <Badge variant="success">Finalized &amp; Published</Badge>
           ) : assessment.status === "APPROVED" ? (
-            <Badge variant="info">Approved (Pending Publication)</Badge>
+            <Badge variant="info">Approved by Administration</Badge>
           ) : assessment.status === "SUBMITTED" ? (
-            <Badge variant="warning">Submitted for Review</Badge>
+            <Badge variant="warning">Submitted for Admin Review</Badge>
           ) : assessment.status === "RETURNED_FOR_CORRECTION" ? (
             <Badge variant="danger">Returned for Correction</Badge>
           ) : (
             <Badge variant="neutral">Draft (Editable)</Badge>
+          )
+        }
+        primaryAction={
+          isEditable ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveDraft}
+                disabled={isSaving || isSubmitting}
+                className="font-bold border-stone-300 text-stone-800 hover:bg-stone-100"
+              >
+                {isSaving ? "Saving..." : "💾 Save Draft"}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSubmitForReview}
+                disabled={isSaving || isSubmitting}
+                className="font-bold bg-[#800020] hover:bg-[#6b001a] text-white shadow-xs"
+              >
+                {isSubmitting ? "Submitting..." : assessment.status === "RETURNED_FOR_CORRECTION" ? "📤 Re-Submit for Review" : "📤 Submit for Review"}
+              </Button>
+            </div>
+          ) : (
+            <Link href="/teacher/assessments">
+              <Button variant="outline" size="sm">
+                ← Back to Assessments
+              </Button>
+            </Link>
           )
         }
       />
@@ -240,249 +391,219 @@ export default function AssessmentDetailPage({
       {feedback && (
         <Alert
           variant={feedback.type === "success" ? "success" : "error"}
-          title={feedback.type === "success" ? "Action Successful" : "Action Failed"}
+          title={feedback.type === "success" ? "Operation Successful" : "Attention"}
           onClose={() => setFeedback(null)}
         >
           {feedback.message}
         </Alert>
       )}
 
+      {/* Return for Correction Banner */}
       {assessment.status === "RETURNED_FOR_CORRECTION" && (
-        <Alert variant="danger" title="Returned for Correction">
+        <Alert variant="danger" title="⚠️ Returned for Correction by Administrator">
           <p className="font-semibold text-stone-900 mb-1">
-            Correction Instructions from {assessment.latestReview?.reviewerName || "Administrator"}:
+            Correction Directives from {assessment.latestReview?.reviewerName || "Super Admin / Admin"}:
           </p>
-          <div className="bg-white/80 p-3 rounded-lg border border-red-200 text-stone-800 text-sm mb-2 whitespace-pre-wrap">
-            {assessment.latestReview?.comment || "Please review the scores and re-submit for administrative review."}
+          <div className="bg-white/90 p-3.5 rounded-xl border border-red-200 text-stone-900 text-sm mb-2 font-mono whitespace-pre-wrap">
+            {assessment.latestReview?.comment || "Please review the scores and re-submit for review."}
           </div>
-          <p className="text-xs text-stone-600">
-            Please make the necessary score adjustments below and click &quot;Re-Submit for Review&quot;.
+          <p className="text-xs text-stone-700">
+            Make the required score corrections in the table below, then click <strong>&quot;Re-Submit for Review&quot;</strong>.
           </p>
+        </Alert>
+      )}
+
+      {assessment.status === "SUBMITTED" && (
+        <Alert variant="info" title="Pending Administrative Review">
+          This assessment is currently under review by the Super Admin and Admin. Once approved, the terminal results will be locked and compiled into term report cards.
         </Alert>
       )}
 
       {assessment.status === "APPROVED" && (
-        <Alert variant="success" title="Approved">
-          This assessment has been reviewed and approved by the administration. Scores are verified and ready for terminal report sheet compilation.
+        <Alert variant="success" title="Approved by Administration">
+          This assessment has been reviewed and approved by the Super Admin. Marks are officially verified and finalized.
         </Alert>
       )}
 
-      {!isEditable && (
-        <Alert variant="info" title="Assessment Locked">
-          This assessment is currently in <strong className="font-semibold">{assessment.status}</strong> status. Scores cannot be edited by teachers while pending review, approved, or finalized.
-        </Alert>
-      )}
-
-      {/* Score Entry Roster */}
-      <div className="space-y-4">
-        {/* Mobile View: Cards */}
-        <div className="md:hidden space-y-3">
-          {roster.map((item, idx) => {
-            const current = scores[item.student.id] || { rawScore: "", status: "SCORED", notes: "" };
-            const isScored = current.status === "SCORED";
-
-            return (
-              <Card key={item.student.id} className="bg-white border-[#EFE9DF] shadow-xs">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs font-mono text-[#800020] font-semibold">
-                        {item.student.admissionNumber}
-                      </span>
-                      <h4 className="text-base font-bold text-[#5B0612]">
-                        {idx + 1}. {item.student.lastName}, {item.student.firstName}
-                      </h4>
-                    </div>
-                    {item.score?.grade && (
-                      <Badge variant="brand" className="bg-[#FAF2F3] text-[#800020] font-bold">
-                        Grade {item.score.grade}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Status Toggle */}
-                  {isEditable ? (
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {(["SCORED", "ABSENT", "EXEMPT"] as AssessmentScoreStatus[]).map((st) => (
-                        <button
-                          key={st}
-                          type="button"
-                          onClick={() => handleStatusChange(item.student.id, st)}
-                          className={`min-h-[44px] rounded-lg text-xs font-semibold select-none cursor-pointer transition-colors ${
-                            current.status === st
-                              ? "bg-[#800020] text-white"
-                              : "bg-[#FAF7F2] text-stone-700 border border-[#EFE9DF]"
-                          }`}
-                        >
-                          {st}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-stone-500 font-medium">Status: {current.status}</div>
-                  )}
-
-                  {/* Score Input */}
-                  {isScored && (
-                    <div>
-                      <label htmlFor={`score-mobile-${item.student.id}`} className="block text-xs font-semibold text-stone-700 uppercase mb-1">
-                        Raw Score (Max: {assessment.maxScore})
-                      </label>
-                      <input
-                        id={`score-mobile-${item.student.id}`}
-                        type="number"
-                        min="0"
-                        max={assessment.maxScore}
-                        step="0.5"
-                        disabled={!isEditable}
-                        placeholder={`0 - ${assessment.maxScore}`}
-                        value={current.rawScore}
-                        onChange={(e) => handleScoreChange(item.student.id, e.target.value)}
-                        className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-lg px-3 py-2 text-sm font-bold text-stone-900 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] disabled:bg-stone-100 disabled:text-stone-500"
-                      />
-                    </div>
-                  )}
-
-                  {/* Notes */}
-                  {isEditable && (
-                    <input
-                      type="text"
-                      placeholder="Teacher notes / remark"
-                      value={current.notes}
-                      onChange={(e) => handleNotesChange(item.student.id, e.target.value)}
-                      className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-lg px-3 py-2 text-xs text-stone-800 placeholder:text-stone-400 min-h-[40px]"
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Desktop View: Table with Dual Horizontal Scroll */}
-        <div className="hidden md:block">
-          <TableWrapper className="border border-[#EFE9DF]">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#EFE9DF] text-xs font-semibold text-stone-600 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 w-12">#</th>
-                  <th className="py-3.5 px-4">Admission No.</th>
-                  <th className="py-3.5 px-4">Student Name</th>
-                  <th className="py-3.5 px-4 text-center">Score Status</th>
-                  <th className="py-3.5 px-4 w-36">Score (Max: {assessment.maxScore})</th>
-                  <th className="py-3.5 px-4 text-center">Resolved Grade</th>
-                  <th className="py-3.5 px-4">Teacher Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EFE9DF]">
-                {roster.map((item, idx) => {
-                  const current = scores[item.student.id] || { rawScore: "", status: "SCORED", notes: "" };
-                  const isScored = current.status === "SCORED";
-
-                  return (
-                    <tr key={item.student.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
-                      <td className="py-3 px-4 text-xs font-mono text-stone-400">{idx + 1}</td>
-                      <td className="py-3 px-4 text-xs font-mono font-bold text-[#800020]">{item.student.admissionNumber}</td>
-                      <td className="py-3 px-4 font-semibold text-stone-900">
-                        {item.student.lastName}, {item.student.firstName}
-                      </td>
-                      <td className="py-3 px-4">
-                        {isEditable ? (
-                          <div className="flex justify-center gap-1">
-                            {(["SCORED", "ABSENT", "EXEMPT"] as AssessmentScoreStatus[]).map((st) => (
-                              <button
-                                key={st}
-                                type="button"
-                                onClick={() => handleStatusChange(item.student.id, st)}
-                                className={`px-2 py-1 rounded text-xs select-none cursor-pointer transition-colors ${
-                                  current.status === st
-                                    ? "bg-[#800020] text-white font-bold"
-                                    : "bg-[#FAF7F2] text-stone-600 hover:bg-stone-200"
-                                }`}
-                              >
-                                {st}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-center block text-xs font-medium text-stone-600">{current.status}</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        {isScored ? (
-                          <input
-                            type="number"
-                            min="0"
-                            max={assessment.maxScore}
-                            step="0.5"
-                            disabled={!isEditable}
-                            value={current.rawScore}
-                            onChange={(e) => handleScoreChange(item.student.id, e.target.value)}
-                            className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-md px-2.5 py-1.5 text-sm font-bold text-stone-900 text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] disabled:bg-stone-100 disabled:text-stone-500"
-                          />
-                        ) : (
-                          <span className="text-center block text-xs text-stone-400 italic">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {item.score?.grade ? (
-                          <Badge variant="brand" className="bg-[#FAF2F3] text-[#800020] font-bold">
-                            {item.score.grade} ({item.score.remark})
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-stone-400">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        {isEditable ? (
-                          <input
-                            type="text"
-                            placeholder="Optional notes"
-                            value={current.notes}
-                            onChange={(e) => handleNotesChange(item.student.id, e.target.value)}
-                            className="w-full bg-[#FAF7F2] border border-[#EFE9DF] rounded-md px-2.5 py-1.5 text-xs text-stone-800"
-                          />
-                        ) : (
-                          <span className="text-xs text-stone-600">{current.notes || "—"}</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </TableWrapper>
-        </div>
-
-        {/* Action Bar */}
-        {isEditable && (
-          <div className="sticky bottom-4 z-20 bg-white/95 backdrop-blur-md p-4 rounded-xl border border-[#EFE9DF] shadow-md flex items-center justify-between gap-4">
-            <span className="text-xs sm:text-sm font-medium text-stone-600">
-              Draft changes saved locally until submitted.
+      {/* Assessment Structure Info Banner */}
+      <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#EFE9DF] flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-3">
+          <span className="font-extrabold text-[#800020] uppercase tracking-wider">Evaluation Structure:</span>
+          {activeComponents.map((c) => (
+            <span key={c.shortCode} className="px-2.5 py-1 rounded-md bg-white border border-[#E2D6C5] font-semibold text-stone-800">
+              {c.name} ({c.shortCode}): <strong>Max {c.maxScore}</strong>
             </span>
-            <div className="flex gap-2.5">
-              <Button
-                variant="outline"
-                size="md"
-                onClick={handleSaveDraft}
-                isLoading={isSaving}
-                className="min-h-[44px]"
-              >
-                Save Draft Scores
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                className="bg-[#800020] hover:bg-[#6b001a] text-white font-bold min-h-[44px]"
-                onClick={handleSubmitForReview}
-                isLoading={isSubmitting}
-              >
-                {assessment.status === "RETURNED_FOR_CORRECTION" ? "Re-Submit for Review" : "Submit Assessment"}
-              </Button>
-            </div>
+          ))}
+          <span className="px-2.5 py-1 rounded-md bg-[#800020] text-white font-bold">
+            Total Max: 100
+          </span>
+        </div>
+        <div className="text-stone-500 font-medium">
+          Grading Scale: <strong className="text-stone-800 font-bold">A (Mumtaz), B (Very Good), C (Good), D (Pass), F (Needs Improvement)</strong>
+        </div>
+      </div>
+
+      {/* Score Entry Roster: Desktop and Tablet Table */}
+      <div className="space-y-4">
+        {roster.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-stone-500">
+              No students are currently enrolled in this class. Enroll students first to record continuous assessments.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="bg-white rounded-2xl border border-[#E2D6C5] shadow-xs overflow-hidden">
+            <TableWrapper>
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#FAF7F2] border-b border-[#E2D6C5] text-xs font-bold text-stone-700 uppercase tracking-wider">
+                    <th className="py-3.5 px-3 w-10 text-center">#</th>
+                    <th className="py-3.5 px-3 w-32">Admission No.</th>
+                    <th className="py-3.5 px-4 min-w-[160px]">Student Name</th>
+                    <th className="py-3.5 px-2 text-center w-28">Status</th>
+                    {activeComponents.map((c) => (
+                      <th key={c.shortCode} className="py-3.5 px-3 text-center w-24">
+                        {c.shortCode} ({c.maxScore})
+                      </th>
+                    ))}
+                    <th className="py-3.5 px-3 text-center w-20 font-black text-stone-900">Total</th>
+                    <th className="py-3.5 px-3 text-center w-36">Grade</th>
+                    <th className="py-3.5 px-4 min-w-[180px]">Remark</th>
+                    <th className="py-3.5 px-3 min-w-[140px]">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFE9DF]">
+                  {roster.map((item, idx) => {
+                    const current = scores[item.student.id] || { components: {}, status: "SCORED", notes: "" };
+                    const isScored = current.status === "SCORED";
+                    const totalScore = isScored ? getStudentTotal(item.student.id) : 0;
+                    const gradeInfo = isScored ? computeGradeAndRemark(totalScore) : null;
+
+                    return (
+                      <tr key={item.student.id} className="hover:bg-[#FAF7F2]/50 transition-colors">
+                        <td className="py-3 px-3 text-xs font-mono text-stone-400 text-center">{idx + 1}</td>
+                        <td className="py-3 px-3 text-xs font-mono font-bold text-[#800020] whitespace-nowrap">
+                          {item.student.admissionNumber}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-stone-900 whitespace-nowrap">
+                          {item.student.lastName}, {item.student.firstName}
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          {isEditable ? (
+                            <select
+                              value={current.status}
+                              onChange={(e) => handleStatusChange(item.student.id, e.target.value as AssessmentScoreStatus)}
+                              className="text-xs font-semibold py-1 px-1.5 rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#800020]"
+                            >
+                              <option value="SCORED">Scored</option>
+                              <option value="ABSENT">Absent</option>
+                              <option value="EXEMPT">Exempt</option>
+                            </select>
+                          ) : (
+                            <span className="text-xs font-semibold text-stone-600">{current.status}</span>
+                          )}
+                        </td>
+
+                        {/* Component Score Inputs (e.g. CA and EXAM) */}
+                        {activeComponents.map((c) => (
+                          <td key={c.shortCode} className="py-3 px-3 text-center">
+                            {isScored ? (
+                              <input
+                                type="number"
+                                min="0"
+                                max={c.maxScore}
+                                step="0.5"
+                                disabled={!isEditable}
+                                value={current.components[c.shortCode] ?? ""}
+                                onChange={(e) => handleComponentScoreChange(item.student.id, c.shortCode, e.target.value)}
+                                placeholder="0"
+                                className="w-20 text-center bg-[#FAF7F2] border border-[#DFCBB5] rounded-lg px-2 py-1.5 text-sm font-extrabold text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#800020] focus:bg-white disabled:bg-stone-100 disabled:text-stone-400"
+                              />
+                            ) : (
+                              <span className="text-xs text-stone-400 italic">—</span>
+                            )}
+                          </td>
+                        ))}
+
+                        {/* Total Score */}
+                        <td className="py-3 px-3 text-center">
+                          {isScored ? (
+                            <span className="text-base font-black text-stone-950 tabular-nums">
+                              {totalScore}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-stone-400 italic">—</span>
+                          )}
+                        </td>
+
+                        {/* Grade Badge */}
+                        <td className="py-3 px-3 text-center">
+                          {isScored && gradeInfo ? (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${gradeInfo.badgeClass} whitespace-nowrap`}>
+                              {gradeInfo.grade}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-stone-400 italic">{current.status}</span>
+                          )}
+                        </td>
+
+                        {/* Remark */}
+                        <td className="py-3 px-4 text-xs font-semibold text-stone-700 whitespace-nowrap">
+                          {isScored && gradeInfo ? gradeInfo.remark : "—"}
+                        </td>
+
+                        {/* Teacher Notes */}
+                        <td className="py-3 px-3">
+                          {isEditable ? (
+                            <input
+                              type="text"
+                              value={current.notes}
+                              onChange={(e) => handleNotesChange(item.student.id, e.target.value)}
+                              placeholder="Optional remark"
+                              className="w-full text-xs bg-[#FAF7F2] border border-[#DFCBB5] rounded-lg px-2.5 py-1 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-[#800020]"
+                            />
+                          ) : (
+                            <span className="text-xs text-stone-500">{current.notes || "—"}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableWrapper>
           </div>
         )}
       </div>
+
+      {/* Floating Save Actions Footer */}
+      {isEditable && (
+        <div className="p-4 rounded-2xl bg-white border border-[#E2D6C5] shadow-md flex flex-wrap items-center justify-between gap-3 sticky bottom-4 z-20">
+          <div className="text-xs text-stone-600">
+            Scores update live. Click <strong>Save Draft</strong> to store progress, or <strong>Submit for Review</strong> to send to Super Admin &amp; Admin.
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handleSaveDraft}
+              disabled={isSaving || isSubmitting}
+              className="font-bold border-stone-300 text-stone-800 hover:bg-stone-100"
+            >
+              {isSaving ? "Saving..." : "💾 Save Draft"}
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleSubmitForReview}
+              disabled={isSaving || isSubmitting}
+              className="font-bold bg-[#800020] hover:bg-[#6b001a] text-white shadow-xs"
+            >
+              {isSubmitting ? "Submitting..." : assessment.status === "RETURNED_FOR_CORRECTION" ? "📤 Re-Submit for Review" : "📤 Submit for Review"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

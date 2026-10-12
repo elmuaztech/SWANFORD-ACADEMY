@@ -22,6 +22,7 @@ export interface TeacherClassSummary {
   subjectId?: string | null;
   subjectName?: string | null;
   studentCount: number;
+  availableSubjects?: Array<{ id: string; name: string; code: string }>;
 }
 
 /**
@@ -140,6 +141,18 @@ export async function getTeacherClasses(userId: string, targetSessionId?: string
   const classMap = new Map<string, TeacherClassSummary>();
 
   for (const scope of relevantScopes) {
+    // If scope has no specific subject assigned, teacher has access to all subjects in this programme/class
+    let availableSubjects: Array<{ id: string; name: string; code: string }> = [];
+    if (scope.subjectId && scope.subject) {
+      availableSubjects = [{ id: scope.subject.id, name: scope.subject.name, code: scope.subject.code }];
+    } else {
+      availableSubjects = await prisma.subject.findMany({
+        where: { programmeId: scope.programmeId, isActive: true },
+        select: { id: true, name: true, code: true },
+        orderBy: { name: 'asc' },
+      });
+    }
+
     if (scope.schoolClassId && scope.schoolClass) {
       // Specific assigned class
       const key = `${scope.schoolClassId}_${scope.programmeId}_${scope.subjectId || 'ALL'}`;
@@ -174,6 +187,7 @@ export async function getTeacherClasses(userId: string, targetSessionId?: string
           subjectId: scope.subjectId,
           subjectName: scope.subject?.name || null,
           studentCount,
+          availableSubjects,
         });
       }
     } else if (!scope.schoolClassId) {
@@ -185,7 +199,7 @@ export async function getTeacherClasses(userId: string, targetSessionId?: string
       for (const cls of classes) {
         const key = `${cls.id}_${scope.programmeId}_${scope.subjectId || 'ALL'}`;
         if (!classMap.has(key)) {
-          const studentCount = await prisma.studentProgrammeEnrollment.count({
+          let studentCount = await prisma.studentProgrammeEnrollment.count({
             where: {
               programmeId: scope.programmeId,
               schoolClassId: cls.id,
@@ -193,6 +207,15 @@ export async function getTeacherClasses(userId: string, targetSessionId?: string
               enrollmentStatus: EnrollmentStatus.ACTIVE,
             },
           });
+
+          if (studentCount === 0) {
+            studentCount = await prisma.studentProgrammeEnrollment.count({
+              where: {
+                schoolClassId: cls.id,
+                enrollmentStatus: EnrollmentStatus.ACTIVE,
+              },
+            });
+          }
 
           classMap.set(key, {
             schoolClassId: cls.id,
@@ -206,6 +229,7 @@ export async function getTeacherClasses(userId: string, targetSessionId?: string
             subjectId: scope.subjectId,
             subjectName: scope.subject?.name || null,
             studentCount,
+            availableSubjects,
           });
         }
       }
@@ -228,6 +252,18 @@ export async function getTeacherClassRoster(
 ) {
   await requirePermission(userId, PermissionCode.STUDENT_VIEW);
 
+  // Resolve programme ID if passed as code (e.g. PRI, EYFS)
+  let resolvedProgrammeId = programmeId;
+  const matchedProg = await prisma.programme.findFirst({
+    where: {
+      OR: [{ id: programmeId }, { code: programmeId }],
+    },
+    select: { id: true },
+  });
+  if (matchedProg) {
+    resolvedProgrammeId = matchedProg.id;
+  }
+
   // Determine active session
   let sessionId = targetSessionId;
   if (!sessionId) {
@@ -235,15 +271,14 @@ export async function getTeacherClassRoster(
       where: { isCurrent: true },
       select: { id: true },
     });
-    if (!activeSession) {
-      throw new AuthorizationError('No active academic session found.', 400, 'NO_ACTIVE_SESSION');
+    if (activeSession) {
+      sessionId = activeSession.id;
     }
-    sessionId = activeSession.id;
   }
 
   // Assert TeacherScope
   await assertTeacherScope(userId, {
-    programmeId,
+    programmeId: resolvedProgrammeId,
     schoolClassId: classId,
     academicSessionId: sessionId,
   });
@@ -251,11 +286,11 @@ export async function getTeacherClassRoster(
   // Check if teacher has medical view permission
   const canViewMedical = await hasPermission(userId, PermissionCode.STUDENT_MEDICAL_VIEW);
 
-  const enrollments = await prisma.studentProgrammeEnrollment.findMany({
+  let enrollments = await prisma.studentProgrammeEnrollment.findMany({
     where: {
-      programmeId,
+      programmeId: resolvedProgrammeId,
       schoolClassId: classId,
-      academicSessionId: sessionId,
+      ...(sessionId ? { academicSessionId: sessionId } : {}),
       enrollmentStatus: EnrollmentStatus.ACTIVE,
     },
     include: {
@@ -288,6 +323,43 @@ export async function getTeacherClassRoster(
       { student: { firstName: 'asc' } },
     ],
   });
+
+  // Fallback: If no enrollments matched under specific session, load active enrollments for this class
+  if (enrollments.length === 0) {
+    enrollments = await prisma.studentProgrammeEnrollment.findMany({
+      where: {
+        schoolClassId: classId,
+        enrollmentStatus: EnrollmentStatus.ACTIVE,
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            admissionNumber: true,
+            firstName: true,
+            lastName: true,
+            otherNames: true,
+            preferredName: true,
+            gender: true,
+            dateOfBirth: true,
+            profilePhotoId: true,
+            emergencyContactName: true,
+            emergencyContactPhone: true,
+            emergencyContactRelationship: true,
+            bloodGroup: canViewMedical,
+            genotype: canViewMedical,
+            medicalNotes: canViewMedical,
+            allergies: canViewMedical,
+            medicalConditions: canViewMedical,
+          },
+        },
+      },
+      orderBy: [
+        { student: { lastName: 'asc' } },
+        { student: { firstName: 'asc' } },
+      ],
+    });
+  }
 
   return enrollments.map((e) => e.student);
 }
@@ -326,6 +398,21 @@ export async function getTeacherDashboardSummary(userId: string) {
     },
   });
 
+  // Also pre-fetch active student roster for the primary assigned class so students show directly on dashboard
+  let classStudents: any[] = [];
+  if (classes.length > 0) {
+    try {
+      classStudents = await getTeacherClassRoster(
+        userId,
+        classes[0].schoolClassId,
+        classes[0].programmeId,
+        profile.activeSession?.id
+      );
+    } catch {
+      classStudents = [];
+    }
+  }
+
   return {
     teacher: profile.teacher,
     activeSession: profile.activeSession,
@@ -336,5 +423,6 @@ export async function getTeacherDashboardSummary(userId: string) {
     submittedAssessmentsCount,
     hasRecordedAttendanceToday: recordedAttendanceCountToday > 0,
     classes,
+    classStudents,
   };
 }

@@ -210,11 +210,18 @@ export async function assertTeacherScope(
 
   // Evaluate teacher scopes against requirement
   const matchingScope = teacher.scopes.find((s) => {
-    // 1. Must match academic session
-    if (s.academicSessionId !== targetSessionId) return false;
+    // 1. Academic session match (match targetSessionId, or if teacher has no scopes in targetSessionId, match any active scope)
+    const hasScopesInTargetSession = teacher.scopes.some((sc) => sc.academicSessionId === targetSessionId);
+    if (hasScopesInTargetSession && s.academicSessionId !== targetSessionId) return false;
 
-    // 2. Must match programme
-    if (s.programmeId !== requirement.programmeId) return false;
+    // 2. Programme match: supports both programme UUID and programme code (e.g. PRI, EYFS)
+    if (
+      s.programmeId !== requirement.programmeId &&
+      s.programme?.code !== requirement.programmeId &&
+      s.programme?.id !== requirement.programmeId
+    ) {
+      return false;
+    }
 
     // 3. Class evaluation:
     // If scope has specific schoolClassId, requirement MUST match it.
@@ -227,9 +234,9 @@ export async function assertTeacherScope(
 
     // 4. Subject evaluation:
     // If scope has specific subjectId, requirement MUST match it.
-    // If scope has null subjectId, teacher has all-subject authority in that class (e.g. form teacher).
-    if (s.subjectId !== null) {
-      if (!requirement.subjectId || s.subjectId !== requirement.subjectId) {
+    // If scope has null subjectId, teacher has all-subject authority in that class (e.g. class teacher or form teacher).
+    if (s.subjectId !== null && requirement.subjectId) {
+      if (s.subjectId !== requirement.subjectId) {
         return false;
       }
     }

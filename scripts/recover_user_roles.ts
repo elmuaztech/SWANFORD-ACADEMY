@@ -151,14 +151,73 @@ export const RECONCILIATION_TARGETS: RoleReconciliationTarget[] = [
   },
 ];
 
+export interface PendingRoleAssignment {
+  userId: string;
+  roleId: string;
+  roleCode: RoleCode;
+  email: string;
+  evidenceSource: string;
+}
+
+export function generateSurgicalRollbackSql(assignments: Array<{ userId: string; roleCode: RoleCode }>): string {
+  if (assignments.length === 0) {
+    return "-- No role assignments created or pending to roll back.";
+  }
+  const parentIds = [...new Set(assignments.filter((a) => a.roleCode === RoleCode.PARENT).map((a) => `'${a.userId}'`))];
+  const teacherIds = [...new Set(assignments.filter((a) => a.roleCode === RoleCode.TEACHER).map((a) => `'${a.userId}'`))];
+
+  const clauses: string[] = [];
+  if (parentIds.length > 0) {
+    clauses.push(`(ur.user_id IN (\n      ${parentIds.join(",\n      ")}\n    ) AND r.code = 'PARENT')`);
+  }
+  if (teacherIds.length > 0) {
+    clauses.push(`(ur.user_id IN (\n      ${teacherIds.join(",\n      ")}\n    ) AND r.code = 'TEACHER')`);
+  }
+
+  return `-- ======================================================================
+-- SWANFORD ACADEMY: Surgical Role Recovery Rollback Procedure
+-- 
+-- Safety Guarantees:
+-- 1. Deletes ONLY the specific PARENT and TEACHER mappings restored by this run.
+-- 2. Preserves any pre-existing or subsequently assigned roles (e.g. ADMIN, ACCOUNTANT).
+-- 3. Does NOT delete user accounts, sessions, student ties, or audit records.
+-- ======================================================================
+
+DELETE FROM public.user_roles ur
+USING public.roles r
+WHERE ur.role_id = r.id
+  AND (
+    ${clauses.join("\n    OR\n    ")}
+  );`;
+}
+
 export async function runRoleRecovery(options: { execute?: boolean; prismaClient?: PrismaClient }) {
   const isExecute = options.execute === true;
   const prisma = options.prismaClient || new PrismaClient();
 
   console.log(`\n======================================================================`);
   console.log(`Swanford Academy — User Role Reconciliation Plan Execution`);
-  console.log(`Mode: ${isExecute ? "EXECUTE (LIVE WRITES)" : "DRY-RUN (NO CHANGES APPLIED)"}`);
+  console.log(`Mode: ${isExecute ? "EXECUTE (LIVE ATOMIC WRITES)" : "DRY-RUN (NO CHANGES APPLIED)"}`);
   console.log(`======================================================================\n`);
+
+  // --- PRE-FLIGHT STATIC VALIDATION GATES ---
+  for (const target of RECONCILIATION_TARGETS) {
+    // 1. Prohibit granting ADMIN or SUPER_ADMIN to any non-root account
+    if (target.userId !== "2f06fdcd-23e5-4e02-8490-3fcf133c609c") {
+      if (target.targetRoles.includes(RoleCode.SUPER_ADMIN) || target.targetRoles.includes(RoleCode.ADMIN)) {
+        throw new Error(
+          `FATAL SAFETY VIOLATION: Target ${target.userId} (${target.redactedEmail}) is configured with administrative role. Ordinary targets may only receive PARENT or TEACHER.`
+        );
+      }
+    }
+
+    // 2. Enforce explicit exclusion of manual review flagged accounts
+    if (target.requiresManualReview && target.targetRoles.length > 0) {
+      throw new Error(
+        `FATAL SAFETY VIOLATION: Flagged account ${target.userId} (${target.redactedEmail}) has non-empty targetRoles. Ambiguous accounts must remain targetRoles: [].`
+      );
+    }
+  }
 
   // Cache existing roles by code
   const roles = await prisma.role.findMany();
@@ -176,6 +235,9 @@ export async function runRoleRecovery(options: { execute?: boolean; prismaClient
     notes: string;
   }> = [];
 
+  const pendingWrites: PendingRoleAssignment[] = [];
+
+  // --- REVALIDATION AGAINST LIVE DATABASE STATE ---
   for (const target of RECONCILIATION_TARGETS) {
     const user = await prisma.user.findUnique({
       where: { id: target.userId },
@@ -183,6 +245,8 @@ export async function runRoleRecovery(options: { execute?: boolean; prismaClient
         userRoles: {
           include: { role: true },
         },
+        guardianProfile: true,
+        teacherProfile: true,
       },
     });
 
@@ -212,6 +276,14 @@ export async function runRoleRecovery(options: { execute?: boolean; prismaClient
       continue;
     }
 
+    // Evidence invariant revalidation:
+    // Teachers MUST have an active teacher profile
+    if (target.targetRoles.includes(RoleCode.TEACHER) && !user.teacherProfile) {
+      throw new Error(
+        `PRE-FLIGHT STATE MISMATCH: Account ${target.userId} (${target.redactedEmail}) targets TEACHER role but lacks an active teacher profile in database.`
+      );
+    }
+
     const rolesToAdd = target.targetRoles.filter((tr) => !currentRoles.includes(tr));
 
     if (rolesToAdd.length === 0) {
@@ -226,26 +298,18 @@ export async function runRoleRecovery(options: { execute?: boolean; prismaClient
       continue;
     }
 
-    if (isExecute) {
-      for (const roleCode of rolesToAdd) {
-        const roleId = roleMap.get(roleCode);
-        if (!roleId) {
-          throw new Error(`Role with code ${roleCode} not found in database`);
-        }
-        await prisma.userRole.upsert({
-          where: {
-            userId_roleId: {
-              userId: target.userId,
-              roleId,
-            },
-          },
-          update: {},
-          create: {
-            userId: target.userId,
-            roleId,
-          },
-        });
+    for (const roleCode of rolesToAdd) {
+      const roleId = roleMap.get(roleCode);
+      if (!roleId) {
+        throw new Error(`Role with code ${roleCode} not found in database role table.`);
       }
+      pendingWrites.push({
+        userId: target.userId,
+        roleId,
+        roleCode,
+        email: user.email,
+        evidenceSource: target.evidenceSource,
+      });
     }
 
     report.push({
@@ -256,6 +320,32 @@ export async function runRoleRecovery(options: { execute?: boolean; prismaClient
       action: isExecute ? "ROLES_ASSIGNED" : "WOULD_ASSIGN_ROLES",
       notes: `Adding [${rolesToAdd.join(", ")}] based on ${target.evidenceSource}`,
     });
+  }
+
+  // --- ATOMIC TRANSACTION EXECUTION ---
+  const executedAssignments: Array<{ userId: string; roleCode: RoleCode }> = [];
+
+  if (isExecute && pendingWrites.length > 0) {
+    console.log(`Executing ${pendingWrites.length} role assignments inside a single atomic Prisma transaction...`);
+    await prisma.$transaction(async (tx) => {
+      for (const item of pendingWrites) {
+        await tx.userRole.upsert({
+          where: {
+            userId_roleId: {
+              userId: item.userId,
+              roleId: item.roleId,
+            },
+          },
+          update: {},
+          create: {
+            userId: item.userId,
+            roleId: item.roleId,
+          },
+        });
+        executedAssignments.push({ userId: item.userId, roleCode: item.roleCode });
+      }
+    });
+    console.log(`Transaction successfully committed. All ${executedAssignments.length} role assignments applied atomically.`);
   }
 
   console.table(
@@ -269,13 +359,31 @@ export async function runRoleRecovery(options: { execute?: boolean; prismaClient
     }))
   );
 
+  const assignmentsForRollback = isExecute
+    ? executedAssignments
+    : pendingWrites.map((p) => ({ userId: p.userId, roleCode: p.roleCode }));
+  const surgicalRollbackSql = generateSurgicalRollbackSql(assignmentsForRollback);
+
   console.log(`\nReconciliation Summary:`);
   console.log(`- Total Accounts Evaluated: ${report.length}`);
   console.log(`- Already Consistent: ${report.filter((r) => r.action === "ALREADY_CONSISTENT").length}`);
   console.log(`- Flagged For Manual Review: ${report.filter((r) => r.action === "FLAGGED_FOR_MANUAL_REVIEW").length}`);
   console.log(`- Roles Reconciled/Pending: ${report.filter((r) => r.action.includes("ASSIGN")).length}`);
+  console.log(`\n--- Surgical Rollback Script ---`);
+  console.log(surgicalRollbackSql);
+  console.log(`--------------------------------\n`);
 
-  return report;
+  return {
+    success: true,
+    isDryRun: !isExecute,
+    totalEvaluated: report.length,
+    alreadyConsistentCount: report.filter((r) => r.action === "ALREADY_CONSISTENT").length,
+    flaggedReviewCount: report.filter((r) => r.action === "FLAGGED_FOR_MANUAL_REVIEW").length,
+    pendingOrExecutedCount: report.filter((r) => r.action.includes("ASSIGN")).length,
+    report,
+    createdAssignments: isExecute ? executedAssignments : [],
+    surgicalRollbackSql,
+  };
 }
 
 // Direct invocation handling

@@ -40,12 +40,12 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
   // Photo update modal state
   const [editingStudent, setEditingStudent] = useState<StudentRosterItem | null>(null);
 
-  const missingProgrammeError = !programmeId ? "programmeId is required to view class roster." : null;
-
   useEffect(() => {
-    if (!programmeId) return;
+    const url = programmeId
+      ? `/api/teacher/classes/${classId}/students?programmeId=${encodeURIComponent(programmeId)}`
+      : `/api/teacher/classes/${classId}/students`;
 
-    fetch(`/api/teacher/classes/${classId}/students?programmeId=${programmeId}`)
+    fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load class roster");
         return res.json();
@@ -59,15 +59,6 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
         setIsLoading(false);
       });
   }, [classId, programmeId]);
-
-  if (missingProgrammeError) {
-    return (
-      <ErrorState
-        title="Class Roster Unavailable"
-        message={missingProgrammeError}
-      />
-    );
-  }
 
   if (isLoading) {
     return <LoadingState description="Loading class roster..." />;

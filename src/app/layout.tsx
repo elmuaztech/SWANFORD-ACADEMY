@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SCHOOL_PROFILE } from "@/lib/constants";
 import { ScrollObserver } from "@/components";
-import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
 
 export const metadata: Metadata = {
   title: `${SCHOOL_PROFILE.name} - ${SCHOOL_PROFILE.subtitle}`,
@@ -75,7 +74,6 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col font-sans bg-[#EFE8DC] text-slate-900 overflow-x-hidden w-full max-w-full relative">
-        <ImpersonationBanner />
         <ScrollObserver />
         <div className="flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
           {children}

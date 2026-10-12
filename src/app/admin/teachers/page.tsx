@@ -199,7 +199,6 @@ export default function AdminTeachersPage() {
   };
 
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -210,25 +209,6 @@ export default function AdminTeachersPage() {
       .catch(() => {});
   }, []);
 
-  const handleImpersonateTeacher = async (teacherId: string) => {
-    try {
-      setImpersonatingId(teacherId);
-      setError(null);
-      const res = await fetch("/api/super-admin/impersonate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teacherId, reason: "Administrative verification from Teacher Directory" }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to impersonate teacher account");
-      }
-      window.location.assign(data.redirectUrl || "/teacher");
-    } catch (err: any) {
-      setError(err?.message || "Failed to impersonate teacher.");
-      setImpersonatingId(null);
-    }
-  };
 
   useEffect(() => {
     fetchTeachers("");
@@ -451,18 +431,6 @@ export default function AdminTeachersPage() {
                       </TableCell>
                       <TableCell className="min-w-[240px] text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {currentUser?.roles?.includes("SUPER_ADMIN") && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={impersonatingId === t.id}
-                              onClick={() => handleImpersonateTeacher(t.id)}
-                              className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold text-xs whitespace-nowrap min-h-[36px]"
-                              title="Directly impersonate this educator and open Teacher Dashboard"
-                            >
-                              {impersonatingId === t.id ? "Loading..." : "Impersonate"}
-                            </Button>
-                          )}
                           <Link href={`/admin/teachers/${t.id}?edit=true`}>
                             <Button
                               variant="outline"
@@ -523,17 +491,6 @@ export default function AdminTeachersPage() {
                 ]}
                 actions={
                   <div className="w-full space-y-2">
-                    {currentUser?.roles?.includes("SUPER_ADMIN") && (
-                      <Button
-                        variant="outline"
-                        size="md"
-                        disabled={impersonatingId === t.id}
-                        onClick={() => handleImpersonateTeacher(t.id)}
-                        className="w-full border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold min-h-[44px]"
-                      >
-                        {impersonatingId === t.id ? "Switching..." : "Impersonate Teacher"}
-                      </Button>
-                    )}
                     <Link href={`/admin/teachers/${t.id}?edit=true`} className="w-full block">
                       <Button
                         variant="outline"

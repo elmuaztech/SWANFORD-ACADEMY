@@ -6,6 +6,7 @@ import {
 } from '@/lib/attendance/attendance_service';
 import { AuthorizationError } from '@/lib/auth/authorization';
 import { toUserFacingError } from '@/lib/ui/error_messages';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,16 @@ export async function GET(req: NextRequest) {
     const date = searchParams.get('date') || new Date().toISOString().slice(0, 10);
     const academicSessionId = searchParams.get('academicSessionId') || undefined;
 
-    if (!programmeId || !schoolClassId) {
+    let progId = programmeId;
+    if (schoolClassId && (!progId || progId.length < 30)) {
+      const cls = await prisma.schoolClass.findUnique({
+        where: { id: schoolClassId },
+        select: { programmeId: true },
+      });
+      if (cls) progId = cls.programmeId;
+    }
+
+    if (!progId || !schoolClassId) {
       return NextResponse.json(
         { error: 'programmeId and schoolClassId query parameters are required', code: 'PARAMS_REQUIRED' },
         { status: 400 }
@@ -30,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     const attendance = await getClassDailyAttendance(user, {
-      programmeId,
+      programmeId: progId,
       schoolClassId,
       date,
       academicSessionId,

@@ -69,12 +69,11 @@ export async function GET(
     });
 
     // Also load any active enrolled students in this class who don't have a score record yet
-    const enrolledStudents = await prisma.studentProgrammeEnrollment.findMany({
+    let enrolledStudents = await prisma.studentProgrammeEnrollment.findMany({
       where: {
         programmeId: assessment.programmeId,
         schoolClassId: assessment.schoolClassId,
-        academicSessionId: assessment.academicSessionId,
-        academicTermId: assessment.academicTermId,
+        ...(assessment.academicSessionId ? { academicSessionId: assessment.academicSessionId } : {}),
         enrollmentStatus: 'ACTIVE',
       },
       include: {
@@ -95,6 +94,31 @@ export async function GET(
       ],
     });
 
+    if (enrolledStudents.length === 0) {
+      enrolledStudents = await prisma.studentProgrammeEnrollment.findMany({
+        where: {
+          schoolClassId: assessment.schoolClassId,
+          enrollmentStatus: 'ACTIVE',
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              admissionNumber: true,
+              firstName: true,
+              lastName: true,
+              otherNames: true,
+              gender: true,
+            },
+          },
+        },
+        orderBy: [
+          { student: { lastName: 'asc' } },
+          { student: { firstName: 'asc' } },
+        ],
+      });
+    }
+
     const scoreMap = new Map(assessment.scores.map((s) => [s.studentId, s]));
 
     const roster = enrolledStudents.map((enr) => {
@@ -105,6 +129,7 @@ export async function GET(
           ? {
               id: existingScore.id,
               rawScore: existingScore.rawScore ? Number(existingScore.rawScore) : null,
+              componentScores: (existingScore.componentScoresJson as Record<string, number>) || null,
               grade: existingScore.grade,
               points: existingScore.points ? Number(existingScore.points) : null,
               remark: existingScore.remark,
@@ -115,6 +140,24 @@ export async function GET(
           : null,
       };
     });
+
+    // Resolve assessment components structure (e.g. CA 30 + Exam 70, or dynamic structure config)
+    let components = [
+      { name: "Continuous Assessment", shortCode: "CA", maxScore: 30, weightPercentage: 30 },
+      { name: "Term Examination", shortCode: "EXAM", maxScore: 70, weightPercentage: 70 },
+    ];
+
+    const customConfig = await prisma.assessmentStructureConfig.findFirst({
+      where: {
+        programmeId: assessment.programmeId,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (customConfig && customConfig.componentsJson && Array.isArray(customConfig.componentsJson) && customConfig.componentsJson.length > 0) {
+      components = customConfig.componentsJson as any;
+    }
 
     const latestReview = await prisma.assessmentReviewLog.findFirst({
       where: { assessmentId },
@@ -140,6 +183,7 @@ export async function GET(
         gradingScale: assessment.gradingScale,
         session: assessment.academicSession,
         term: assessment.academicTerm,
+        components,
         createdAt: assessment.createdAt,
         latestReview: latestReview
           ? {

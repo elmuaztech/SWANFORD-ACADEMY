@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth/request_auth';
 import { getTeacherClassRoster } from '@/lib/teacher/teacher_service';
 import { AuthorizationError } from '@/lib/auth/authorization';
 import { toUserFacingError } from '@/lib/ui/error_messages';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,15 +22,24 @@ export async function GET(
     const programmeId = searchParams.get('programmeId');
     const sessionId = searchParams.get('sessionId') || undefined;
 
-    if (!programmeId) {
+    let progId = programmeId;
+    if (!progId) {
+      const cls = await prisma.schoolClass.findUnique({
+        where: { id: classId },
+        select: { programmeId: true },
+      });
+      progId = cls?.programmeId || null;
+    }
+
+    if (!progId) {
       return NextResponse.json(
         { error: 'programmeId query parameter is required', code: 'PROGRAMME_ID_REQUIRED' },
         { status: 400 }
       );
     }
 
-    const roster = await getTeacherClassRoster(user.id, classId, programmeId, sessionId);
-    return NextResponse.json({ classId, programmeId, students: roster });
+    const roster = await getTeacherClassRoster(user.id, classId, progId, sessionId);
+    return NextResponse.json({ classId, programmeId: progId, students: roster });
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
