@@ -319,14 +319,19 @@ describe("Phase 2 — Authorization, Assessments & Role Recovery Safety Gate", (
       expect(rootAdmin?.targetRoles).toContain(RoleCode.ADMIN);
     });
 
-    it("Verifies all remaining 15 accounts have non-profile evidence sources (Audit logs or Notifications)", () => {
-      const accounts = RECONCILIATION_TARGETS.filter(
-        (t) => t.userId !== "2f06fdcd-23e5-4e02-8490-3fcf133c609c" && t.userId !== "8f78d46d-13fd-4e23-a9d9-e807984df4e2"
-      );
-      expect(accounts.length).toBe(15);
-      for (const acc of accounts) {
+    it("Verifies verified accounts have valid non-profile evidence sources and manual reviews are flagged", () => {
+      const verifiedAccounts = RECONCILIATION_TARGETS.filter((t) => !t.requiresManualReview && t.targetRoles.length > 0 && t.userId !== "2f06fdcd-23e5-4e02-8490-3fcf133c609c");
+      expect(verifiedAccounts.length).toBe(12);
+      for (const acc of verifiedAccounts) {
         expect(["AUDIT_LOG", "OUTBOX_NOTIFICATION"]).toContain(acc.evidenceType);
         expect(acc.targetRoles.length).toBeGreaterThan(0);
+      }
+
+      const manualReviewAccounts = RECONCILIATION_TARGETS.filter((t) => t.requiresManualReview);
+      expect(manualReviewAccounts.length).toBe(4);
+      for (const m of manualReviewAccounts) {
+        expect(m.targetRoles.length).toBe(0);
+        expect(m.manualReviewNote).toBeDefined();
       }
     });
   });
