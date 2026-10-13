@@ -32,7 +32,8 @@ interface Programme {
 
 interface TeacherScopeItem {
   id: string;
-  isClassTeacher: boolean;
+  isFormTeacher?: boolean;
+  isClassTeacher?: boolean;
   teacher: {
     id: string;
     staffId: string;
@@ -446,8 +447,8 @@ export default function AdminClassesPage() {
             <TableBody>
               {filtered.map((c) => {
                 const studentCount = c._count?.enrollments || 0;
-                const formTeacher = c.teacherScopes?.find((ts) => ts.isClassTeacher);
-                const otherTeachers = c.teacherScopes?.filter((ts) => !ts.isClassTeacher) || [];
+                const formTeacher = c.teacherScopes?.find((ts) => ts.isFormTeacher || ts.isClassTeacher);
+                const otherTeachers = c.teacherScopes?.filter((ts) => !(ts.isFormTeacher || ts.isClassTeacher)) || [];
 
                 return (
                   <TableRow key={c.id}>
@@ -552,9 +553,12 @@ export default function AdminClassesPage() {
                   { label: "Enrolled Pupils", value: `${c._count?.enrollments || 0} / ${c.capacity}` },
                   {
                     label: "Form Teacher",
-                    value: c.teacherScopes?.[0]?.teacher
-                      ? `${c.teacherScopes[0].teacher.firstName} ${c.teacherScopes[0].teacher.lastName}`
-                      : "Unassigned",
+                    value: (() => {
+                      const ft = c.teacherScopes?.find((ts) => ts.isFormTeacher || ts.isClassTeacher);
+                      return ft?.teacher
+                        ? `${ft.teacher.firstName} ${ft.teacher.lastName}`
+                        : "No Form Teacher";
+                    })(),
                   },
                 ]}
                 actions={

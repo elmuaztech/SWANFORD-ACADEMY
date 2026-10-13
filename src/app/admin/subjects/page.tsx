@@ -161,7 +161,7 @@ export default function AdminSubjectsPage() {
           }
         : {
             programmeId: formData.programmeId,
-            code: formData.code.trim().toUpperCase(),
+            code: formData.code.trim() ? formData.code.trim().toUpperCase() : undefined,
             name: formData.name.trim(),
             description: formData.description.trim() || undefined,
             displayOrder: Number(formData.displayOrder),
@@ -205,6 +205,24 @@ export default function AdminSubjectsPage() {
       fetchData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to update subject status.");
+    }
+  };
+
+  const handleDeleteSubject = async (s: SubjectItem) => {
+    if (!confirm(`Are you sure you want to permanently delete '${s.name}'? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/subjects/${s.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to delete subject.");
+      }
+      fetchData();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete subject.");
     }
   };
 
@@ -381,6 +399,14 @@ export default function AdminSubjectsPage() {
                         >
                           {s.isActive ? "Deactivate" : "Activate"}
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-rose-700 hover:bg-rose-50 hover:text-rose-900"
+                          onClick={() => handleDeleteSubject(s)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -407,11 +433,11 @@ export default function AdminSubjectsPage() {
                   { label: "Description", value: s.description || "—" },
                 ]}
                 actions={
-                  <div className="flex gap-2 w-full pt-1">
+                  <div className="grid grid-cols-3 gap-2 w-full pt-1">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 min-h-[44px]"
+                      className="min-h-[44px]"
                       onClick={() => handleOpenEdit(s)}
                     >
                       Edit
@@ -419,10 +445,18 @@ export default function AdminSubjectsPage() {
                     <Button
                       variant={s.isActive ? "outline" : "primary"}
                       size="sm"
-                      className="flex-1 min-h-[44px]"
+                      className="min-h-[44px]"
                       onClick={() => handleToggleStatus(s)}
                     >
-                      {s.isActive ? "Deactivate" : "Activate"}
+                      {s.isActive ? "Deact" : "Act"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-[44px] text-rose-700 hover:bg-rose-50"
+                      onClick={() => handleDeleteSubject(s)}
+                    >
+                      Delete
                     </Button>
                   </div>
                 }
@@ -457,17 +491,6 @@ export default function AdminSubjectsPage() {
                   </option>
                 ))}
               </select>
-            </FormGroup>
-          )}
-
-          {!editingSubject && (
-            <FormGroup label="Subject Code (Uppercase alphanumeric, e.g. MATH, ENG)" required>
-              <Input
-                placeholder="MATH, ENG, QURAN, BASIC_SCI"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                required
-              />
             </FormGroup>
           )}
 

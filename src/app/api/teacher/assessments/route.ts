@@ -82,7 +82,13 @@ export async function POST(req: NextRequest) {
     const { schoolClassId, subjectId, programmeId: inputProgrammeId, title, academicTermId } = body;
 
     if (!schoolClassId) {
-      return NextResponse.json({ error: 'schoolClassId is required to start an assessment' }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: 'Academic assessments may only be created and scheduled by school administrators. Teachers are authorized to record marks for scheduled assessments.',
+          code: 'ADMIN_ONLY_ACTION',
+        },
+        { status: 403 }
+      );
     }
 
     // Resolve class and programme

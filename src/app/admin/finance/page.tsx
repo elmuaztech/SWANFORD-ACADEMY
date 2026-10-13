@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardHeader,
@@ -153,7 +154,16 @@ interface ScheduledReminderItem {
 }
 
 export default function AdminFinancePage() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"invoices" | "outstanding" | "payments" | "expenses" | "fees">("invoices");
+
+  useEffect(() => {
+    const tabParam = searchParams?.get("tab");
+    if (tabParam && ["invoices", "outstanding", "payments", "expenses", "fees"].includes(tabParam)) {
+      setActiveTab(tabParam as "invoices" | "outstanding" | "payments" | "expenses" | "fees");
+    }
+  }, [searchParams]);
+
   const [outstandingData, setOutstandingData] = useState<OutstandingOverview | null>(null);
   const [scheduledReminders, setScheduledReminders] = useState<ScheduledReminderItem[]>([]);
   const [outstandingFilter, setOutstandingFilter] = useState<"ALL" | "NO_PAYMENT" | "PARTIAL_PAYMENT" | "FULLY_PAID">("ALL");
@@ -603,9 +613,19 @@ export default function AdminFinancePage() {
           { id: "fees", label: "Fee Structures & Form Fee" },
         ]}
         activeTab={activeTab}
-        onChange={(tabId) =>
-          setActiveTab(tabId as "invoices" | "outstanding" | "payments" | "expenses" | "fees")
-        }
+        onChange={(tabId) => {
+          const tab = tabId as "invoices" | "outstanding" | "payments" | "expenses" | "fees";
+          setActiveTab(tab);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            if (tab === "invoices") {
+              url.searchParams.delete("tab");
+            } else {
+              url.searchParams.set("tab", tab);
+            }
+            window.history.replaceState({}, "", url.toString());
+          }
+        }}
       />
 
       {/* Invoices Tab */}

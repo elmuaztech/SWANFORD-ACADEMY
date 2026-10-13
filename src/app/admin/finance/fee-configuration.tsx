@@ -785,6 +785,44 @@ export function FeeConfigurationSection() {
               </div>
             </div>
 
+            {/* Clear Pre-Save Configuration Summary */}
+            <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#EADBDA] space-y-2 text-xs">
+              <span className="font-bold text-[#800020] uppercase tracking-wider text-[11px] block">
+                Applicable Scope &amp; Precedence Summary
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-stone-700">
+                <div>
+                  <span className="text-stone-400 block text-[10px] uppercase">Target Scope</span>
+                  <span className="font-semibold text-stone-900">
+                    {formData.programmeId === "ALL"
+                      ? "All Academic Programmes"
+                      : programmes.find((p) => p.id === formData.programmeId)?.name || "Selected Programme"}
+                    {formData.schoolClassId && (
+                      <span className="text-[#800020]">
+                        {" • " + (classes.find((c) => c.id === formData.schoolClassId)?.name || "Specific Class")}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-stone-400 block text-[10px] uppercase">Session &amp; Term</span>
+                  <span className="font-semibold text-stone-900">
+                    {sessions.find((s) => s.id === formData.academicSessionId)?.name || "Session"}
+                    {" • " + (currentSessionTerms.find((t) => t.id === formData.academicTermId)?.name || "Term")}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-stone-200/80">
+                <span className="text-stone-500">Total Applicable Term Fee:</span>
+                <span className="font-black text-sm text-[#5B0612]">
+                  ₦{calculateTotal().toLocaleString()}
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-500 italic pt-1 leading-tight">
+                Historical invoices and verified receipts remain strictly preserved. This rate will apply to newly issued invoices for eligible enrolled students.
+              </p>
+            </div>
+
             <div className="flex justify-end gap-2 pt-3 border-t border-stone-200">
               <Button
                 variant="outline"

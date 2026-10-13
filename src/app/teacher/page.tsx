@@ -795,7 +795,7 @@ export default function TeacherDashboardPage() {
                 <span>💡</span> Teacher Portal Guidelines
               </p>
               <ul className="space-y-1.5 list-disc list-inside text-stone-600">
-                <li>Mark class attendance before 9:00 AM daily.</li>
+                <li>Record class attendance promptly during morning roll call daily.</li>
                 <li>Enter and save test scores promptly for terminal processing.</li>
                 <li>Submit assessments to Admin for review when grades are ready.</li>
               </ul>

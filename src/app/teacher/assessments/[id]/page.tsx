@@ -55,6 +55,19 @@ interface AssessmentDetail {
   term: { name: string };
   components?: AssessmentComponent[];
   createdAt: string;
+  gradingScale?: {
+    id: string;
+    name: string;
+    code: string;
+    bands?: Array<{
+      id: string;
+      name: string;
+      minScore: number | string;
+      maxScore: number | string;
+      remark: string;
+      isPass: boolean;
+    }>;
+  } | null;
   latestReview?: {
     comment: string;
     action: string;
@@ -69,43 +82,78 @@ interface StudentScoreState {
   notes: string;
 }
 
-// Live Grade & Remark Resolver based on Nigerian / Islamic Academic standard
-function computeGradeAndRemark(total: number): {
+// Live Grade & Remark Resolver based on Swanford Academy Western Standard
+function computeGradeAndRemark(
+  total: number,
+  bands?: Array<{
+    name: string;
+    minScore: number | string;
+    maxScore: number | string;
+    remark?: string;
+    isPass?: boolean;
+  }>
+): {
   grade: string;
   remark: string;
   badgeClass: string;
 } {
+  if (bands && bands.length > 0) {
+    const matched = bands.find(
+      (b) => total >= Number(b.minScore) && total <= Number(b.maxScore)
+    );
+    if (matched) {
+      let badgeClass = "bg-stone-50 text-stone-800 border-stone-300 font-bold";
+      if (matched.name.startsWith("A")) {
+        badgeClass = "bg-emerald-50 text-emerald-800 border-emerald-300 font-bold";
+      } else if (matched.name.startsWith("B")) {
+        badgeClass = "bg-blue-50 text-blue-800 border-blue-300 font-bold";
+      } else if (matched.name.startsWith("C")) {
+        badgeClass = "bg-amber-50 text-amber-900 border-amber-300 font-bold";
+      } else if (matched.name.startsWith("D")) {
+        badgeClass = "bg-orange-50 text-orange-900 border-orange-300 font-bold";
+      } else if (matched.isPass === false) {
+        badgeClass = "bg-rose-50 text-rose-800 border-rose-300 font-bold";
+      }
+      return {
+        grade: matched.name,
+        remark: matched.remark || (matched.isPass ? "Satisfactory" : "Needs Improvement"),
+        badgeClass,
+      };
+    }
+  }
+
+  // Western Standard Default Performance Scale for Swanford Academy
   if (total >= 70) {
     return {
-      grade: "A (Mumtaz)",
-      remark: "Mumtaz (Excellent)",
+      grade: "A (Excellent)",
+      remark: "Excellent / Distinction",
       badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-300 font-bold",
     };
   }
   if (total >= 60) {
     return {
-      grade: "B (Jayyid Jiddan)",
-      remark: "Jayyid Jiddan (Very Good)",
+      grade: "B (Very Good)",
+      remark: "Very Good",
       badgeClass: "bg-blue-50 text-blue-800 border-blue-300 font-bold",
     };
   }
   if (total >= 50) {
     return {
-      grade: "C (Jayyid)",
-      remark: "Jayyid (Good)",
+      grade: "C (Good)",
+      remark: "Good / Credit",
       badgeClass: "bg-amber-50 text-amber-900 border-amber-300 font-bold",
     };
   }
   if (total >= 40) {
     return {
-      grade: "D (Maqbul)",
-      remark: "Maqbul (Pass)",
+      grade: "D (Pass)",
+      remark: "Pass / Satisfactory",
       badgeClass: "bg-orange-50 text-orange-900 border-orange-300 font-bold",
     };
   }
   return {
-    grade: "F (Rasib)",
-    remark: "Rasib (Needs Improvement)",
+    grade: "F (Needs Improvement)",
+    remark: "Needs Improvement",
     badgeClass: "bg-rose-50 text-rose-800 border-rose-300 font-bold",
   };
 }
@@ -426,9 +474,9 @@ export default function AssessmentDetailPage({
       )}
 
       {/* Assessment Structure Info Banner */}
-      <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#EFE9DF] flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-3">
-          <span className="font-extrabold text-[#800020] uppercase tracking-wider">Evaluation Structure:</span>
+      <div className="p-3.5 sm:p-4 rounded-xl bg-[#FAF7F2] border border-[#EFE9DF] flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <span className="font-extrabold text-[#800020] uppercase tracking-wider shrink-0">Evaluation Structure:</span>
           {activeComponents.map((c) => (
             <span key={c.shortCode} className="px-2.5 py-1 rounded-md bg-white border border-[#E2D6C5] font-semibold text-stone-800">
               {c.name} ({c.shortCode}): <strong>Max {c.maxScore}</strong>
@@ -438,8 +486,8 @@ export default function AssessmentDetailPage({
             Total Max: 100
           </span>
         </div>
-        <div className="text-stone-500 font-medium">
-          Grading Scale: <strong className="text-stone-800 font-bold">A (Mumtaz), B (Very Good), C (Good), D (Pass), F (Needs Improvement)</strong>
+        <div className="text-stone-600 font-medium break-words">
+          Grading Scale: <strong className="text-stone-800 font-bold">{assessment.gradingScale?.bands?.length ? assessment.gradingScale.bands.map(b => `${b.name} (${b.remark || b.name})`).join(", ") : "A (Distinction), B (Very Good), C (Credit), D (Pass), F (Needs Improvement)"}</strong>
         </div>
       </div>
 
@@ -477,7 +525,7 @@ export default function AssessmentDetailPage({
                     const current = scores[item.student.id] || { components: {}, status: "SCORED", notes: "" };
                     const isScored = current.status === "SCORED";
                     const totalScore = isScored ? getStudentTotal(item.student.id) : 0;
-                    const gradeInfo = isScored ? computeGradeAndRemark(totalScore) : null;
+                    const gradeInfo = isScored ? computeGradeAndRemark(totalScore, assessment.gradingScale?.bands) : null;
 
                     return (
                       <tr key={item.student.id} className="hover:bg-[#FAF7F2]/50 transition-colors">

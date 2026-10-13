@@ -164,17 +164,26 @@ export async function deleteProgramme(actorUserId: string, id: string) {
 
   const prog = await getProgramme(id);
 
-  const [classCount, enrollmentCount, feeCount, appCount] = await Promise.all([
+  const [classCount, enrollmentCount, feeCount, appCount, subjectCount, assessmentCount] = await Promise.all([
     prisma.schoolClass.count({ where: { programmeId: id } }),
     prisma.studentProgrammeEnrollment.count({ where: { programmeId: id } }),
     prisma.feeStructure.count({ where: { programmeId: id } }),
-    prisma.applicationProgrammeSelection.count({ where: { programmeId: id } }),
+    prisma.applicationProgrammeSelection.count({ where: { targetClass: { programmeId: id } } }),
+    prisma.subject.count({ where: { programmeId: id } }),
+    prisma.assessment.count({ where: { programmeId: id } }),
   ]);
 
-  const totalDependencies = classCount + enrollmentCount + feeCount + appCount;
+  const totalDependencies = classCount + enrollmentCount + feeCount + appCount + subjectCount + assessmentCount;
   if (totalDependencies > 0) {
+    const reasons: string[] = [];
+    if (classCount > 0) reasons.push(`${classCount} class(es)`);
+    if (subjectCount > 0) reasons.push(`${subjectCount} subject(s)`);
+    if (enrollmentCount > 0) reasons.push(`${enrollmentCount} enrollment(s)`);
+    if (feeCount > 0) reasons.push(`${feeCount} fee structure(s)`);
+    if (appCount > 0) reasons.push(`${appCount} application(s)`);
+    if (assessmentCount > 0) reasons.push(`${assessmentCount} assessment(s)`);
     throw new AuthorizationError(
-      `Cannot delete programme '${prog.name}': ${totalDependencies} dependent record(s) exist. Deactivate the programme instead.`,
+      `Cannot delete programme '${prog.name}': historical academic dependencies exist (${reasons.join(', ')}). Deactivate the programme instead.`,
       400,
       'PROGRAMME_HAS_DEPENDENTS'
     );

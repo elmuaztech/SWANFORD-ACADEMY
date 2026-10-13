@@ -1855,6 +1855,35 @@ export async function resendUserActivation(
   );
 }
 
+export async function resendTeacherActivation(
+  actor: SafeUser,
+  teacherId: string,
+  ipAddress?: string
+) {
+  await requirePermission(actor, PermissionCode.TEACHER_MANAGE);
+
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    include: { user: true },
+  });
+
+  if (!teacher) {
+    throw new AuthorizationError('Teacher profile not found.', 404, 'TEACHER_NOT_FOUND');
+  }
+
+  if (!teacher.userId || !teacher.user) {
+    throw new AuthorizationError('Teacher has no linked user account for portal login.', 400, 'NO_USER_ACCOUNT');
+  }
+
+  const result = await resendUserActivation(actor, teacher.userId, ipAddress);
+
+  return {
+    success: true,
+    message: `Activation link successfully dispatched to ${teacher.user.email}.`,
+    result,
+  };
+}
+
 // ==========================================
 // 3. TEACHER MANAGEMENT
 // ==========================================
@@ -1975,6 +2004,47 @@ export async function assignTeacherScope(
   }
 
   const isForm = input.isFormTeacher ?? input.isClassTeacher ?? false;
+
+  // Prevent duplicate subject assignment to the same class in the active session
+  if (input.schoolClassId && input.subjectId) {
+    const existingSubjectAssign = await prisma.teacherScope.findFirst({
+      where: {
+        academicSessionId: input.academicSessionId,
+        schoolClassId: input.schoolClassId,
+        subjectId: input.subjectId,
+        status: 'ACTIVE',
+      },
+      include: { teacher: true, subject: true, schoolClass: true },
+    });
+    if (existingSubjectAssign) {
+      throw new AuthorizationError(
+        `Subject '${existingSubjectAssign.subject?.name || 'Subject'}' is already assigned to ${existingSubjectAssign.schoolClass?.name || 'this class'} for this academic session (assigned to ${existingSubjectAssign.teacher.firstName} ${existingSubjectAssign.teacher.lastName}).`,
+        400,
+        'DUPLICATE_CLASS_SUBJECT_ASSIGNMENT'
+      );
+    }
+  }
+
+  // Prevent duplicate form teacher assignment to the same class in the active session
+  if (isForm && input.schoolClassId) {
+    const existingFormTeacher = await prisma.teacherScope.findFirst({
+      where: {
+        academicSessionId: input.academicSessionId,
+        schoolClassId: input.schoolClassId,
+        isFormTeacher: true,
+        status: 'ACTIVE',
+        teacherId: { not: input.teacherId },
+      },
+      include: { teacher: true, schoolClass: true },
+    });
+    if (existingFormTeacher) {
+      throw new AuthorizationError(
+        `${existingFormTeacher.teacher.firstName} ${existingFormTeacher.teacher.lastName} is already assigned as the Form Teacher for ${existingFormTeacher.schoolClass?.name || 'this class'}.`,
+        400,
+        'DUPLICATE_FORM_TEACHER_ASSIGNMENT'
+      );
+    }
+  }
 
   const scope = await prisma.$transaction(async (tx) => {
     const created = await tx.teacherScope.create({

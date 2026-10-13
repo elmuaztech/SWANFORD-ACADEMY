@@ -29,7 +29,8 @@ export const CreateSubjectSchema = z.object({
           /^[A-Z0-9_]+$/,
           'PLEASE ENTER THE SUBJECT CODE CORRECTLY. Use only uppercase letters and numbers (e.g. MATH, ENG101).'
         )
-    ),
+    )
+    .optional(),
   name: z.string().trim().min(2, 'PLEASE ENTER A VALID SUBJECT NAME (at least 2 characters).'),
   description: z.string().optional(),
   displayOrder: z.number().int().default(0),
@@ -110,20 +111,55 @@ export async function createSubject(
     );
   }
 
-  const existing = await prisma.subject.findUnique({
-    where: { code: validated.code },
+  // 1. Enforce duplicate prevention per programme
+  const existingNameInProg = await prisma.subject.findFirst({
+    where: {
+      programmeId: validated.programmeId,
+      name: { equals: validated.name.trim(), mode: 'insensitive' },
+    },
   });
-  if (existing) {
+  if (existingNameInProg) {
     throw new AuthorizationError(
-      `A subject with code '${validated.code}' already exists.`,
+      `A subject named '${validated.name}' already exists in ${programme.name}.`,
       400,
-      'DUPLICATE_SUBJECT_CODE'
+      'DUPLICATE_SUBJECT_NAME'
     );
+  }
+
+  // 2. Resolve or auto-generate code
+  let code = validated.code;
+  if (!code) {
+    const slug = validated.name
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 10);
+    const progPrefix = (programme.code || 'SUBJ').slice(0, 4).toUpperCase();
+    code = `${progPrefix}_${slug || 'SUBJ'}`.slice(0, 18);
+    let counter = 1;
+    while (await prisma.subject.findUnique({ where: { code } })) {
+      code = `${progPrefix}_${slug || 'SUBJ'}_${counter++}`.slice(0, 20);
+    }
+  } else {
+    const existing = await prisma.subject.findUnique({
+      where: { code },
+    });
+    if (existing) {
+      throw new AuthorizationError(
+        `A subject with code '${code}' already exists.`,
+        400,
+        'DUPLICATE_SUBJECT_CODE'
+      );
+    }
   }
 
   return prisma.$transaction(async (tx) => {
     const subject = await tx.subject.create({
-      data: validated,
+      data: {
+        ...validated,
+        code,
+      },
       include: { programme: true },
     });
 
@@ -154,6 +190,23 @@ export async function updateSubject(
 
   const validated = UpdateSubjectSchema.parse(input);
   const subject = await getSubject(id);
+
+  if (validated.name) {
+    const existingNameInProg = await prisma.subject.findFirst({
+      where: {
+        programmeId: subject.programmeId,
+        id: { not: id },
+        name: { equals: validated.name.trim(), mode: 'insensitive' },
+      },
+    });
+    if (existingNameInProg) {
+      throw new AuthorizationError(
+        `Another subject named '${validated.name}' already exists in this programme.`,
+        400,
+        'DUPLICATE_SUBJECT_NAME'
+      );
+    }
+  }
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.subject.update({
@@ -192,10 +245,17 @@ export async function deleteSubject(actorUserId: string, id: string) {
 
   const subject = await getSubject(id);
 
-  const scopeCount = await prisma.teacherScope.count({ where: { subjectId: id } });
-  if (scopeCount > 0) {
+  const [scopeCount, assessmentCount] = await Promise.all([
+    prisma.teacherScope.count({ where: { subjectId: id } }),
+    prisma.assessment.count({ where: { subjectId: id } }),
+  ]);
+
+  if (scopeCount > 0 || assessmentCount > 0) {
+    const dependencies: string[] = [];
+    if (scopeCount > 0) dependencies.push(`${scopeCount} assigned teacher scope(s)`);
+    if (assessmentCount > 0) dependencies.push(`${assessmentCount} academic assessment record(s)`);
     throw new AuthorizationError(
-      `Cannot delete subject '${subject.name}': ${scopeCount} assigned teacher scope(s) exist. Deactivate the subject instead.`,
+      `Cannot delete subject '${subject.name}': historical academic dependencies exist (${dependencies.join(', ')}). Deactivate the subject instead to preserve academic records.`,
       400,
       'SUBJECT_HAS_DEPENDENTS'
     );

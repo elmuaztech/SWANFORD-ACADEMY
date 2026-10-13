@@ -97,6 +97,7 @@ export function AdminMobileDrawer({
         { label: "Payments", href: "/admin/finance?tab=payments" },
         { label: "Outstanding Fees", href: "/admin/finance?tab=outstanding" },
         { label: "Expenses", href: "/admin/finance?tab=expenses" },
+        { label: "Fee Structures", href: "/admin/finance?tab=fees" },
       ],
     },
     {

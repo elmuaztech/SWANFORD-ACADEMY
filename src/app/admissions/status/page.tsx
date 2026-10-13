@@ -26,6 +26,7 @@ interface StatusResult {
   paymentStatusLabel: string;
   submittedAt: string;
   programmes: Array<{ name: string; code: string }>;
+  totalAmountKobo?: string | null;
   receipt?: {
     receiptNumber: string | null;
     amountPaidKobo: string;
@@ -276,7 +277,7 @@ export default function AdmissionStatusPage() {
                   <p className="font-semibold text-[#1C1A1A]">Next Step for Applicant:</p>
                   {result.status === 'DRAFT' || result.paymentStatus === 'PENDING' ? (
                     <p>
-                      Please complete the ₦5,000 application fee payment online or present your transfer receipt at the school admissions desk.
+                      Please complete the {result.totalAmountKobo ? formatNaira(BigInt(result.totalAmountKobo)) : 'application'} fee payment online or present your transfer receipt at the school admissions desk.
                     </p>
                   ) : result.status === 'SUBMITTED' || result.status === 'UNDER_REVIEW' ? (
                     <p>

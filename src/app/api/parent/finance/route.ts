@@ -26,6 +26,17 @@ export async function GET(req: NextRequest) {
           : profile.children)
       : [];
 
+    const mappedChildren = profile.children.map((child) => ({
+      studentId: child.studentId,
+      studentName: `${child.firstName} ${child.lastName}`.trim(),
+      admissionNumber: child.admissionNumber,
+      receivesInvoices: child.receivesInvoices,
+      gender: child.gender,
+      className: child.enrollments?.[0]?.className || 'Not Assigned',
+      programmeName: child.enrollments?.[0]?.programmeName || 'General',
+      sessionName: child.enrollments?.[0]?.sessionName || 'Current Session',
+    }));
+
     const allInvoices = [];
     for (const child of children) {
       try {
@@ -34,8 +45,9 @@ export async function GET(req: NextRequest) {
           allInvoices.push({
             ...inv,
             studentId: child.studentId,
-            studentName: `${child.firstName} ${child.lastName}`,
+            studentName: `${child.firstName} ${child.lastName}`.trim(),
             admissionNumber: child.admissionNumber,
+            className: child.enrollments?.[0]?.className || 'Not Assigned',
           });
         }
       } catch {
@@ -43,7 +55,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(allInvoices);
+    return NextResponse.json({
+      children: mappedChildren,
+      invoices: allInvoices,
+    });
   } catch (error: unknown) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });

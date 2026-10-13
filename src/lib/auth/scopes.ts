@@ -210,9 +210,13 @@ export async function assertTeacherScope(
 
   // Evaluate teacher scopes against requirement
   const matchingScope = teacher.scopes.find((s) => {
-    // 1. Academic session match (match targetSessionId, or if teacher has no scopes in targetSessionId, match any active scope)
-    const hasScopesInTargetSession = teacher.scopes.some((sc) => sc.academicSessionId === targetSessionId);
-    if (hasScopesInTargetSession && s.academicSessionId !== targetSessionId) return false;
+    // 1. Academic session match
+    if (requirement.academicSessionId) {
+      if (s.academicSessionId !== requirement.academicSessionId) return false;
+    } else {
+      const hasScopesInTargetSession = teacher.scopes.some((sc) => sc.academicSessionId === targetSessionId);
+      if (hasScopesInTargetSession && s.academicSessionId !== targetSessionId) return false;
+    }
 
     // 2. Programme match: supports both programme UUID and programme code (e.g. PRI, EYFS)
     if (

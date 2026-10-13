@@ -2,18 +2,49 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Navbar, PublicFooter, Button, Card, CardContent, LoadingState, ErrorState, Badge } from '@/components';
+import {
+  Navbar,
+  PublicFooter,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  LoadingState,
+  ErrorState,
+  Badge,
+} from '@/components';
 import { formatNaira } from '@/lib/money';
+
+interface FeeItemPublic {
+  name: string;
+  amountKobo: string;
+}
+
+interface FeeStructurePublic {
+  id: string;
+  name: string;
+  programmeName: string;
+  programmeCode: string;
+  termName: string;
+  termCode: string;
+  applicableGender: string;
+  isAdmissionFee: boolean;
+  totalAmountKobo: string;
+  items: FeeItemPublic[];
+}
 
 interface PublicFeesData {
   session: { id: string; name: string } | null;
   formFeeKobo: string;
+  feeStructures: FeeStructurePublic[];
 }
 
 export default function FeesPage() {
   const [data, setData] = useState<PublicFeesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProgramme, setSelectedProgramme] = useState<string>('ALL');
 
   useEffect(() => {
     async function loadFees() {
@@ -27,6 +58,7 @@ export default function FeesPage() {
         setData({
           session: json.session || null,
           formFeeKobo: json.formFeeKobo || '500000',
+          feeStructures: json.feeStructures || [],
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Error loading admission fee information.';
@@ -37,6 +69,16 @@ export default function FeesPage() {
     }
     loadFees();
   }, []);
+
+  const feeStructures = data?.feeStructures || [];
+  const uniqueProgrammes = Array.from(
+    new Set(feeStructures.map((fs) => fs.programmeName))
+  );
+
+  const displayedStructures =
+    selectedProgramme === 'ALL'
+      ? feeStructures
+      : feeStructures.filter((fs) => fs.programmeName === selectedProgramme);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFFFF] text-[#1C1A1A] w-full max-w-full overflow-x-hidden">
@@ -50,10 +92,10 @@ export default function FeesPage() {
               Financial Information &amp; Policy
             </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#5B0612]">
-              Tuition &amp; Fee Policy
+              Tuition &amp; Fee Schedule
             </h1>
             <p className="text-sm sm:text-base text-stone-600 max-w-2xl mx-auto leading-relaxed">
-              Swanford Academy maintains an authoritative, confidential, and transparent fee schedule for all educational programmes in Dutse, Jigawa State.
+              Swanford Academy maintains an authoritative, transparent, and structured fee schedule for all educational programmes in Dutse, Jigawa State.
             </p>
           </div>
         </section>
@@ -65,7 +107,7 @@ export default function FeesPage() {
               <div className="py-16 max-w-lg mx-auto">
                 <LoadingState
                   title="Retrieving Official Fee Information"
-                  description="Loading admission fee guidelines for the active academic session..."
+                  description="Loading admission fee guidelines and approved programme schedules..."
                 />
               </div>
             )}
@@ -80,7 +122,7 @@ export default function FeesPage() {
             )}
 
             {data && (
-              <div className="space-y-10">
+              <div className="space-y-12">
                 {/* 1. Official Policy Banner */}
                 <div className="rounded-3xl border-2 border-[#5B0612]/20 bg-gradient-to-br from-[#FAF7F2] via-white to-[#FDF8F0] p-6 sm:p-10 shadow-sm space-y-6" data-reveal="fade-up">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#EADBDA] pb-6">
@@ -89,7 +131,7 @@ export default function FeesPage() {
                         Institutional Fee Policy
                       </span>
                       <h2 className="text-xl sm:text-2xl font-bold text-[#5B0612]">
-                        Official Admission Invoices
+                        Approved Academic Fees
                       </h2>
                     </div>
                     {data.session && (
@@ -100,11 +142,11 @@ export default function FeesPage() {
                   </div>
 
                   <p className="text-base sm:text-lg text-stone-800 leading-relaxed font-medium">
-                    Programme fees are provided in your official admission invoice after your application has been reviewed and the applicable invoice has been generated.
+                    Programme fees are provided in your official admission invoice after your application has been reviewed and the applicable invoice has been generated. School fees are determined per academic programme and session.
                   </p>
 
                   <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                    To maintain financial integrity and ensure personalized fee allocations based on your child&apos;s specific entry grade, academic requirements, and boarding or day preferences, comprehensive fee schedules are delivered confidentially to registered applicants.
+                    Swanford Academy combines Islamic education with a rigorous Western curriculum. Fee components include core tuition, educational resources, examinations, and development levies.
                   </p>
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
@@ -121,7 +163,97 @@ export default function FeesPage() {
                   </div>
                 </div>
 
-                {/* 2. Step-by-Step Admissions & Invoicing Process */}
+                {/* 2. Dynamic Approved Fee Structures (Section 10 Requirement) */}
+                {feeStructures.length > 0 && (
+                  <div className="space-y-6" data-reveal="fade-up">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EADBDA] pb-4">
+                      <div>
+                        <h2 className="text-xl sm:text-2xl font-extrabold text-[#5B0612]">
+                          Approved Programme Schedules
+                        </h2>
+                        <p className="text-xs sm:text-sm text-stone-500 mt-1">
+                          Current fee schedules approved for the active academic session.
+                        </p>
+                      </div>
+
+                      {uniqueProgrammes.length > 1 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProgramme('ALL')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors min-h-[36px] ${
+                              selectedProgramme === 'ALL'
+                                ? 'bg-[#800020] text-white'
+                                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                            }`}
+                          >
+                            All Programmes
+                          </button>
+                          {uniqueProgrammes.map((prog) => (
+                            <button
+                              key={prog}
+                              type="button"
+                              onClick={() => setSelectedProgramme(prog)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors min-h-[36px] ${
+                                selectedProgramme === prog
+                                  ? 'bg-[#800020] text-white'
+                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              {prog}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {displayedStructures.map((fs) => (
+                        <Card key={fs.id} className="border border-[#EADBDA] shadow-xs flex flex-col justify-between">
+                          <CardHeader className="border-b border-stone-100 pb-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <CardTitle className="text-base sm:text-lg font-bold text-stone-900">
+                                  {fs.name}
+                                </CardTitle>
+                                <p className="text-xs text-stone-500 mt-0.5">
+                                  Programme: <strong>{fs.programmeName}</strong> &bull; {fs.termName}
+                                </p>
+                              </div>
+                              <Badge variant="brand" size="sm">
+                                {fs.programmeCode}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+
+                          <CardContent className="p-0 flex-1 flex flex-col justify-between">
+                            <div className="divide-y divide-stone-100 text-xs sm:text-sm">
+                              {fs.items.map((item, idx) => (
+                                <div key={idx} className="px-4 py-2.5 flex items-center justify-between">
+                                  <span className="text-stone-700">{item.name}</span>
+                                  <span className="font-semibold text-stone-900 font-mono">
+                                    {formatNaira(BigInt(item.amountKobo))}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="px-4 py-3 bg-[#FAF7F2] border-t border-[#EADBDA] flex items-center justify-between mt-4">
+                              <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">
+                                Total Term Fee
+                              </span>
+                              <span className="text-lg sm:text-xl font-extrabold text-[#5B0612] font-mono">
+                                {formatNaira(BigInt(fs.totalAmountKobo))}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Step-by-Step Admissions & Invoicing Process */}
                 <div className="space-y-6" data-reveal="fade-up">
                   <div className="border-b border-[#EADBDA] pb-3">
                     <h2 className="text-lg sm:text-xl font-bold text-[#5B0612]">
@@ -134,7 +266,7 @@ export default function FeesPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {/* Step 1 */}
-                    <Card className="bg-[#FAF7F2] border-[#EADBDA]" data-reveal="fade-up" data-delay="50">
+                    <Card className="bg-[#FAF7F2] border-[#EADBDA]">
                       <CardContent className="p-6 space-y-3">
                         <div className="w-8 h-8 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center">
                           01
@@ -149,7 +281,7 @@ export default function FeesPage() {
                     </Card>
 
                     {/* Step 2 */}
-                    <Card className="bg-[#FAF7F2] border-[#EADBDA]" data-reveal="fade-up" data-delay="120">
+                    <Card className="bg-[#FAF7F2] border-[#EADBDA]">
                       <CardContent className="p-6 space-y-3">
                         <div className="w-8 h-8 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center">
                           02
@@ -164,7 +296,7 @@ export default function FeesPage() {
                     </Card>
 
                     {/* Step 3 */}
-                    <Card className="bg-[#FAF7F2] border-[#EADBDA]" data-reveal="fade-up" data-delay="190">
+                    <Card className="bg-[#FAF7F2] border-[#EADBDA]">
                       <CardContent className="p-6 space-y-3">
                         <div className="w-8 h-8 rounded-full bg-[#800020] text-white text-xs font-bold flex items-center justify-center">
                           03
@@ -195,7 +327,7 @@ export default function FeesPage() {
                   </div>
                 </div>
 
-                {/* 3. Application Form Processing Fee */}
+                {/* 4. Application Form Processing Fee */}
                 <div className="bg-[#FAF7F2] p-6 sm:p-8 rounded-2xl border border-[#EADBDA] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div className="space-y-1.5 max-w-xl">
                     <span className="text-xs uppercase tracking-wider font-bold text-[#800020]">

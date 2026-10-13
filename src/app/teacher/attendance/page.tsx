@@ -153,7 +153,7 @@ function TeacherAttendanceContent() {
   };
 
   const handleSaveAttendance = async () => {
-    if (!selectedClassId || !selectedProgrammeId || roster.length === 0) return;
+    if (!selectedClassId || !selectedProgrammeId || roster.length === 0 || isSaving) return;
 
     setIsSaving(true);
     setFeedback(null);
@@ -292,11 +292,11 @@ function TeacherAttendanceContent() {
                         <span className="text-xs font-mono text-[#800020] font-semibold">
                           {item.student.admissionNumber}
                         </span>
-                        <h4 className="text-base font-bold text-[#5B0612]">
+                        <h4 className="text-base font-bold text-[#5B0612] break-words">
                           {idx + 1}. {item.student.lastName}, {item.student.firstName}
                         </h4>
                       </div>
-                      <Badge variant="neutral" className="text-[10px]">
+                      <Badge variant="neutral" className="text-[10px] shrink-0">
                         {item.student.gender}
                       </Badge>
                     </div>
@@ -306,10 +306,10 @@ function TeacherAttendanceContent() {
                       {(["PRESENT", "ABSENT", "LATE", "EXCUSED"] as AttendanceStatusType[]).map((st) => {
                         const isSelected = currentStatus === st;
                         const colorStyles = {
-                          PRESENT: isSelected ? "bg-emerald-700 text-white font-bold" : "bg-emerald-50 text-emerald-800 border border-emerald-200",
-                          ABSENT: isSelected ? "bg-rose-700 text-white font-bold" : "bg-rose-50 text-rose-800 border border-rose-200",
-                          LATE: isSelected ? "bg-amber-700 text-white font-bold" : "bg-amber-50 text-amber-800 border border-amber-200",
-                          EXCUSED: isSelected ? "bg-sky-700 text-white font-bold" : "bg-sky-50 text-sky-800 border border-sky-200",
+                          PRESENT: isSelected ? "bg-emerald-700 text-white font-bold shadow-xs" : "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100",
+                          ABSENT: isSelected ? "bg-rose-700 text-white font-bold shadow-xs" : "bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100",
+                          LATE: isSelected ? "bg-amber-700 text-white font-bold shadow-xs" : "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100",
+                          EXCUSED: isSelected ? "bg-sky-700 text-white font-bold shadow-xs" : "bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100",
                         }[st];
 
                         return (
@@ -317,7 +317,7 @@ function TeacherAttendanceContent() {
                             key={st}
                             type="button"
                             onClick={() => handleStatusChange(item.student.id, st)}
-                            className={`min-h-[44px] rounded-lg text-xs transition-colors flex items-center justify-center select-none ${colorStyles}`}
+                            className={`min-h-[44px] rounded-lg text-xs font-semibold transition-colors flex items-center justify-center select-none touch-manipulation cursor-pointer ${colorStyles}`}
                           >
                             {st}
                           </button>
@@ -403,19 +403,26 @@ function TeacherAttendanceContent() {
             </TableWrapper>
           </div>
 
-          {/* Persistent Save Button Container */}
-          <div className="sticky bottom-4 z-20 bg-white/95 backdrop-blur-md p-4 rounded-xl border border-[#EFE9DF] shadow-md flex items-center justify-between gap-4">
-            <span className="text-xs sm:text-sm font-semibold text-stone-700">
-              {roster.length} Student records ready to save
-            </span>
+          {/* Persistent Save Button Container - Mobile First Stacked Layout */}
+          <div className="sticky bottom-4 z-20 bg-white/95 backdrop-blur-md p-3.5 sm:p-4 rounded-xl border border-[#EFE9DF] shadow-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center justify-between sm:justify-start gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FAF7F2] border border-[#E2D6C5] text-[#5B0612] text-xs font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                {roster.length} {roster.length === 1 ? "Student" : "Students"}
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-stone-700">
+                Ready to save register
+              </span>
+            </div>
             <Button
               variant="primary"
               size="lg"
-              className="bg-[#800020] hover:bg-[#6b001a] text-white px-8 font-bold min-h-[48px]"
+              className="w-full sm:w-auto bg-[#800020] hover:bg-[#6b001a] text-white px-6 sm:px-8 font-bold min-h-[48px] justify-center shadow-xs"
               onClick={handleSaveAttendance}
               isLoading={isSaving}
+              disabled={isSaving || roster.length === 0}
             >
-              Save Attendance Register
+              {isSaving ? "Saving Register..." : "Save Attendance Register"}
             </Button>
           </div>
         </div>

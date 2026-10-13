@@ -32,7 +32,8 @@ interface TeacherDetail {
   scopes: Array<{
     id: string;
     scopeType?: string;
-    isClassTeacher: boolean;
+    isFormTeacher?: boolean;
+    isClassTeacher?: boolean;
     academicSession?: { name: string };
     programme: { id: string; name: string };
     schoolClass: { id: string; name: string } | null;
@@ -207,7 +208,24 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
   const [showDocModal, setShowDocModal] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState("TEMPORARY_APPOINTMENT_LETTER");
   const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
-  const [previewDocHtml, setPreviewDocHtml] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ id: string; title: string; content: string } | null>(null);
+
+  // Portal Account Activation State
+  const [isResendingActivation, setIsResendingActivation] = useState(false);
+  const [activationFeedback, setActivationFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const formatDocumentBody = (rawContent: string) => {
+    if (!rawContent) return "";
+    const trimmed = rawContent.trim();
+    if (trimmed.startsWith("<") || /<\/[a-z]+>/i.test(trimmed)) {
+      return sanitizeDocumentHtml(trimmed);
+    }
+    const paragraphs = trimmed
+      .split(/\n\n+/)
+      .map((para) => `<p style="margin-bottom: 14px; line-height: 1.6; color: #1C1917; font-size: 13.5px;">${para.replace(/\n/g, "<br/>")}</p>`)
+      .join("");
+    return sanitizeDocumentHtml(paragraphs);
+  };
 
   const fetchTeacher = () => {
     setLoading(true);
@@ -402,11 +420,46 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
     try {
       const res = await fetch(`/api/admin/staff-documents/${docId}`);
       if (res.ok) {
-        const html = await res.text();
-        setPreviewDocHtml(html);
+        const data = await res.json();
+        const doc = data.document || data;
+        setPreviewDoc({
+          id: doc.id || docId,
+          title: doc.title || "Official Staff Document",
+          content: doc.content || "",
+        });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to load document preview.");
       }
     } catch {
       alert("Failed to load document preview.");
+    }
+  };
+
+  const handleResendActivation = async () => {
+    if (!teacher) return;
+    setIsResendingActivation(true);
+    setActivationFeedback(null);
+    try {
+      const res = await fetch(`/api/admin/teachers/${teacher.id}/resend-activation`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to resend activation email.");
+      }
+      setActivationFeedback({
+        type: "success",
+        message: data.message || `Activation email successfully dispatched to ${teacher.user?.email || "teacher"}.`,
+      });
+      fetchTeacher();
+    } catch (err: any) {
+      setActivationFeedback({
+        type: "error",
+        message: err.message || "Failed to dispatch activation email.",
+      });
+    } finally {
+      setIsResendingActivation(false);
     }
   };
 
@@ -496,72 +549,135 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left Bio Card */}
-        <Card className="md:col-span-1 border border-[#EADBDA]/80">
-          <CardHeader className="text-center pb-2">
-            <div className="flex justify-center mb-3">
-              <Avatar
-                size="lg"
-                fallback={`${(teacher.firstName || "T")[0]}${(teacher.lastName || "S")[0]}`}
-                alt={`${teacher.firstName} ${teacher.lastName}`}
-              />
-            </div>
-            <CardTitle className="text-lg font-bold text-stone-900 font-display">
-              {teacher.firstName} {teacher.lastName}
-            </CardTitle>
-            <span className="text-xs font-mono font-bold text-[#800020]">{teacher.staffId || teacher.staffIdNumber || "—"}</span>
-          </CardHeader>
-          <CardContent className="space-y-1 pt-2 text-xs divide-y divide-stone-100">
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-stone-500 font-medium shrink-0">Employment Status</span>
-              <span className="font-bold text-stone-900 text-right truncate">
-                {(teacher.employmentStatus || teacher.status || "ACTIVE").replace(/_/g, " ")}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-stone-500 font-medium shrink-0">Email Address</span>
-              <span
-                className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
-                title={teacher.user?.email || "—"}
-              >
-                {teacher.user?.email || "—"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-stone-500 font-medium shrink-0">Primary Phone</span>
-              <span className="font-semibold text-stone-900 text-right truncate">
-                {teacher.phonePrimary || teacher.user?.phoneNumber || "—"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-stone-500 font-medium shrink-0">Department</span>
-              <span className="font-semibold text-stone-900 text-right truncate">
-                {teacher.department || "General Academics"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-stone-500 font-medium shrink-0">Position</span>
-              <span className="font-semibold text-stone-900 text-right truncate">
-                {teacher.position || "Teacher"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-stone-500 font-medium shrink-0">Qualification</span>
-              <span
-                className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
-                title={teacher.qualification || "Unspecified"}
-              >
-                {teacher.qualification || "Unspecified"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-stone-500 font-medium shrink-0">Date of Employment</span>
-              <span className="font-semibold text-stone-900 text-right truncate">
-                {teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment).toLocaleDateString("en-GB") : "—"}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Left Column */}
+        <div className="md:col-span-1 space-y-4">
+          {/* Bio Card */}
+          <Card className="border border-[#EADBDA]/80">
+            <CardHeader className="text-center pb-2">
+              <div className="flex justify-center mb-3">
+                <Avatar
+                  size="lg"
+                  fallback={`${(teacher.firstName || "T")[0]}${(teacher.lastName || "S")[0]}`}
+                  alt={`${teacher.firstName} ${teacher.lastName}`}
+                />
+              </div>
+              <CardTitle className="text-lg font-bold text-stone-900 font-display">
+                {teacher.firstName} {teacher.lastName}
+              </CardTitle>
+              <span className="text-xs font-mono font-bold text-[#800020]">{teacher.staffId || teacher.staffIdNumber || "—"}</span>
+            </CardHeader>
+            <CardContent className="space-y-1 pt-2 text-xs divide-y divide-stone-100">
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Employment Status</span>
+                <span className="font-bold text-stone-900 text-right truncate">
+                  {(teacher.employmentStatus || teacher.status || "ACTIVE").replace(/_/g, " ")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Email Address</span>
+                <span
+                  className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                  title={teacher.user?.email || "—"}
+                >
+                  {teacher.user?.email || "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Primary Phone</span>
+                <span className="font-semibold text-stone-900 text-right truncate">
+                  {teacher.phonePrimary || teacher.user?.phoneNumber || "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Department</span>
+                <span className="font-semibold text-stone-900 text-right truncate">
+                  {teacher.department || "General Academics"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Position</span>
+                <span className="font-semibold text-stone-900 text-right truncate">
+                  {teacher.position || "Teacher"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Qualification</span>
+                <span
+                  className="font-semibold text-stone-900 text-right truncate max-w-[190px] sm:max-w-[220px]"
+                  title={teacher.qualification || "Unspecified"}
+                >
+                  {teacher.qualification || "Unspecified"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-stone-500 font-medium shrink-0">Date of Employment</span>
+                <span className="font-semibold text-stone-900 text-right truncate">
+                  {teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment).toLocaleDateString("en-GB") : "—"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Portal Account & Security Card */}
+          <Card className="border border-[#EADBDA]/80">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-stone-900 font-display">
+                  Portal Login Account
+                </CardTitle>
+                {teacher.user && (
+                  <Badge
+                    variant={teacher.user.status === "ACTIVE" ? "success" : "warning"}
+                    size="sm"
+                  >
+                    {teacher.user.status}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-1 text-xs">
+              {activationFeedback && (
+                <Alert
+                  variant={activationFeedback.type === "success" ? "success" : "error"}
+                  title={activationFeedback.type === "success" ? "Dispatched" : "Error"}
+                  onClose={() => setActivationFeedback(null)}
+                >
+                  {activationFeedback.message}
+                </Alert>
+              )}
+
+              {teacher.user ? (
+                <>
+                  <div className="flex items-center justify-between gap-3 py-1.5 border-b border-stone-100">
+                    <span className="text-stone-500 font-medium shrink-0">Login Email</span>
+                    <span
+                      className="font-semibold text-stone-900 text-right truncate max-w-[190px]"
+                      title={teacher.user.email}
+                    >
+                      {teacher.user.email}
+                    </span>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full bg-[#FAF2F4] text-[#800020] hover:bg-[#F3E2E6] font-semibold min-h-[40px] justify-center"
+                    onClick={handleResendActivation}
+                    disabled={isResendingActivation}
+                  >
+                    {isResendingActivation ? "Dispatching Activation..." : "Resend Activation Email"}
+                  </Button>
+                </>
+              ) : (
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900">
+                  <p className="font-semibold mb-1">No Portal Account</p>
+                  <p className="text-[11px] text-amber-800">
+                    This staff member does not have a linked user account for portal login yet.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Right Tabbed Content */}
         <div className="md:col-span-2 space-y-4">
@@ -634,9 +750,9 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                             <span className="font-bold text-sm text-stone-900 truncate">
                               {sc.programme.name} — {sc.schoolClass?.name || "All Classes"}
                             </span>
-                            {sc.isClassTeacher && (
+                            {(sc.isFormTeacher || sc.isClassTeacher) && (
                               <Badge variant="brand" size="sm" className="shrink-0 whitespace-nowrap">
-                                Class Teacher
+                                Form Teacher
                               </Badge>
                             )}
                           </div>
@@ -1277,24 +1393,45 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
         </Modal>
       )}
 
-      {/* Document HTML Preview Modal */}
-      {previewDocHtml && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/70 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-[#EADBDA] flex items-center justify-between bg-[#FAF7F2]">
-              <span className="font-bold text-xs text-[#5B0612]">Document Preview</span>
-              <button
-                type="button"
-                onClick={() => setPreviewDocHtml(null)}
-                className="p-1 rounded text-stone-400 hover:text-stone-700 font-bold"
-              >
-                &times; Close
-              </button>
+      {/* Official Staff Document Preview & Print Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/70 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Header / Actions Bar */}
+            <div className="p-3.5 sm:p-4 border-b border-[#EADBDA] flex items-center justify-between bg-[#FAF7F2] gap-3">
+              <div className="min-w-0">
+                <span className="font-extrabold text-sm text-[#5B0612] truncate block font-display">
+                  {previewDoc.title || "Official Staff Document"}
+                </span>
+                <span className="text-[11px] text-stone-500">
+                  Swanford Academy — Verified Institutional Record
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="font-semibold text-xs border-stone-300 hover:bg-white"
+                  onClick={() => window.print()}
+                >
+                  🖨️ Print / Save PDF
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 transition-colors cursor-pointer"
+                >
+                  ✕ Close
+                </button>
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 bg-stone-100">
+
+            {/* Document Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-stone-100/80">
               <div
-                className="bg-white p-6 shadow-sm mx-auto max-w-3xl"
-                dangerouslySetInnerHTML={{ __html: sanitizeDocumentHtml(previewDocHtml) }}
+                className="bg-white p-6 sm:p-10 shadow-md rounded-xl mx-auto max-w-3xl border border-stone-200/80 print:shadow-none print:border-none print:p-0"
+                dangerouslySetInnerHTML={{ __html: formatDocumentBody(previewDoc.content) }}
               />
             </div>
           </div>

@@ -172,17 +172,26 @@ export async function deleteSchoolClass(actorUserId: string, id: string) {
 
   const schoolClass = await getSchoolClass(id);
 
-  const [enrollmentCount, scopeCount, feeCount, appCount] = await Promise.all([
+  const [enrollmentCount, scopeCount, feeCount, appCount, attendanceCount, assessmentCount] = await Promise.all([
     prisma.studentProgrammeEnrollment.count({ where: { schoolClassId: id } }),
     prisma.teacherScope.count({ where: { schoolClassId: id } }),
     prisma.feeStructure.count({ where: { schoolClassId: id } }),
     prisma.applicationProgrammeSelection.count({ where: { targetClassId: id } }),
+    prisma.attendanceRecord.count({ where: { schoolClassId: id } }),
+    prisma.assessment.count({ where: { schoolClassId: id } }),
   ]);
 
-  const totalDependencies = enrollmentCount + scopeCount + feeCount + appCount;
+  const totalDependencies = enrollmentCount + scopeCount + feeCount + appCount + attendanceCount + assessmentCount;
   if (totalDependencies > 0) {
+    const reasons: string[] = [];
+    if (enrollmentCount > 0) reasons.push(`${enrollmentCount} student enrollment(s)`);
+    if (scopeCount > 0) reasons.push(`${scopeCount} teacher assignment(s)`);
+    if (feeCount > 0) reasons.push(`${feeCount} fee structure(s)`);
+    if (appCount > 0) reasons.push(`${appCount} admission application(s)`);
+    if (attendanceCount > 0) reasons.push(`${attendanceCount} attendance record(s)`);
+    if (assessmentCount > 0) reasons.push(`${assessmentCount} assessment(s)`);
     throw new AuthorizationError(
-      `Cannot delete class '${schoolClass.name}': ${totalDependencies} dependent record(s) exist. Deactivate the class instead.`,
+      `Cannot delete class '${schoolClass.name}': historical dependencies exist (${reasons.join(', ')}). Deactivate the class instead to preserve school records.`,
       400,
       'CLASS_HAS_DEPENDENTS'
     );

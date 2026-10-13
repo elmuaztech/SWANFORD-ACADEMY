@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
         paymentStatus: true,
         paymentReference: true,
         amountPaidKobo: true,
+        totalAmountKobo: true,
         createdAt: true,
         programmeSelections: {
           select: {
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
         name: ps.programme.name,
         code: ps.programme.code,
       })),
+      totalAmountKobo: application.totalAmountKobo?.toString() || null,
       receipt: isPaymentConfirmed
         ? {
             receiptNumber: application.paymentReference ? `REC-${application.applicationNumber}` : null,

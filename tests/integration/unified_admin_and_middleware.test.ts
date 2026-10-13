@@ -55,6 +55,43 @@ describe('Unified Admin Portal, Role Detection & Hardened Authentication', () =>
       await prisma.auditLog.deleteMany({ where: { userId: { in: userIds } } });
       await prisma.user.deleteMany({ where: { id: { in: userIds } } });
     }
+
+    // Ensure swanford99@gmail.com has ADMIN and SUPER_ADMIN roles in test environment
+    const adminRole = await prisma.role.findFirst({ where: { code: RoleCode.ADMIN } });
+    const superAdminRole = await prisma.role.findFirst({ where: { code: RoleCode.SUPER_ADMIN } });
+    const swanfordAdmin = await prisma.user.findFirst({ where: { email: 'swanford99@gmail.com' } });
+    if (swanfordAdmin) {
+      if (adminRole) {
+        await prisma.userRole.upsert({
+          where: {
+            userId_roleId: {
+              userId: swanfordAdmin.id,
+              roleId: adminRole.id,
+            },
+          },
+          update: {},
+          create: {
+            userId: swanfordAdmin.id,
+            roleId: adminRole.id,
+          },
+        });
+      }
+      if (superAdminRole) {
+        await prisma.userRole.upsert({
+          where: {
+            userId_roleId: {
+              userId: swanfordAdmin.id,
+              roleId: superAdminRole.id,
+            },
+          },
+          update: {},
+          create: {
+            userId: swanfordAdmin.id,
+            roleId: superAdminRole.id,
+          },
+        });
+      }
+    }
   });
 
   it('strictly prohibits purged demo accounts from logging in', async () => {
