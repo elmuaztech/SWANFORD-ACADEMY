@@ -39,6 +39,36 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
 
   // Photo update modal state
   const [editingStudent, setEditingStudent] = useState<StudentRosterItem | null>(null);
+  const [isRemovingPhoto, setIsRemovingPhoto] = useState(false);
+
+  const handleRemovePhoto = async (studentId: string) => {
+    try {
+      setIsRemovingPhoto(true);
+      const queryParams = new URLSearchParams();
+      if (programmeId) queryParams.set("programmeId", programmeId);
+      if (classId) queryParams.set("schoolClassId", classId);
+
+      const res = await fetch(`/api/teacher/students/${studentId}/photo?${queryParams.toString()}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to remove photo");
+      }
+
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? { ...s, profilePhotoId: null } : s))
+      );
+      if (editingStudent?.id === studentId) {
+        setEditingStudent((prev) => (prev ? { ...prev, profilePhotoId: null } : null));
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to remove photo";
+      setError(msg);
+    } finally {
+      setIsRemovingPhoto(false);
+    }
+  };
 
   useEffect(() => {
     const url = programmeId
@@ -148,14 +178,25 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
                     )}
                   </div>
 
-                  <div className="pt-2 flex justify-end">
+                  <div className="pt-2 flex items-center justify-end gap-2">
+                    {student.profilePhotoId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemovePhoto(student.id)}
+                        disabled={isRemovingPhoto}
+                        className="text-xs text-rose-700 hover:text-rose-800 hover:bg-rose-50"
+                      >
+                        {isRemovingPhoto ? "Removing..." : "Remove Photo"}
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setEditingStudent(student)}
                       className="text-xs"
                     >
-                      Update Photo
+                      {student.profilePhotoId ? "Change Photo" : "Upload Photo"}
                     </Button>
                   </div>
                 </CardContent>
@@ -221,14 +262,27 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingStudent(student)}
-                          className="text-xs text-[#800020] hover:bg-[#FAF7F2]"
-                        >
-                          Update Photo
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          {student.profilePhotoId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemovePhoto(student.id)}
+                              disabled={isRemovingPhoto}
+                              className="text-xs text-rose-700 hover:text-rose-800 hover:bg-rose-50"
+                            >
+                              {isRemovingPhoto ? "Removing..." : "Remove"}
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingStudent(student)}
+                            className="text-xs text-[#800020] hover:bg-[#FAF7F2]"
+                          >
+                            {student.profilePhotoId ? "Change Photo" : "Upload Photo"}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -249,7 +303,7 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
         >
           <div className="p-4 space-y-4">
             <ImageUpload
-              label="New Student Photo"
+              label="Student Photo"
               currentImageUrl={editingStudent.profilePhotoId ? `/api/media/${editingStudent.profilePhotoId}` : null}
               uploadEndpoint={`/api/teacher/students/${editingStudent.id}/photo`}
               extraFormData={{
@@ -265,7 +319,24 @@ function ClassRosterContent({ params }: { params: Promise<{ id: string }> }) {
                 );
                 setEditingStudent(null);
               }}
+              onRemove={() => handleRemovePhoto(editingStudent.id)}
             />
+
+            {editingStudent.profilePhotoId && (
+              <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
+                <span className="text-xs text-stone-500">Currently has a profile photo</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRemovePhoto(editingStudent.id)}
+                  disabled={isRemovingPhoto}
+                  className="text-xs text-rose-700 hover:text-rose-800 border-rose-200 hover:bg-rose-50"
+                >
+                  {isRemovingPhoto ? "Removing..." : "Remove Current Photo"}
+                </Button>
+              </div>
+            )}
           </div>
         </Modal>
       )}

@@ -21,6 +21,7 @@ import {
   reopenAssessment,
 } from '@/lib/assessment/assessment_service';
 import { getTeacherClassRoster } from '@/lib/teacher/teacher_service';
+import { removeProfilePhoto } from '@/lib/media/media_service';
 
 describe('Stage 11 — Integration: Teacher Scope, Attendance & Assessment Lifecycle', () => {
   let adminUser: SafeUser;
@@ -186,9 +187,27 @@ describe('Stage 11 — Integration: Teacher Scope, Attendance & Assessment Lifec
       },
     });
 
-    // 7. Roles
     const superAdminRole = await prisma.role.findUniqueOrThrow({ where: { code: RoleCode.SUPER_ADMIN } });
     const teacherRole = await prisma.role.findUniqueOrThrow({ where: { code: RoleCode.TEACHER } });
+
+    const photoPerm = await prisma.permission.findFirst({
+      where: { code: 'STUDENT_PROFILE_PHOTO_UPDATE' },
+    });
+    if (photoPerm) {
+      await prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: teacherRole.id,
+            permissionId: photoPerm.id,
+          },
+        },
+        create: {
+          roleId: teacherRole.id,
+          permissionId: photoPerm.id,
+        },
+        update: {},
+      });
+    }
 
     // 8. Admin User
     const admin = await prisma.user.create({
@@ -570,4 +589,32 @@ describe('Stage 11 — Integration: Teacher Scope, Attendance & Assessment Lifec
     expect(studentData.genotype).toBeUndefined();
     expect(studentData.medicalNotes).toBeUndefined();
   });
+
+  // 5. Student Photo Removal
+  it('allows teacher to remove student profile photo, setting profilePhotoId to null', async () => {
+    // Attach dummy media asset
+    const media = await prisma.mediaAsset.create({
+      data: {
+        storageKey: `test/photo_${Date.now()}.webp`,
+        mimeType: 'image/webp',
+        fileSize: 1024,
+        mediaType: 'PROFILE_PHOTO',
+      },
+    });
+
+    await prisma.student.update({
+      where: { id: student1Id },
+      data: { profilePhotoId: media.id },
+    });
+
+    // Remove photo using service
+    await removeProfilePhoto({ type: 'STUDENT', id: student1Id }, teacherAUser);
+
+    const updatedStudent = await prisma.student.findUnique({
+      where: { id: student1Id },
+      select: { profilePhotoId: true },
+    });
+    expect(updatedStudent?.profilePhotoId).toBeNull();
+  });
 });
+

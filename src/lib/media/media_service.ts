@@ -305,6 +305,17 @@ export async function cleanupAbandonedMediaUploads(olderThanHours = 24): Promise
   return { inspected: potentialOrphans.length, deleted: deletedCount };
 }
 
+async function resolveActorRoles(actor: SafeUser): Promise<RoleCode[]> {
+  if (actor.roles && actor.roles.length > 0) {
+    return actor.roles;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { userRoles: { select: { role: { select: { code: true } } } } },
+  });
+  return user?.userRoles.map((ur) => ur.role.code as RoleCode) || [];
+}
+
 /**
  * Replaces a profile photo on a target entity (User, Student, or Application).
  * Transactionally updates reference and cleans up the previous photo if orphaned.
@@ -315,11 +326,12 @@ export async function replaceProfilePhoto(
   actor: SafeUser
 ): Promise<void> {
   let oldAssetId: string | null = null;
+  const roles = await resolveActorRoles(actor);
 
   if (target.type === 'USER') {
     // Only self or Super Admin / Admin can change user photo
     const isSelf = actor.id === target.id;
-    const isAdmin = actorHasRole(actor, RoleCode.SUPER_ADMIN) || actorHasRole(actor, RoleCode.ADMIN);
+    const isAdmin = roles.includes(RoleCode.SUPER_ADMIN) || roles.includes(RoleCode.ADMIN);
     if (!isSelf && !isAdmin) {
       throw new AuthorizationError('Access denied: Cannot change another user photo.', 403, 'USER_PHOTO_UNAUTHORIZED');
     }
@@ -336,12 +348,12 @@ export async function replaceProfilePhoto(
     });
   } else if (target.type === 'STUDENT') {
     // Admin or Teacher with STUDENT_PROFILE_PHOTO_UPDATE
-    const isSuperAdmin = actorHasRole(actor, RoleCode.SUPER_ADMIN);
-    const isAdmin = actorHasRole(actor, RoleCode.ADMIN);
+    const isSuperAdmin = roles.includes(RoleCode.SUPER_ADMIN);
+    const isAdmin = roles.includes(RoleCode.ADMIN);
 
     if (!isSuperAdmin && !isAdmin) {
-      const isTeacher = actorHasRole(actor, RoleCode.TEACHER);
-      const canUpdate = hasPermission(actor, PermissionCode.STUDENT_PROFILE_PHOTO_UPDATE);
+      const isTeacher = roles.includes(RoleCode.TEACHER);
+      const canUpdate = await hasPermission(actor, PermissionCode.STUDENT_PROFILE_PHOTO_UPDATE);
 
       if (!isTeacher || !canUpdate) {
         throw new AuthorizationError(
@@ -377,6 +389,79 @@ export async function replaceProfilePhoto(
 
   // If old asset exists and differs from new, clean up if unreferenced
   if (oldAssetId && oldAssetId !== newAssetId) {
+    await cleanupOrphanedMediaAsset(oldAssetId);
+  }
+}
+
+/**
+ * Removes a profile photo from a target entity (Student, User, or Application).
+ * Clears the database reference and deletes the media file if orphaned.
+ */
+export async function removeProfilePhoto(
+  target: { type: 'STUDENT' | 'USER' | 'APPLICATION'; id: string },
+  actor: SafeUser
+): Promise<void> {
+  let oldAssetId: string | null = null;
+  const roles = await resolveActorRoles(actor);
+
+  if (target.type === 'USER') {
+    const isSelf = actor.id === target.id;
+    const isAdmin = roles.includes(RoleCode.SUPER_ADMIN) || roles.includes(RoleCode.ADMIN);
+    if (!isSelf && !isAdmin) {
+      throw new AuthorizationError('Access denied: Cannot change another user photo.', 403, 'USER_PHOTO_UNAUTHORIZED');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: target.id },
+      select: { profilePhotoId: true },
+    });
+    oldAssetId = user?.profilePhotoId || null;
+
+    await prisma.user.update({
+      where: { id: target.id },
+      data: { profilePhotoId: null },
+    });
+  } else if (target.type === 'STUDENT') {
+    const isSuperAdmin = roles.includes(RoleCode.SUPER_ADMIN);
+    const isAdmin = roles.includes(RoleCode.ADMIN);
+
+    if (!isSuperAdmin && !isAdmin) {
+      const isTeacher = roles.includes(RoleCode.TEACHER);
+      const canUpdate = await hasPermission(actor, PermissionCode.STUDENT_PROFILE_PHOTO_UPDATE);
+
+      if (!isTeacher || !canUpdate) {
+        throw new AuthorizationError(
+          'Access denied: Missing STUDENT_PROFILE_PHOTO_UPDATE permission.',
+          403,
+          'PERMISSION_DENIED'
+        );
+      }
+    }
+
+    const student = await prisma.student.findUnique({
+      where: { id: target.id },
+      select: { profilePhotoId: true },
+    });
+    oldAssetId = student?.profilePhotoId || null;
+
+    await prisma.student.update({
+      where: { id: target.id },
+      data: { profilePhotoId: null },
+    });
+  } else if (target.type === 'APPLICATION') {
+    const app = await prisma.application.findUnique({
+      where: { id: target.id },
+      select: { profilePhotoId: true },
+    });
+    oldAssetId = app?.profilePhotoId || null;
+
+    await prisma.application.update({
+      where: { id: target.id },
+      data: { profilePhotoId: null },
+    });
+  }
+
+  if (oldAssetId) {
     await cleanupOrphanedMediaAsset(oldAssetId);
   }
 }

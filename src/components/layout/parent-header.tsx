@@ -37,7 +37,7 @@ export function ParentHeader({ onOpenMobileDrawer, userEmail }: ParentHeaderProp
   };
 
   return (
-    <header className="h-16 bg-white/95 backdrop-blur-md border-b border-[#EADBDA]/80 sticky top-0 z-10 px-4 sm:px-6 flex items-center justify-between">
+    <header className="h-16 bg-white border-b border-[#EADBDA]/80 sticky top-0 z-40 px-4 sm:px-6 flex items-center justify-between shadow-2xs">
       {/* Left: Mobile hamburger */}
       <div className="flex items-center gap-3">
         <button
@@ -81,8 +81,8 @@ export function ParentHeader({ onOpenMobileDrawer, userEmail }: ParentHeaderProp
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-[#EADBDA] rounded-2xl shadow-xl py-1.5 z-30 animate-in fade-in zoom-in-95 overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#EADBDA] bg-[#EFE8DC]/50 flex items-center gap-2.5">
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-[#EADBDA] rounded-2xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#EADBDA] bg-[#EFE8DC] flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-[#800020] text-white text-xs font-bold flex items-center justify-center shrink-0 border border-[#EADBDA]">
                   {photoUrl ? (
                     <img src={photoUrl} alt="Avatar" className="w-full h-full object-cover" />

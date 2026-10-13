@@ -3,10 +3,12 @@ import { RoleCode } from '@prisma/client';
 import { getAuthUser } from '@/lib/auth/request_auth';
 import { AuthorizationError, hasPermission } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
+import { prisma } from '@/lib/prisma';
 import { assertTeacherStudentScope } from '@/lib/auth/scopes';
 import {
   uploadAndStoreProfilePhoto,
   replaceProfilePhoto,
+  removeProfilePhoto,
 } from '@/lib/media/media_service';
 import { ImageValidationError } from '@/lib/media/image_processor';
 
@@ -164,4 +166,82 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   return handlePhotoUpload(request, context);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: studentId } = await context.params;
+    if (!studentId) {
+      return NextResponse.json({ error: 'Student ID is required.' }, { status: 400 });
+    }
+
+    const actor = await getAuthUser(request);
+    if (!actor) {
+      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
+    if (!actor.roles?.includes(RoleCode.TEACHER)) {
+      return NextResponse.json(
+        { error: 'Access denied: Teacher role required.' },
+        { status: 403 }
+      );
+    }
+
+    if (!hasPermission(actor, PermissionCode.STUDENT_PROFILE_PHOTO_UPDATE)) {
+      return NextResponse.json(
+        { error: 'Access denied: Missing STUDENT_PROFILE_PHOTO_UPDATE permission.' },
+        { status: 403 }
+      );
+    }
+
+    const url = new URL(request.url);
+    let programmeId = url.searchParams.get('programmeId') || undefined;
+    const schoolClassId = url.searchParams.get('schoolClassId') || undefined;
+
+    if (!programmeId) {
+      const enrollment = await prisma.studentProgrammeEnrollment.findFirst({
+        where: {
+          studentId,
+          enrollmentStatus: 'ACTIVE',
+        },
+        select: { programmeId: true, schoolClassId: true },
+      });
+      if (enrollment) {
+        programmeId = enrollment.programmeId;
+      }
+    }
+
+    if (!programmeId) {
+      return NextResponse.json(
+        { error: 'programmeId is required to verify TeacherScope.' },
+        { status: 400 }
+      );
+    }
+
+    // Validate TeacherScope & active student enrollment
+    await assertTeacherStudentScope(actor, {
+      studentId,
+      programmeId,
+      schoolClassId,
+    });
+
+    await removeProfilePhoto({ type: 'STUDENT', id: studentId }, actor);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Student profile photo removed successfully.',
+    });
+  } catch (error: unknown) {
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.statusCode }
+      );
+    }
+    const message = error instanceof Error ? error.message : 'An error occurred while removing the student photo.';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

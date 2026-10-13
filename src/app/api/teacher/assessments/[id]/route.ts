@@ -119,12 +119,53 @@ export async function GET(
       });
     }
 
+    const studentMap = new Map<string, any>();
+    for (const enr of enrolledStudents) {
+      if (enr.student && !studentMap.has(enr.student.id)) {
+        studentMap.set(enr.student.id, enr.student);
+      }
+    }
+    for (const s of assessment.scores) {
+      if (s.student && !studentMap.has(s.student.id)) {
+        studentMap.set(s.student.id, s.student);
+      }
+    }
+
+    if (studentMap.size === 0) {
+      const fallbackEnrollments = await prisma.studentProgrammeEnrollment.findMany({
+        where: {
+          schoolClassId: assessment.schoolClassId,
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              admissionNumber: true,
+              firstName: true,
+              lastName: true,
+              otherNames: true,
+              gender: true,
+            },
+          },
+        },
+        orderBy: [
+          { student: { lastName: 'asc' } },
+          { student: { firstName: 'asc' } },
+        ],
+      });
+      for (const enr of fallbackEnrollments) {
+        if (enr.student && !studentMap.has(enr.student.id)) {
+          studentMap.set(enr.student.id, enr.student);
+        }
+      }
+    }
+
     const scoreMap = new Map(assessment.scores.map((s) => [s.studentId, s]));
 
-    const roster = enrolledStudents.map((enr) => {
-      const existingScore = scoreMap.get(enr.studentId);
+    const roster = Array.from(studentMap.values()).map((student) => {
+      const existingScore = scoreMap.get(student.id);
       return {
-        student: enr.student,
+        student,
         score: existingScore
           ? {
               id: existingScore.id,

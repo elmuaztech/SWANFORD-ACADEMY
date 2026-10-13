@@ -181,7 +181,7 @@ export function AdminHeader({
   };
 
   return (
-    <header className="sticky top-0 z-10 w-full bg-white/95 backdrop-blur-md border-b border-[#EADBDA]/80 select-none shadow-2xs">
+    <header className="sticky top-0 z-40 w-full bg-white border-b border-[#EADBDA]/80 select-none shadow-2xs">
       <div className="flex items-center justify-between h-16 px-4 sm:px-6">
         {/* Left Side: Mobile Menu Button & Breadcrumb Navigation */}
         <div className="flex items-center gap-3 min-w-0">

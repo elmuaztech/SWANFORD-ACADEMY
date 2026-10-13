@@ -61,7 +61,8 @@ interface AssessmentDetail {
     code: string;
     bands?: Array<{
       id: string;
-      name: string;
+      grade?: string;
+      name?: string;
       minScore: number | string;
       maxScore: number | string;
       remark: string;
@@ -86,7 +87,8 @@ interface StudentScoreState {
 function computeGradeAndRemark(
   total: number,
   bands?: Array<{
-    name: string;
+    grade?: string;
+    name?: string;
     minScore: number | string;
     maxScore: number | string;
     remark?: string;
@@ -102,20 +104,22 @@ function computeGradeAndRemark(
       (b) => total >= Number(b.minScore) && total <= Number(b.maxScore)
     );
     if (matched) {
+      const gradeStr = (matched.grade || matched.name || "").trim();
+      const upper = gradeStr.toUpperCase();
       let badgeClass = "bg-stone-50 text-stone-800 border-stone-300 font-bold";
-      if (matched.name.startsWith("A")) {
+      if (upper.startsWith("A") || upper.startsWith("MUMTAZ")) {
         badgeClass = "bg-emerald-50 text-emerald-800 border-emerald-300 font-bold";
-      } else if (matched.name.startsWith("B")) {
+      } else if (upper.startsWith("B") || upper.startsWith("JAYYID JIDDAN")) {
         badgeClass = "bg-blue-50 text-blue-800 border-blue-300 font-bold";
-      } else if (matched.name.startsWith("C")) {
+      } else if (upper.startsWith("C") || upper.startsWith("JAYYID")) {
         badgeClass = "bg-amber-50 text-amber-900 border-amber-300 font-bold";
-      } else if (matched.name.startsWith("D")) {
+      } else if (upper.startsWith("D") || upper.startsWith("MAQBOOL")) {
         badgeClass = "bg-orange-50 text-orange-900 border-orange-300 font-bold";
-      } else if (matched.isPass === false) {
+      } else if (matched.isPass === false || upper.startsWith("F") || upper.startsWith("RASIB")) {
         badgeClass = "bg-rose-50 text-rose-800 border-rose-300 font-bold";
       }
       return {
-        grade: matched.name,
+        grade: gradeStr || (total >= 40 ? "Pass" : "Fail"),
         remark: matched.remark || (matched.isPass ? "Satisfactory" : "Needs Improvement"),
         badgeClass,
       };
@@ -474,20 +478,20 @@ export default function AssessmentDetailPage({
       )}
 
       {/* Assessment Structure Info Banner */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-[#FAF7F2] border border-[#EFE9DF] flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+      <div className="p-3 sm:p-4 rounded-xl bg-[#FAF7F2] border border-[#EFE9DF] flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 text-xs">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap py-0.5">
           <span className="font-extrabold text-[#800020] uppercase tracking-wider shrink-0">Evaluation Structure:</span>
           {activeComponents.map((c) => (
-            <span key={c.shortCode} className="px-2.5 py-1 rounded-md bg-white border border-[#E2D6C5] font-semibold text-stone-800">
-              {c.name} ({c.shortCode}): <strong>Max {c.maxScore}</strong>
+            <span key={c.shortCode} className="px-2.5 py-1 rounded-md bg-white border border-[#E2D6C5] font-semibold text-stone-800 shrink-0">
+              {c.shortCode}: <strong>Max {c.maxScore}</strong>
             </span>
           ))}
-          <span className="px-2.5 py-1 rounded-md bg-[#800020] text-white font-bold">
+          <span className="px-2.5 py-1 rounded-md bg-[#800020] text-white font-bold shrink-0">
             Total Max: 100
           </span>
         </div>
-        <div className="text-stone-600 font-medium break-words">
-          Grading Scale: <strong className="text-stone-800 font-bold">{assessment.gradingScale?.bands?.length ? assessment.gradingScale.bands.map(b => `${b.name} (${b.remark || b.name})`).join(", ") : "A (Distinction), B (Very Good), C (Credit), D (Pass), F (Needs Improvement)"}</strong>
+        <div className="text-stone-600 font-medium overflow-x-auto no-scrollbar whitespace-nowrap py-0.5">
+          Grading Scale: <strong className="text-stone-800 font-bold">{assessment.gradingScale?.bands?.length ? assessment.gradingScale.bands.map(b => `${b.grade || b.name || "Grade"} (${b.remark || b.grade || b.name || ""})`).join(", ") : "A (Distinction), B (Very Good), C (Credit), D (Pass), F (Needs Improvement)"}</strong>
         </div>
       </div>
 

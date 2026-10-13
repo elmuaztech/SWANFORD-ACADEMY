@@ -43,7 +43,7 @@ export function PageHeader({
     <div className={`flex flex-col gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-slate-200/80 mb-6 ${className}`}>
       {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav aria-label="Breadcrumb" className="flex items-center space-x-1.5 text-xs text-slate-500 overflow-x-auto table-scrollbar">
+        <nav aria-label="Breadcrumb" className="flex items-center space-x-1.5 text-xs text-slate-500 overflow-x-auto no-scrollbar whitespace-nowrap py-0.5">
           {breadcrumbs.map((crumb, idx) => {
             const isLast = idx === breadcrumbs.length - 1;
             return (
@@ -52,12 +52,12 @@ export function PageHeader({
                 {crumb.href && !isLast ? (
                   <Link
                     href={crumb.href}
-                    className="hover:text-[#800020] underline-offset-2 hover:underline transition-colors"
+                    className="hover:text-[#800020] underline-offset-2 hover:underline transition-colors shrink-0 whitespace-nowrap"
                   >
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className={isLast ? "font-semibold text-slate-800" : ""}>
+                  <span className={isLast ? "font-semibold text-slate-800 shrink-0 whitespace-nowrap" : "shrink-0 whitespace-nowrap"}>
                     {crumb.label}
                   </span>
                 )}
