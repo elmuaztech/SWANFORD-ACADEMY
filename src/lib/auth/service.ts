@@ -517,7 +517,7 @@ export async function confirmPasswordReset(input: {
 const otpFailedAttemptsMap = new Map<string, number>();
 
 /**
- * Requests a 4-digit password reset OTP (0000-9999).
+ * Requests a 6-digit password reset OTP (000000-999999).
  * Expires in exactly 5 minutes.
  * Invalidates any prior active OTP on resend.
  * Anti-enumeration: returns generic confirmation.
@@ -525,9 +525,19 @@ const otpFailedAttemptsMap = new Map<string, number>();
 export async function requestPasswordResetOtp(
   email: string,
   ipAddress?: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; expiresInSeconds?: number; resendCooldownSeconds?: number }> {
   const normalizedEmail = email.trim().toLowerCase();
   const clientIp = ipAddress || '127.0.0.1';
+
+  // Resend cooldown rate limit: 60 seconds per account
+  const resendCooldown = checkRateLimit(`forgot_pw_resend:${normalizedEmail}`, {
+    windowMs: 60 * 1000,
+    maxRequests: 1,
+  });
+  if (!resendCooldown.allowed) {
+    const secondsRemaining = Math.max(1, Math.ceil((resendCooldown.resetAt - Date.now()) / 1000));
+    throw new Error(`Please wait ${secondsRemaining} seconds before requesting another verification code.`);
+  }
 
   // Dual Rate Limiting: IP and Email
   const ipLimit = checkRateLimit(`forgot_pw_ip:${clientIp}`, {
@@ -549,6 +559,8 @@ export async function requestPasswordResetOtp(
   const genericSuccess = {
     success: true,
     message: 'If an account exists with this email, a 6-digit verification code has been sent to your inbox.',
+    expiresInSeconds: 300,
+    resendCooldownSeconds: 60,
   };
 
   const user = await prisma.user.findFirst({
@@ -581,7 +593,7 @@ export async function requestPasswordResetOtp(
       },
     });
 
-    // 2. Persist new 4-digit OTP hash in PostgreSQL (raw OTP is NEVER saved in DB)
+    // 2. Persist new 6-digit OTP hash in PostgreSQL (raw OTP is NEVER saved in DB)
     await tx.passwordReset.create({
       data: {
         userId: user.id,
@@ -600,7 +612,7 @@ export async function requestPasswordResetOtp(
     const rendered = renderPasswordResetOtpEmail({
       recipientName,
       otpCode: rawOtp,
-      expiresInMinutes: 2,
+      expiresInMinutes: 5,
     });
 
     const notifResult = await enqueueNotification(
@@ -664,11 +676,11 @@ export async function verifyPasswordResetOtp(
   const clientIp = ipAddress || '127.0.0.1';
   const cleanOtp = rawOtp.trim();
 
-  // 1. Format check first: exactly 6 numeric digits (also accept 4 digits for legacy test compatibility)
-  if (!/^\d{6}$/.test(cleanOtp) && !/^\d{4}$/.test(cleanOtp)) {
+  // 1. Format check first: exactly 6 numeric digits
+  if (!/^\d{6}$/.test(cleanOtp)) {
     return {
       success: false,
-      message: 'Verification code must be exactly 4 numeric digits (or 6 numeric digits).',
+      message: 'Verification code must be exactly 6 numeric digits.',
     };
   }
 
@@ -898,7 +910,7 @@ export async function confirmPasswordResetWithTicket(input: {
         entityType: 'User',
         entityId: user.id,
         ipAddress: input.ipAddress,
-        newValues: { method: '4_DIGIT_OTP_VERIFIED' },
+        newValues: { method: '6_DIGIT_OTP_VERIFIED' },
       },
     });
 

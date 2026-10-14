@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AlertCircle } from 'lucide-react';
 import { SCHOOL_PROFILE } from '@/lib/constants';
 
 function LoginFormContent() {
@@ -132,7 +133,7 @@ function LoginFormContent() {
           {/* Human-Readable Error Notification */}
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-[#FDF2F4] border border-[#EADBDA] text-xs sm:text-sm text-[#800020] flex items-start gap-2.5 leading-snug">
-              <span className="text-base shrink-0">⚠️</span>
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#800020] mt-0.5" />
               <div className="flex-1 font-medium">{errorMessage}</div>
             </div>
           )}

@@ -74,8 +74,12 @@ describe('4-Digit OTP Password Reset Flow Integration Tests', { timeout: 20000 }
     });
     expect(firstRecord).toBeDefined();
 
+    // Clear resend cooldown for test simulation of resend
+    clearRateLimit(`forgot_pw_resend:${testEmail}`);
+
     // Request new OTP
-    await requestPasswordResetOtp(testEmail);
+    const resendResult = await requestPasswordResetOtp(testEmail);
+    expect(resendResult.success).toBe(true);
 
     // Prior record must now be marked used/invalidated
     const updatedFirstRecord = await prisma.passwordReset.findUnique({
@@ -92,6 +96,9 @@ describe('4-Digit OTP Password Reset Flow Integration Tests', { timeout: 20000 }
   });
 
   it('enforces 5-failed-attempt killswitch and DOES NOT lock user normal account login', async () => {
+    // Clear resend cooldown for fresh test request
+    clearRateLimit(`forgot_pw_resend:${testEmail}`);
+
     // Request fresh OTP
     await requestPasswordResetOtp(testEmail);
 
@@ -99,14 +106,14 @@ describe('4-Digit OTP Password Reset Flow Integration Tests', { timeout: 20000 }
       where: { userId: testUserId, usedAt: null },
       orderBy: { createdAt: 'desc' },
     });
-    const wrongCodes = ['0001', '0002', '0003', '0004', '0005', '0006'].filter(
+    const wrongCodes = ['000001', '000002', '000003', '000004', '000005', '000006'].filter(
       (c) => hashToken(c) !== activeOtp?.tokenHash
     );
 
-    // Fail 1: Invalid format (< 4 digits)
-    const badFormat = await verifyPasswordResetOtp(testEmail, '12');
+    // Fail 1: Invalid format (< 6 digits)
+    const badFormat = await verifyPasswordResetOtp(testEmail, '12345');
     expect(badFormat.success).toBe(false);
-    expect(badFormat.message).toContain('exactly 4 numeric digits');
+    expect(badFormat.message).toContain('exactly 6 numeric digits');
 
     // Fail 2: Wrong code
     const f1 = await verifyPasswordResetOtp(testEmail, wrongCodes[0]);
@@ -154,8 +161,8 @@ describe('4-Digit OTP Password Reset Flow Integration Tests', { timeout: 20000 }
     clearRateLimit(`otp_verify_account:${testEmail}`);
     clearRateLimit('otp_verify_ip:127.0.0.1');
 
-    // 1. Plant a known 4-digit OTP with leading zero: "0427"
-    const testOtp = '0427';
+    // 1. Plant a known 6-digit OTP with leading zeros: "004271"
+    const testOtp = '004271';
     const otpHash = hashToken(testOtp);
     const now = new Date();
 
@@ -167,8 +174,8 @@ describe('4-Digit OTP Password Reset Flow Integration Tests', { timeout: 20000 }
       },
     });
 
-    // 2. Verify the 4-digit code (including leading zero format)
-    const verifyRes = await verifyPasswordResetOtp(testEmail, '0427');
+    // 2. Verify the 6-digit code (including leading zero format)
+    const verifyRes = await verifyPasswordResetOtp(testEmail, '004271');
     expect(verifyRes.success).toBe(true);
     expect(verifyRes.resetTicket).toBeDefined();
 

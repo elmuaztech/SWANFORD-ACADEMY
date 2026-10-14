@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -141,7 +142,9 @@ export default function NewAssessmentPage() {
       {classes.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center space-y-3">
-            <div className="text-4xl">📚</div>
+            <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto text-stone-500">
+              <BookOpen className="w-6 h-6" />
+            </div>
             <h3 className="text-base font-bold text-stone-900">No Assigned Classes Found</h3>
             <p className="text-xs text-stone-600 max-w-md mx-auto">
               Your teacher account does not currently have any assigned classes or programmes. Please contact your Super Admin to assign your academic scope.

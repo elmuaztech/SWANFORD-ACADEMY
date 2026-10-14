@@ -119,7 +119,10 @@ if docker ps --filter "name=swanford_postgres" --format '{{.Names}}' | grep -q "
   mkdir -p "$BACKUP_DIR"
   PRE_DEPLOY_BACKUP="${BACKUP_DIR}/pre_deploy_$(date +%Y%m%d_%H%M%S).sql.gz"
   
-  if docker exec swanford_postgres pg_dumpall -U "${POSTGRES_USER:-postgres}" | gzip > "$PRE_DEPLOY_BACKUP"; then
+  PG_USER=$(grep -E "^POSTGRES_USER=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'" || echo "swanford")
+  PG_DB=$(grep -E "^POSTGRES_DB=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'" || echo "swanford_prod")
+  
+  if docker exec swanford_postgres pg_dump -U "$PG_USER" -d "$PG_DB" | gzip > "$PRE_DEPLOY_BACKUP"; then
     chmod 600 "$PRE_DEPLOY_BACKUP"
     echo "  [✓] Pre-deploy database snapshot saved: $PRE_DEPLOY_BACKUP"
   else

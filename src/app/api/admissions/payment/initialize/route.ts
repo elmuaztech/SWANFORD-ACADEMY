@@ -5,6 +5,7 @@ import { initializeTransaction } from '@/lib/paystack/client';
 import { generatePaymentReference } from '@/lib/paystack/reference';
 import { GatewayProvider, GatewayTransactionStatus, PaymentTargetType } from '@prisma/client';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate_limiter';
+import { isPaymentMaintenanceActive } from '@/lib/security/payment_maintenance';
 import { toUserFacingError } from '@/lib/ui/error_messages';
 import { getEnv } from '@/lib/env';
 import { z } from 'zod';
@@ -23,6 +24,16 @@ const InitiateFormFeeSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    if (isPaymentMaintenanceActive()) {
+      return NextResponse.json(
+        {
+          error: 'Online payment processing is temporarily undergoing scheduled maintenance. Please check back shortly. All records and application details are safely preserved.',
+          code: 'PAYMENT_GATEWAY_MAINTENANCE',
+          maintenance: true,
+        },
+        { status: 503 }
+      );
+    }
     const ip = getClientIp(req);
     const rateLimit = checkRateLimit(`admissions_init_fee:${ip}`, {
       windowMs: 60_000,

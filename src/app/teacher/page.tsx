@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { BookOpen, Users, ClipboardList, PenTool, ClipboardCheck, Building, GraduationCap, Bell, Inbox, Info, Check } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -200,7 +201,7 @@ export default function TeacherDashboardPage() {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#F5EBDC] text-[#5B0612] border border-[#DFCBB5] shadow-xs">
-                <span>👨‍🏫</span> Staff ID: {teacher.staffIdNumber}
+                Staff ID: {teacher.staffIdNumber}
               </span>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/90 border border-white/20">
                 {activeSession?.name || "Active Session"} &bull; {activeTerm?.name || "Term in Session"}
@@ -227,9 +228,9 @@ export default function TeacherDashboardPage() {
               <Button
                 variant="primary"
                 size="sm"
-                className="bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 font-bold shadow-md hover:shadow-lg transition-all min-h-[38px] sm:min-h-[40px] px-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap cursor-pointer active:scale-95"
+                className="bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 font-bold shadow-md hover:shadow-lg transition-all min-h-[38px] sm:min-h-[40px] px-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap cursor-pointer active:scale-95 flex items-center gap-1.5"
               >
-                📝 Record Attendance
+                <ClipboardCheck className="w-4 h-4 shrink-0" /> Record Attendance
               </Button>
             </Link>
             <Link
@@ -258,7 +259,7 @@ export default function TeacherDashboardPage() {
           title="Assigned Classes"
           value={data.classesCount}
           subtitle="Classes under your supervision"
-          icon={<span className="text-xl">📚</span>}
+          icon={<BookOpen className="w-5 h-5" />}
           badge={<Badge variant="brand" size="sm" className="whitespace-nowrap">Active Scopes</Badge>}
           color="maroon"
           href="/teacher/classes"
@@ -268,7 +269,7 @@ export default function TeacherDashboardPage() {
           title="Total Students"
           value={data.totalStudents}
           subtitle="Across all assigned classrooms"
-          icon={<span className="text-xl">👥</span>}
+          icon={<Users className="w-5 h-5" />}
           badge={<Badge variant="success" size="sm" className="whitespace-nowrap">Enrolled</Badge>}
           color="emerald"
         />
@@ -281,7 +282,7 @@ export default function TeacherDashboardPage() {
               ? "Daily roll call recorded"
               : "Remember to mark class roll call"
           }
-          icon={<span className="text-xl">📋</span>}
+          icon={<ClipboardList className="w-5 h-5" />}
           badge={
             <Badge
               variant={data.hasRecordedAttendanceToday ? "success" : "warning"}
@@ -299,7 +300,7 @@ export default function TeacherDashboardPage() {
           title="Assessments"
           value={data.draftAssessmentsCount + data.submittedAssessmentsCount}
           subtitle={`${data.draftAssessmentsCount} Draft, ${data.submittedAssessmentsCount} Submitted`}
-          icon={<span className="text-xl">✍️</span>}
+          icon={<PenTool className="w-5 h-5" />}
           badge={<Badge variant="neutral" size="sm" className="whitespace-nowrap">Continuous</Badge>}
           color="purple"
           href="/teacher/assessments"
@@ -334,7 +335,7 @@ export default function TeacherDashboardPage() {
                         : "bg-white text-stone-700 hover:bg-stone-50 border border-stone-200"
                     }`}
                   >
-                    <span>🏫 {cls.className} {cls.arm ? `(${cls.arm})` : ""}</span>
+                    <span className="flex items-center gap-1.5"><Building className="w-3.5 h-3.5" /> {cls.className} {cls.arm ? `(${cls.arm})` : ""}</span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                       isSelected ? "bg-white/20 text-white" : "bg-stone-100 text-stone-600"
                     }`}>
@@ -381,9 +382,9 @@ export default function TeacherDashboardPage() {
                       <Button
                         variant="primary"
                         size="sm"
-                        className="bg-[#800020] hover:bg-[#5B0612] text-white text-xs font-bold min-h-[38px] px-3.5"
+                        className="bg-[#800020] hover:bg-[#5B0612] text-white text-xs font-bold min-h-[38px] px-3.5 flex items-center gap-1.5"
                       >
-                        📝 Take Attendance
+                        <ClipboardCheck className="w-4 h-4 shrink-0" /> Take Attendance
                       </Button>
                     </Link>
                     <Link
@@ -392,9 +393,9 @@ export default function TeacherDashboardPage() {
                       <Button
                         variant="primary"
                         size="sm"
-                        className="bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 text-xs font-bold min-h-[38px] px-3.5"
+                        className="bg-[#F59E0B] hover:bg-[#D97706] text-stone-950 text-xs font-bold min-h-[38px] px-3.5 flex items-center gap-1.5"
                       >
-                        ✍️ Record Assessments
+                        <PenTool className="w-4 h-4 shrink-0" /> Record Assessments
                       </Button>
                     </Link>
                     <Link
@@ -421,8 +422,8 @@ export default function TeacherDashboardPage() {
                           {activeClass.subjectName}
                         </span>
                       ) : (
-                        <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                          ✓ All Class Subjects ({activeClass.availableSubjects?.length || 0} Available)
+                        <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 inline-flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> All Class Subjects ({activeClass.availableSubjects?.length || 0} Available)
                         </span>
                       )}
                     </div>
@@ -479,7 +480,7 @@ export default function TeacherDashboardPage() {
                 ) : filteredStudents.length === 0 ? (
                   <div className="text-center py-10 px-4 bg-stone-50 rounded-xl border border-stone-100">
                     <div className="w-12 h-12 rounded-full bg-white shadow-xs text-stone-400 flex items-center justify-center mx-auto mb-2 text-xl border border-stone-200">
-                      🎒
+                      <Users className="w-6 h-6 text-stone-400" />
                     </div>
                     <p className="text-sm font-bold text-stone-800">
                       {students.length === 0 ? "No Students Currently Enrolled" : "No Matching Students"}
@@ -674,7 +675,7 @@ export default function TeacherDashboardPage() {
                 <CardContent className="space-y-4 pt-0">
                   <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="text-base">🎒</span>
+                      <GraduationCap className="w-4 h-4 text-stone-500" />
                       <span className="font-medium text-stone-600">Students</span>
                     </div>
                     <span className="font-extrabold text-stone-900 text-sm">
@@ -725,7 +726,7 @@ export default function TeacherDashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-bold text-[#5B0612] tracking-tight flex items-center gap-2">
-              <span>🔔</span> Announcements &amp; Notices
+              <Bell className="w-5 h-5 text-[#800020]" /> Announcements &amp; Notices
             </h2>
             <Link
               href="/teacher/messages"
@@ -740,7 +741,7 @@ export default function TeacherDashboardPage() {
               {notices.length === 0 ? (
                 <div className="text-center py-6 px-3">
                   <div className="w-12 h-12 rounded-full bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-2 text-xl">
-                    📭
+                    <Inbox className="w-6 h-6 text-stone-400" />
                   </div>
                   <p className="text-xs font-bold text-stone-700">No New Announcements</p>
                   <p className="text-[11px] text-stone-500 mt-1">
@@ -792,7 +793,7 @@ export default function TeacherDashboardPage() {
           <Card className="bg-[#FAF2F4]/50 border border-[#EADBDA] shadow-xs">
             <CardContent className="p-4 space-y-2 text-xs text-stone-700">
               <p className="font-extrabold text-[#800020] flex items-center gap-1.5">
-                <span>💡</span> Teacher Portal Guidelines
+                <Info className="w-4 h-4 text-[#800020]" /> Teacher Portal Guidelines
               </p>
               <ul className="space-y-1.5 list-disc list-inside text-stone-600">
                 <li>Record class attendance promptly during morning roll call daily.</li>

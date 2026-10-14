@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { Check } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -589,8 +590,9 @@ export default function GuardianDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {selectedStudentId && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 font-medium">
-              ✓ Student selected for linkage.
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 font-medium flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span>Student selected for linkage.</span>
             </div>
           )}
 

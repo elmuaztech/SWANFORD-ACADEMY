@@ -23,6 +23,7 @@ import {
   FormGroup,
   Alert,
 } from "@/components";
+import { Star } from "lucide-react";
 
 interface Programme {
   id: string;
@@ -486,8 +487,9 @@ export default function AdminClassesPage() {
                     <TableCell>
                       <div className="text-xs space-y-0.5">
                         {formTeacher ? (
-                          <p className="font-medium text-stone-900">
-                            ⭐ {formTeacher.teacher.firstName} {formTeacher.teacher.lastName}{" "}
+                          <p className="font-medium text-stone-900 flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 text-amber-600 fill-amber-500 shrink-0" />
+                            <span>{formTeacher.teacher.firstName} {formTeacher.teacher.lastName}</span>
                             <span className="text-[10px] text-amber-700">(Form)</span>
                           </p>
                         ) : (

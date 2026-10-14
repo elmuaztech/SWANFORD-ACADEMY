@@ -8,7 +8,8 @@ import { AuthorizationError } from '@/lib/auth/authorization';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate_limiter';
 import { toUserFacingError } from '@/lib/ui/error_messages';
 import { prisma } from '@/lib/prisma';
-import { ApplicationPaymentStatus, GatewayTransactionStatus } from '@prisma/client';
+import { ApplicationChargeType, ApplicationPaymentStatus, GatewayTransactionStatus } from '@prisma/client';
+import { getConfiguredApplicationFormFeeKobo } from '@/lib/admissions/fee_calculation';
 
 /**
  * Swanford Academy — Public Admission Application Endpoint
@@ -98,9 +99,16 @@ export async function POST(request: NextRequest) {
           throw new AuthorizationError('Payment reference belongs to a different email address.', 400, 'PAYMENT_OWNERSHIP_MISMATCH');
         }
 
-        if (pTx.amountKobo < draft.totalAmountKobo) {
+        const formFeeItem = draft.chargeItems?.find(
+          (c) => c.chargeType === ApplicationChargeType.APPLICATION_FORM_FEE
+        );
+        const requiredFeeKobo = formFeeItem
+          ? formFeeItem.totalAmountKobo
+          : await getConfiguredApplicationFormFeeKobo(tx);
+
+        if (pTx.amountKobo < requiredFeeKobo) {
           throw new AuthorizationError(
-            `Payment amount (₦${(Number(pTx.amountKobo) / 100).toLocaleString()}) is less than the required application fee (₦${(Number(draft.totalAmountKobo) / 100).toLocaleString()}).`,
+            `Payment amount (₦${(Number(pTx.amountKobo) / 100).toLocaleString()}) is less than the required application form fee (₦${(Number(requiredFeeKobo) / 100).toLocaleString()}).`,
             400,
             'AMOUNT_MISMATCH'
           );

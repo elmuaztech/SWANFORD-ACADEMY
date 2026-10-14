@@ -99,14 +99,18 @@ export async function POST(req: NextRequest) {
       if (existingTx.currency !== 'NGN') {
         return NextResponse.json({ error: 'Invalid payment currency. Expected NGN.' }, { status: 400 });
       }
-      if (existingTx.amountKobo < formFeeKobo) {
+
+      const rawMetadata = (existingTx.gatewayResponseJson as any)?.metadata || {};
+      const initiatedFeeKobo = rawMetadata.formFeeKobo
+        ? BigInt(rawMetadata.formFeeKobo)
+        : (rawMetadata.expectedAmountKobo ? BigInt(rawMetadata.expectedAmountKobo) : formFeeKobo);
+
+      if (existingTx.amountKobo < initiatedFeeKobo) {
         return NextResponse.json(
-          { error: `Payment amount is less than the required form fee of ₦${(Number(formFeeKobo) / 100).toLocaleString()}.` },
+          { error: `Payment amount is less than the required form fee of ₦${(Number(initiatedFeeKobo) / 100).toLocaleString()}.` },
           { status: 400 }
         );
       }
-
-      const rawMetadata = (existingTx.gatewayResponseJson as any)?.metadata || {};
       return NextResponse.json({
         success: true,
         verified: true,
@@ -154,12 +158,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Validate Gateway Amount against configured Application Form Fee
+    // 5. Validate Gateway Amount against recorded initialization transaction (prevents race condition when fee is changed post-init)
+    const expectedFeeKobo = existingTx.amountKobo > BigInt(0) ? existingTx.amountKobo : formFeeKobo;
     const gatewayAmountKobo = BigInt(gatewayTx.data.amount || 0);
-    if (gatewayAmountKobo < formFeeKobo) {
+    if (gatewayAmountKobo < expectedFeeKobo) {
       return NextResponse.json(
         {
-          error: `Payment amount (₦${(Number(gatewayAmountKobo) / 100).toLocaleString()}) is less than the required admission form fee (₦${(Number(formFeeKobo) / 100).toLocaleString()}).`,
+          error: `Payment amount (₦${(Number(gatewayAmountKobo) / 100).toLocaleString()}) is less than the required admission form fee (₦${(Number(expectedFeeKobo) / 100).toLocaleString()}).`,
         },
         { status: 400 }
       );

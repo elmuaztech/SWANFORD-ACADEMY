@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { GraduationCap, Users, BookOpen, ClipboardList } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -267,7 +268,7 @@ export default function AdminDashboardPage() {
           title="Active Students"
           value={overview.activeStudents.toLocaleString()}
           subtitle="Enrolled across Nursery, Primary & Tahfeez"
-          icon={<span className="text-xl">🎓</span>}
+          icon={<GraduationCap className="w-5 h-5" />}
           badge={<Badge variant="brand" size="sm" className="whitespace-nowrap">Active</Badge>}
           color="maroon"
           href="/admin/students"
@@ -277,7 +278,7 @@ export default function AdminDashboardPage() {
           title="Registered Guardians"
           value={overview.guardians.toLocaleString()}
           subtitle="Verified primary parents and sponsors"
-          icon={<span className="text-xl">👨‍👩‍👧</span>}
+          icon={<Users className="w-5 h-5" />}
           badge={<Badge variant="success" size="sm" className="whitespace-nowrap">Verified</Badge>}
           color="emerald"
           href="/admin/guardians"
@@ -287,7 +288,7 @@ export default function AdminDashboardPage() {
           title="Teaching Staff"
           value={overview.teachers.toLocaleString()}
           subtitle="Active instructors with class scopes"
-          icon={<span className="text-xl">👩‍🏫</span>}
+          icon={<BookOpen className="w-5 h-5" />}
           badge={<Badge variant="neutral" size="sm" className="whitespace-nowrap">Faculty</Badge>}
           color="blue"
           href="/admin/teachers"
@@ -297,7 +298,7 @@ export default function AdminDashboardPage() {
           title="Pending Admissions"
           value={overview.pendingAdmissions.toLocaleString()}
           subtitle="Applications awaiting operational review"
-          icon={<span className="text-xl">📋</span>}
+          icon={<ClipboardList className="w-5 h-5" />}
           badge={
             <Badge
               variant={overview.pendingAdmissions > 0 ? "warning" : "success"}
@@ -373,19 +374,19 @@ export default function AdminDashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-stone-100/70 rounded-2xl border border-[#E2D6C5] shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
                   <span className="text-xs font-bold text-stone-600 uppercase tracking-wide truncate block">Total Invoiced</span>
-                  <p className="text-base sm:text-lg xl:text-xl font-extrabold text-stone-900 mt-1 tabular-nums truncate whitespace-nowrap">
+                  <p className="text-base sm:text-lg xl:text-xl font-extrabold text-stone-900 mt-1 tabular-nums break-words">
                     {formatNaira(BigInt(finance.totalInvoicedKobo))}
                   </p>
                 </div>
                 <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-emerald-50/70 rounded-2xl border border-emerald-200/90 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
                   <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide truncate block">Total Collected</span>
-                  <p className="text-base sm:text-lg xl:text-xl font-extrabold text-emerald-950 mt-1 tabular-nums truncate whitespace-nowrap">
+                  <p className="text-base sm:text-lg xl:text-xl font-extrabold text-emerald-950 mt-1 tabular-nums break-words">
                     {formatNaira(BigInt(finance.totalCollectedKobo))}
                   </p>
                 </div>
                 <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-amber-50/70 rounded-2xl border border-amber-200/90 shadow-xs hover:shadow-md transition-all duration-300 hover:-translate-y-1 min-w-0">
                   <span className="text-xs font-bold text-amber-800 uppercase tracking-wide truncate block">Outstanding</span>
-                  <p className="text-base sm:text-lg xl:text-xl font-extrabold text-amber-950 mt-1 tabular-nums truncate whitespace-nowrap">
+                  <p className="text-base sm:text-lg xl:text-xl font-extrabold text-amber-950 mt-1 tabular-nums break-words">
                     {formatNaira(BigInt(finance.outstandingKobo))}
                   </p>
                 </div>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Receipt, Wallet, Clock, CreditCard } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -563,7 +564,7 @@ export default function AdminFinancePage() {
           title="Total Invoiced (Term)"
           value={formatNaira(BigInt(summary.totalInvoicedKobo))}
           subtitle={`${summary.activeTerm?.name || "Current Term"} (${summary.activeSession?.name || "Session"})`}
-          icon={<span className="text-xl">📜</span>}
+          icon={<Receipt className="w-5 h-5" />}
           badge={<Badge variant="brand" size="sm" className="whitespace-nowrap">Term Invoices</Badge>}
           color="maroon"
         />
@@ -572,7 +573,7 @@ export default function AdminFinancePage() {
           title="Total Collected"
           value={formatNaira(BigInt(summary.totalCollectedKobo))}
           subtitle="Confirmed receipts & verified payments"
-          icon={<span className="text-xl">💰</span>}
+          icon={<Wallet className="w-5 h-5" />}
           badge={<Badge variant="success" size="sm" className="whitespace-nowrap">Verified</Badge>}
           color="emerald"
         />
@@ -581,7 +582,7 @@ export default function AdminFinancePage() {
           title="Outstanding Balance"
           value={formatNaira(BigInt(summary.totalOutstandingKobo))}
           subtitle="Unpaid fees across enrolled students"
-          icon={<span className="text-xl">⏳</span>}
+          icon={<Clock className="w-5 h-5" />}
           badge={<Badge variant="warning" size="sm" className="whitespace-nowrap">Receivable</Badge>}
           color="amber"
         />
@@ -590,7 +591,7 @@ export default function AdminFinancePage() {
           title="Operational Expenses"
           value={formatNaira(totalExpensesKobo)}
           subtitle={`${summary.expenseCount || expenses.length} recorded vouchers`}
-          icon={<span className="text-xl">🧾</span>}
+          icon={<CreditCard className="w-5 h-5" />}
           badge={<Badge variant="danger" size="sm" className="whitespace-nowrap">Disbursed</Badge>}
           color="rose"
         />

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { Camera, Loader2 } from "lucide-react";
 import { parseFullName } from "@/lib/utils/name_parser";
 import {
   Card,
@@ -578,7 +579,7 @@ export default function AdminBulkStudentEnrollPage() {
                   className="text-xs flex items-center gap-1.5"
                   title="Select multiple passport photos at once to auto-match rows by student name or row number (e.g. 1.jpg, 2.jpg)"
                 >
-                  <span>📷</span>
+                  <Camera className="w-4 h-4 text-[#800020]" />
                   <span>{batchPhotoProcessing ? "Matching..." : "Batch Match Passport Photos"}</span>
                 </Button>
               </div>
@@ -691,7 +692,17 @@ export default function AdminBulkStudentEnrollPage() {
                                     : "border-[#800020]/40 text-[#800020] hover:bg-[#FAF4F5] hover:border-[#800020]"
                                 }`}
                               >
-                                {isUploadingThisPhoto ? "⏳ ..." : "📷 Photo"}
+                                {isUploadingThisPhoto ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Camera className="w-3.5 h-3.5" />
+                                    <span>Photo</span>
+                                  </>
+                                )}
                               </span>
                             </label>
                           )}

@@ -6,6 +6,7 @@ import {
 import { PaymentTargetType } from "@prisma/client";
 import { toUserFacingError } from "@/lib/ui/error_messages";
 import { getEnv } from "@/lib/env";
+import { isPaymentMaintenanceActive } from "@/lib/security/payment_maintenance";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,16 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   try {
+    if (isPaymentMaintenanceActive()) {
+      return NextResponse.json(
+        {
+          error: "Online payment processing is temporarily undergoing scheduled maintenance. Please check back shortly. All records and application details are safely preserved.",
+          code: "PAYMENT_GATEWAY_MAINTENANCE",
+          maintenance: true,
+        },
+        { status: 503 }
+      );
+    }
     const body = await req.json();
     const { sessionToken, targetType, callbackUrl } = body;
 

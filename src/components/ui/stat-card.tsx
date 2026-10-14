@@ -41,7 +41,7 @@ const COLOR_MAP: Record<
     bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#FAF2F4]",
     iconBg: "bg-[#FAF2F4] border border-[#EADBDA]",
     iconText: "text-[#800020]",
-    titleText: "text-[#800020]/90",
+    titleText: "text-[#5B0612] font-bold",
     valueText: "text-[#5B0612]",
   },
   emerald: {
@@ -146,7 +146,7 @@ export function StatCard({
         {/* Value Row: Large bold formatted digits & optional badge */}
         <div className="flex items-baseline justify-between gap-2 min-w-0">
           <div
-            className={`text-2xl min-[390px]:text-3xl sm:text-3xl lg:text-2xl xl:text-3xl font-extrabold tracking-tight tabular-nums ${theme.valueText} truncate whitespace-nowrap min-w-0`}
+            className={`text-xl min-[360px]:text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums ${theme.valueText} break-words leading-tight min-w-0`}
           >
             {value}
           </div>

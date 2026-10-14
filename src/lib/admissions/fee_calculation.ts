@@ -32,13 +32,13 @@ export async function getConfiguredApplicationFormFeeKobo(
     try {
       return BigInt(config.value.trim());
     } catch {
-      // If parsing fails, use standard baseline
-      return BigInt(500000);
+      // If parsing fails, use standard baseline ₦500 (50,000 Kobo)
+      return BigInt(50000);
     }
   }
 
-  // Baseline fallback if not seeded in development
-  return BigInt(500000);
+  // Baseline fallback if not seeded: ₦500 (50,000 Kobo)
+  return BigInt(50000);
 }
 
 /**

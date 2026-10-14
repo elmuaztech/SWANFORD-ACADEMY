@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Check } from 'lucide-react';
 import {
   Navbar,
   PublicFooter,
@@ -62,7 +63,7 @@ function AdmissionContent() {
   const [step, setStep] = useState<number>(1);
   const [cycles, setCycles] = useState<AdmissionCycleOption[]>([]);
   const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);
-  const [formFeeKobo, setFormFeeKobo] = useState<string>('500000');
+  const [formFeeKobo, setFormFeeKobo] = useState<string>('50000');
   const [isOpen, setIsOpen] = useState<boolean>(true);
   const [activeSessionName, setActiveSessionName] = useState<string>('');
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -470,7 +471,7 @@ function AdmissionContent() {
             <div className="space-y-6">
               <div className="no-print bg-emerald-50 border-2 border-emerald-500 rounded-xl p-6 text-center space-y-3 shadow-xs">
                 <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
-                  ✓
+                  <Check className="w-6 h-6" />
                 </div>
                 <h2 className="text-xl sm:text-2xl font-bold text-emerald-950">
                   Admission Application Submitted Successfully!
@@ -569,7 +570,7 @@ function AdmissionContent() {
                 <div className="text-center sm:text-right shrink-0">
                   <span className="text-[11px] text-stone-500 block uppercase font-bold">Application Form Fee</span>
                   <span className="text-xl sm:text-2xl font-black text-[#5B0612]">
-                    {formatNaira(Number(formFeeKobo) / 100)}
+                    {formatNaira(BigInt(formFeeKobo || 0))}
                   </span>
                 </div>
               </div>
@@ -670,7 +671,7 @@ function AdmissionContent() {
                             {initiatingPayment ? (
                               <span>Connecting to Paystack...</span>
                             ) : (
-                              <span>Pay Form Fee {formatNaira(Number(formFeeKobo) / 100)} &amp; Open Form</span>
+                              <span>Pay Form Fee {formatNaira(BigInt(formFeeKobo || 0))} &amp; Open Form</span>
                             )}
                           </Button>
                         </div>
@@ -748,7 +749,7 @@ function AdmissionContent() {
               <div className="no-print bg-emerald-50 border border-emerald-300 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-emerald-900 shadow-xs">
                 <div className="flex items-center gap-2.5">
                   <span className="w-6 h-6 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
-                    ✓
+                    <Check className="w-3.5 h-3.5" />
                   </span>
                   <div className="text-xs sm:text-sm">
                     <span className="font-bold block">Application Fee Payment Verified</span>
@@ -995,7 +996,16 @@ function AdmissionContent() {
                               }`}
                             >
                               <span>{p.name}</span>
-                              <span>{isSelected ? '✓ Selected' : '+ Select'}</span>
+                              <span className="inline-flex items-center gap-1">
+                                {isSelected ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Selected</span>
+                                  </>
+                                ) : (
+                                  '+ Select'
+                                )}
+                              </span>
                             </div>
                           );
                         })}

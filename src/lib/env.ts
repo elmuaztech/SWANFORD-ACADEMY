@@ -44,6 +44,14 @@ export const envSchema = z.object({
     .string()
     .optional(),
 
+  // Payment Maintenance Gate
+  PAYMENT_GATEWAY_MAINTENANCE_LOCK: z
+    .string()
+    .optional(),
+  PAYMENT_MAINTENANCE_MODE: z
+    .string()
+    .optional(),
+
   // Notification Provider Abstraction
   NOTIFICATION_PROVIDER: z
     .enum(["mock", "smtp", "termii"])

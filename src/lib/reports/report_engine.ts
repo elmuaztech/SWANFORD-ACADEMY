@@ -1492,7 +1492,7 @@ export async function releaseTerminalReports(
           category: 'ACADEMIC',
           templateName: 'RESULT_PUBLISHED',
           subject: `Swanford Academy: Official ${termName} Terminal Report Sheet Released for ${studentName}`,
-          bodyText: `Dear ${link.guardian.firstName} ${link.guardian.lastName},\n\nThe official terminal report sheet for ${studentName} for ${termName} has been officially released by the school administration.\n\n📲 DOWNLOAD PDF REPORT SHEET TO YOUR PHONE:\n${downloadPdfUrl}\n\nYou can also view the full breakdown in your Parent Portal:\n${portalUrl}\n\nSwanford Academy Management.`,
+          bodyText: `Dear ${link.guardian.firstName} ${link.guardian.lastName},\n\nThe official terminal report sheet for ${studentName} for ${termName} has been officially released by the school administration.\n\nDOWNLOAD PDF REPORT SHEET TO YOUR PHONE:\n${downloadPdfUrl}\n\nYou can also view the full breakdown in your Parent Portal:\n${portalUrl}\n\nSwanford Academy Management.`,
           htmlBody: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1c1917; line-height: 1.6;">
               <div style="background-color: #5B0612; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
@@ -1506,7 +1506,7 @@ export async function releaseTerminalReports(
                 
                 <div style="text-align: center; margin: 28px 0;">
                   <a href="${downloadPdfUrl}" style="background-color: #800020; color: #ffffff; padding: 14px 28px; border-radius: 6px; font-weight: bold; text-decoration: none; display: inline-block; font-size: 14px;">
-                    📥 Download PDF Report Sheet
+                    Download PDF Report Sheet
                   </a>
                 </div>
                 

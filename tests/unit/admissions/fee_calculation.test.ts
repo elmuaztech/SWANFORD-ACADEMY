@@ -97,13 +97,13 @@ describe('Stage 7 — Unit: Dynamic Fee Calculation & Financial Item Snapshot', 
     const fee = await getConfiguredApplicationFormFeeKobo();
     expect(fee).toBe(BigInt(650000));
 
-    // Reset back to standard ₦5,000
+    // Reset back to standard ₦500
     await prisma.systemConfig.update({
       where: { key: 'admissions.form_fee_kobo' },
-      data: { value: '500000' },
+      data: { value: '50000' },
     });
     const resetFee = await getConfiguredApplicationFormFeeKobo();
-    expect(resetFee).toBe(BigInt(500000));
+    expect(resetFee).toBe(BigInt(50000));
   });
 
   it('snapshots itemized charges for multi-programme applications with BigInt precision', async () => {
@@ -116,18 +116,18 @@ describe('Stage 7 — Unit: Dynamic Fee Calculation & Financial Item Snapshot', 
       ],
     });
 
-    // Form fee: 500,000 kobo (₦5,000)
+    // Form fee: 50,000 kobo (₦500)
     // Primary: 7,500,000 + 2,500,000 = 10,000,000 kobo (₦100,000)
     // Tahfeez: 1,800,000 kobo (₦18,000)
-    // Total: 500,000 + 10,000,000 + 1,800,000 = 12,300,000 kobo (₦123,000)
-    expect(result.formFeeKobo).toBe(BigInt(500000));
-    expect(result.totalAmountKobo).toBe(BigInt(12300000));
+    // Total: 50,000 + 10,000,000 + 1,800,000 = 11,850,000 kobo (₦118,500)
+    expect(result.formFeeKobo).toBe(BigInt(50000));
+    expect(result.totalAmountKobo).toBe(BigInt(11850000));
 
     const formFeeItem = result.chargeItems.find(
       (c) => c.chargeType === ApplicationChargeType.APPLICATION_FORM_FEE
     );
     expect(formFeeItem).toBeDefined();
-    expect(formFeeItem?.totalAmountKobo).toBe(BigInt(500000));
+    expect(formFeeItem?.totalAmountKobo).toBe(BigInt(50000));
 
     const tuitionItems = result.chargeItems.filter(
       (c) => c.chargeType === ApplicationChargeType.PROGRAMME_TUITION

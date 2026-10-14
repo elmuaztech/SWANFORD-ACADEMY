@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createPaymentSession } from "@/lib/paystack";
-import { ApplicationPaymentStatus, InvoiceStatus, PaymentTargetType, RoleCode } from "@prisma/client";
+import {
+  ApplicationChargeType,
+  ApplicationPaymentStatus,
+  ApplicationStatus,
+  InvoiceStatus,
+  PaymentTargetType,
+  RoleCode,
+} from "@prisma/client";
+import { getConfiguredApplicationFormFeeKobo } from "@/lib/admissions/fee_calculation";
 import { toUserFacingError } from "@/lib/ui/error_messages";
 import { getAuthUser } from "@/lib/auth/request_auth";
 import { checkRateLimit, getClientIp } from "@/lib/security/rate_limiter";
+import { isPaymentMaintenanceActive } from "@/lib/security/payment_maintenance";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +25,20 @@ export const dynamic = "force-dynamic";
  * 1. IP rate limiting (max 30 requests/min).
  * 2. Invoices strictly require authenticated parent/guardian or school finance staff.
  * 3. Prevents IDOR and unauthorized PII/balance disclosure.
+ * 4. Maintenance lock blocks new payment sessions during scheduled maintenance.
  */
 export async function POST(req: NextRequest) {
   try {
+    if (isPaymentMaintenanceActive()) {
+      return NextResponse.json(
+        {
+          error: "Online payment processing is temporarily undergoing scheduled maintenance. Please check back shortly. All records and application details are safely preserved.",
+          code: "PAYMENT_GATEWAY_MAINTENANCE",
+          maintenance: true,
+        },
+        { status: 503 }
+      );
+    }
     const ip = getClientIp(req);
     const rateLimit = checkRateLimit(`pay_session:${ip}`, {
       windowMs: 60_000,
@@ -58,11 +78,63 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Check if an unexpired, active payment session already exists for this application
+      const now = new Date();
+      const existingSession = await prisma.paymentSession.findFirst({
+        where: {
+          applicationId: app.id,
+          targetType: PaymentTargetType.APPLICATION_FEE,
+          expiresAt: { gt: now },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      let chargeAmountKobo = app.totalAmountKobo;
+
+      // Safe draft snapshot rule:
+      // If checkout has NOT yet started (no active unexpired session) and application is in UNPAID DRAFT status,
+      // synchronize the application form fee with the current approved configuration so old drafts
+      // are not charged obsolete fees (e.g. ₦5,000 when approved fee is ₦500).
+      if (!existingSession && app.status === ApplicationStatus.DRAFT && app.paymentStatus === ApplicationPaymentStatus.UNPAID) {
+        const configuredFormFee = await getConfiguredApplicationFormFeeKobo(prisma);
+        const formFeeChargeItem = await prisma.applicationChargeItem.findFirst({
+          where: {
+            applicationId: app.id,
+            chargeType: ApplicationChargeType.APPLICATION_FORM_FEE,
+          },
+        });
+
+        if (formFeeChargeItem && formFeeChargeItem.totalAmountKobo !== configuredFormFee) {
+          const diff = configuredFormFee - formFeeChargeItem.totalAmountKobo;
+          const newTotal = app.totalAmountKobo + diff;
+          await prisma.$transaction([
+            prisma.applicationChargeItem.update({
+              where: { id: formFeeChargeItem.id },
+              data: {
+                unitAmountKobo: configuredFormFee,
+                totalAmountKobo: configuredFormFee,
+              },
+            }),
+            prisma.application.update({
+              where: { id: app.id },
+              data: { totalAmountKobo: newTotal },
+            }),
+          ]);
+          chargeAmountKobo = newTotal;
+        } else if (!formFeeChargeItem && app.totalAmountKobo === BigInt(500000) && configuredFormFee !== BigInt(500000)) {
+          await prisma.application.update({
+            where: { id: app.id },
+            data: { totalAmountKobo: configuredFormFee },
+          });
+          chargeAmountKobo = configuredFormFee;
+        }
+      }
+
       const { session, token } = await createPaymentSession({
         targetType: PaymentTargetType.APPLICATION_FEE,
         applicationId: app.id,
         payerEmail: app.guardianEmail,
-        expectedAmountKobo: app.totalAmountKobo,
+        expectedAmountKobo: chargeAmountKobo,
       });
 
       return NextResponse.json({

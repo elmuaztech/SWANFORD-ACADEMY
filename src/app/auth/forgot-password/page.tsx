@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AlertCircle, Mail, Check } from 'lucide-react';
 import { SCHOOL_PROFILE } from '@/lib/constants';
 
 type FlowStep = 'REQUEST_OTP' | 'VERIFY_OTP' | 'SET_PASSWORD' | 'SUCCESS';
@@ -23,21 +24,23 @@ export default function ForgotPasswordPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
-  // 2-minute (120 seconds) OTP countdown
-  const [secondsRemaining, setSecondsRemaining] = useState(120);
+  // 5-minute (300 seconds) OTP countdown & 60-second resend cooldown
+  const [secondsRemaining, setSecondsRemaining] = useState(300);
+  const [resendCooldown, setResendCooldown] = useState(60);
   const [isTimerActive, setIsTimerActive] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isTimerActive && secondsRemaining > 0) {
+    if (isTimerActive && (secondsRemaining > 0 || resendCooldown > 0)) {
       interval = setInterval(() => {
-        setSecondsRemaining((prev) => prev - 1);
+        setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 0));
+        setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
-    } else if (secondsRemaining === 0) {
+    } else if (secondsRemaining === 0 && resendCooldown === 0) {
       setIsTimerActive(false);
     }
     return () => clearInterval(interval);
-  }, [isTimerActive, secondsRemaining]);
+  }, [isTimerActive, secondsRemaining, resendCooldown]);
 
   function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
@@ -72,7 +75,8 @@ export default function ForgotPasswordPage() {
 
       setInfoMessage(data.message || 'If an account exists, a 6-digit code has been sent.');
       setStep('VERIFY_OTP');
-      setSecondsRemaining(300); // 5 minutes
+      setSecondsRemaining(data.expiresInSeconds || 300);
+      setResendCooldown(data.resendCooldownSeconds || 60);
       setIsTimerActive(true);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Unable to request code.');
@@ -220,13 +224,13 @@ export default function ForgotPasswordPage() {
           {/* Messages */}
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-[#FDF2F4] border border-[#EADBDA] text-xs sm:text-sm text-[#800020] flex items-start gap-2.5">
-              <span className="text-base shrink-0">⚠️</span>
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#800020] mt-0.5" />
               <div className="flex-1 font-medium">{errorMessage}</div>
             </div>
           )}
           {infoMessage && step === 'VERIFY_OTP' && (
             <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs sm:text-sm text-emerald-800 flex items-start gap-2.5">
-              <span className="text-base shrink-0">✉️</span>
+              <Mail className="w-4 h-4 shrink-0 text-emerald-700 mt-0.5" />
               <div className="flex-1 font-medium">{infoMessage}</div>
             </div>
           )}
@@ -306,10 +310,10 @@ export default function ForgotPasswordPage() {
                 <button
                   type="button"
                   onClick={handleRequestOtp}
-                  disabled={loading || secondsRemaining > 90}
+                  disabled={loading || resendCooldown > 0}
                   className="text-xs text-[#800020] hover:underline font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  Resend Code {secondsRemaining > 90 ? `(${secondsRemaining - 90}s)` : ''}
+                  {resendCooldown > 0 ? `Resend Code (${resendCooldown}s)` : 'Resend Code'}
                 </button>
                 <button
                   type="button"
@@ -425,7 +429,7 @@ export default function ForgotPasswordPage() {
           {step === 'SUCCESS' && (
             <div className="text-center space-y-5 py-4">
               <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl border border-emerald-200">
-                ✓
+                <Check className="w-8 h-8" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-[#5B0612]">Password Changed Successfully</h3>

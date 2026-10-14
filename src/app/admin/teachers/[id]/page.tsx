@@ -11,6 +11,7 @@ import { LoadingState, ErrorState } from "@/components/ui/states";
 import { Avatar } from "@/components/ui/avatar";
 import { Alert } from "@/components";
 import { sanitizeDocumentHtml } from "@/lib/security/html_sanitizer";
+import { Pencil, Printer, X } from "lucide-react";
 
 interface TeacherDetail {
   id: string;
@@ -522,10 +523,10 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
             variant="outline"
             size="md"
             onClick={handleOpenEditModal}
-            className="font-semibold bg-white border-[#800020] text-[#800020] hover:bg-[#FAF2F4] min-h-[40px] whitespace-nowrap"
+            className="font-semibold bg-white border-[#800020] text-[#800020] hover:bg-[#FAF2F4] min-h-[40px] whitespace-nowrap flex items-center gap-1.5"
             title="Edit all personal, employment, and account details"
           >
-            ✏️ Edit Profile
+            <Pencil className="w-4 h-4" /> Edit Profile
           </Button>
 
           <Button
@@ -1412,17 +1413,18 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ id: st
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="font-semibold text-xs border-stone-300 hover:bg-white"
+                  className="font-semibold text-xs border-stone-300 hover:bg-white flex items-center gap-1.5"
                   onClick={() => window.print()}
                 >
-                  🖨️ Print / Save PDF
+                  <Printer className="w-3.5 h-3.5" /> Print / Save PDF
                 </Button>
                 <button
                   type="button"
                   onClick={() => setPreviewDoc(null)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 transition-colors cursor-pointer inline-flex items-center gap-1"
                 >
-                  ✕ Close
+                  <X className="w-3.5 h-3.5" />
+                  <span>Close</span>
                 </button>
               </div>
             </div>

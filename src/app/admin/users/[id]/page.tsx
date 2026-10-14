@@ -3,6 +3,7 @@
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AlertTriangle, Lock, Shield } from "lucide-react";
 import { parseFullName } from "@/lib/utils/name_parser";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -976,8 +977,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       >
         <form onSubmit={handleDeleteUserSubmit} className="space-y-4 pt-2">
           <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2">
-            <p className="font-bold flex items-center gap-1 text-rose-800">
-              ⚠️ Irreversible Administrative Action
+            <p className="font-bold flex items-center gap-1.5 text-rose-800">
+              <AlertTriangle className="w-4 h-4 text-rose-800 shrink-0" /> Irreversible Administrative Action
             </p>
             <p>
               Deleting <strong>{user.email}</strong> will permanently remove all portal credentials, active sessions, and direct authentication records.
@@ -1143,7 +1144,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       >
         <div className="space-y-4 pt-2">
           <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
-            <p className="font-bold">🔒 Zero Plaintext Password Policy</p>
+            <p className="font-bold flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Zero Plaintext Password Policy</p>
             <p>
               Administrators cannot view or set user passwords. A single-use 24-hour reset link will be sent to the user’s registered email address (<strong>{user.email}</strong>).
             </p>
@@ -1180,7 +1181,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       >
         <div className="space-y-4 pt-2">
           <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 space-y-1">
-            <p className="font-bold">🛡️ Recovery Protocol &amp; Multi-Party Notification</p>
+            <p className="font-bold flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> Recovery Protocol &amp; Multi-Party Notification</p>
             <p>
               Changing a user’s primary email is an auditable security event. A notification will be dispatched to the existing address (<strong>{user.email}</strong>), and an ownership verification token will be sent to the new email address.
             </p>

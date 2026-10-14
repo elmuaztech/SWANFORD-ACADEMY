@@ -13,6 +13,7 @@ import {
   Modal,
 } from "@/components";
 import { sanitizeDocumentHtml } from "@/lib/security/html_sanitizer";
+import { Printer } from "lucide-react";
 
 interface IssuedDocument {
   id: string;
@@ -177,8 +178,8 @@ export default function TeacherDocumentsPage() {
         >
           <div className="space-y-4">
             <div className="flex justify-end gap-2 print:hidden pb-2 border-b border-stone-200">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                🖨️ Print / Save as PDF
+              <Button variant="outline" size="sm" onClick={handlePrint} className="flex items-center gap-1.5">
+                <Printer className="w-4 h-4" /> Print / Save as PDF
               </Button>
             </div>
 

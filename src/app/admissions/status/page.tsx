@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { Award } from 'lucide-react';
 import {
   Navbar,
   PublicFooter,
@@ -239,8 +240,9 @@ export default function AdmissionStatusPage() {
                   result.status === 'ENROLLED') && (
                   <div className="p-4 bg-[#FAF2F4] rounded-xl border-2 border-[#D4AF37] space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#800020] uppercase tracking-wider">
-                        ★ Official Offer of Admission
+                      <span className="text-xs font-bold text-[#800020] uppercase tracking-wider flex items-center gap-1.5">
+                        <Award className="w-4 h-4 text-[#D4AF37]" />
+                        <span>Official Offer of Admission</span>
                       </span>
                       <Badge variant="success" size="sm">
                         Offer Issued

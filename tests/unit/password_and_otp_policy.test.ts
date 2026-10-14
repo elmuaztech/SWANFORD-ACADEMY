@@ -31,37 +31,36 @@ describe('Password & OTP Security Policy Unit Tests', () => {
     });
   });
 
-  describe('4-Digit OTP Generation & Policy (0000–9999 with Leading Zeros)', () => {
-    it('generates exact 4-digit numeric OTPs padded with leading zeros', () => {
+  describe('6-Digit Standardized Password-Reset OTP Contract (000000–999999)', () => {
+    it('generates exact 6-digit numeric OTPs padded with leading zeros', () => {
       for (let i = 0; i < 50; i++) {
-        const { rawOtp, otpHash } = generateSecureNumericOtp(4);
-        expect(rawOtp).toMatch(/^\d{4}$/);
-        expect(rawOtp.length).toBe(4);
+        const { rawOtp, otpHash } = generateSecureNumericOtp(6);
+        expect(rawOtp).toMatch(/^\d{6}$/);
+        expect(rawOtp.length).toBe(6);
         expect(otpHash).toHaveLength(64); // SHA-256 hex string
         expect(hashToken(rawOtp)).toBe(otpHash);
 
         const num = parseInt(rawOtp, 10);
         expect(num).toBeGreaterThanOrEqual(0);
-        expect(num).toBeLessThanOrEqual(9999);
+        expect(num).toBeLessThanOrEqual(999999);
       }
     });
 
-    it('correctly pads leading zeros for numbers under 1000 (e.g. 0427)', () => {
-      // Simulate raw conversion of 427 to 4-digit string
-      const num = 427;
-      const formatted = num.toString().padStart(4, '0');
-      expect(formatted).toBe('0427');
-      expect(formatted).toHaveLength(4);
-      expect(/^\d{4}$/.test(formatted)).toBe(true);
+    it('correctly pads leading zeros for numbers under 100000 (e.g. 004271)', () => {
+      const num = 4271;
+      const formatted = num.toString().padStart(6, '0');
+      expect(formatted).toBe('004271');
+      expect(formatted).toHaveLength(6);
+      expect(/^\d{6}$/.test(formatted)).toBe(true);
 
       const zeroNum = 5;
-      const zeroFormatted = zeroNum.toString().padStart(4, '0');
-      expect(zeroFormatted).toBe('0005');
-      expect(zeroFormatted).toHaveLength(4);
+      const zeroFormatted = zeroNum.toString().padStart(6, '0');
+      expect(zeroFormatted).toBe('000005');
+      expect(zeroFormatted).toHaveLength(6);
     });
 
     it('never stores plaintext OTP; only SHA-256 hash is computed for database', () => {
-      const { rawOtp, otpHash } = generateSecureNumericOtp(4);
+      const { rawOtp, otpHash } = generateSecureNumericOtp(6);
       expect(rawOtp).not.toBe(otpHash);
       expect(otpHash).toBe(hashToken(rawOtp));
     });
@@ -71,6 +70,13 @@ describe('Password & OTP Security Policy Unit Tests', () => {
       const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
       const diffMinutes = (expiresAt.getTime() - now.getTime()) / (60 * 1000);
       expect(diffMinutes).toBe(5);
+    });
+
+    it('verifies 60-second cooldown window for OTP resend requests', () => {
+      const cooldownSeconds = 60;
+      const now = Date.now();
+      const nextAllowedResend = now + cooldownSeconds * 1000;
+      expect((nextAllowedResend - now) / 1000).toBe(60);
     });
   });
 

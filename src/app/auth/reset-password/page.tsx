@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { AlertCircle, Check } from 'lucide-react';
 import { SCHOOL_PROFILE } from '@/lib/constants';
 
 function ResetPasswordContent() {
@@ -115,7 +116,7 @@ function ResetPasswordContent() {
 
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-[#FDF2F4] border border-[#EADBDA] text-xs sm:text-sm text-[#800020] flex items-start gap-2.5">
-              <span className="text-base shrink-0">⚠️</span>
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#800020] mt-0.5" />
               <div className="flex-1 font-medium">{errorMessage}</div>
             </div>
           )}
@@ -213,7 +214,7 @@ function ResetPasswordContent() {
           {isSuccess && (
             <div className="text-center space-y-5 py-4">
               <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl border border-emerald-200">
-                ✓
+                <Check className="w-8 h-8" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-[#5B0612]">Password Reset Completed</h3>

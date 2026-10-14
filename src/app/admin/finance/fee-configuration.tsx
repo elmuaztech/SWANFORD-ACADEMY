@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -775,10 +776,10 @@ export function FeeConfigurationSection() {
                       type="button"
                       onClick={() => handleRemoveItem(idx)}
                       disabled={formData.items.length <= 1}
-                      className="p-1.5 text-stone-400 hover:text-rose-600 disabled:opacity-30"
+                      className="p-1.5 text-stone-400 hover:text-rose-600 disabled:opacity-30 inline-flex items-center justify-center"
                       title="Remove Item"
                     >
-                      ✕
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}

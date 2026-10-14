@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { Save, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -416,18 +417,18 @@ export default function AssessmentDetailPage({
                 size="sm"
                 onClick={handleSaveDraft}
                 disabled={isSaving || isSubmitting}
-                className="font-bold border-stone-300 text-stone-800 hover:bg-stone-100"
+                className="font-bold border-stone-300 text-stone-800 hover:bg-stone-100 flex items-center gap-1.5"
               >
-                {isSaving ? "Saving..." : "💾 Save Draft"}
+                {isSaving ? "Saving..." : <span className="flex items-center gap-1.5"><Save className="w-4 h-4" /> Save Draft</span>}
               </Button>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={handleSubmitForReview}
                 disabled={isSaving || isSubmitting}
-                className="font-bold bg-[#800020] hover:bg-[#6b001a] text-white shadow-xs"
+                className="font-bold bg-[#800020] hover:bg-[#6b001a] text-white shadow-xs flex items-center gap-1.5"
               >
-                {isSubmitting ? "Submitting..." : assessment.status === "RETURNED_FOR_CORRECTION" ? "📤 Re-Submit for Review" : "📤 Submit for Review"}
+                {isSubmitting ? "Submitting..." : assessment.status === "RETURNED_FOR_CORRECTION" ? <span className="flex items-center gap-1.5"><Send className="w-4 h-4" /> Re-Submit for Review</span> : <span className="flex items-center gap-1.5"><Send className="w-4 h-4" /> Submit for Review</span>}
               </Button>
             </div>
           ) : (
@@ -452,7 +453,7 @@ export default function AssessmentDetailPage({
 
       {/* Return for Correction Banner */}
       {assessment.status === "RETURNED_FOR_CORRECTION" && (
-        <Alert variant="danger" title="⚠️ Returned for Correction by Administrator">
+        <Alert variant="danger" title="Returned for Correction by Administrator">
           <p className="font-semibold text-stone-900 mb-1">
             Correction Directives from {assessment.latestReview?.reviewerName || "Super Admin / Admin"}:
           </p>
@@ -640,18 +641,18 @@ export default function AssessmentDetailPage({
               size="md"
               onClick={handleSaveDraft}
               disabled={isSaving || isSubmitting}
-              className="font-bold border-stone-300 text-stone-800 hover:bg-stone-100"
+              className="font-bold border-stone-300 text-stone-800 hover:bg-stone-100 flex items-center gap-1.5"
             >
-              {isSaving ? "Saving..." : "💾 Save Draft"}
+              {isSaving ? "Saving..." : <span className="flex items-center gap-1.5"><Save className="w-4 h-4" /> Save Draft</span>}
             </Button>
             <Button
               variant="primary"
               size="md"
               onClick={handleSubmitForReview}
               disabled={isSaving || isSubmitting}
-              className="font-bold bg-[#800020] hover:bg-[#6b001a] text-white shadow-xs"
+              className="font-bold bg-[#800020] hover:bg-[#6b001a] text-white shadow-xs flex items-center gap-1.5"
             >
-              {isSubmitting ? "Submitting..." : assessment.status === "RETURNED_FOR_CORRECTION" ? "📤 Re-Submit for Review" : "📤 Submit for Review"}
+              {isSubmitting ? "Submitting..." : assessment.status === "RETURNED_FOR_CORRECTION" ? <span className="flex items-center gap-1.5"><Send className="w-4 h-4" /> Re-Submit for Review</span> : <span className="flex items-center gap-1.5"><Send className="w-4 h-4" /> Submit for Review</span>}
             </Button>
           </div>
         </div>

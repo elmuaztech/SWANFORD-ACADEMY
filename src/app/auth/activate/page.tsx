@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { AlertCircle, Lock, Check } from 'lucide-react';
 import { SCHOOL_PROFILE } from '@/lib/constants';
 
 function ActivateAccountContent() {
@@ -152,7 +153,7 @@ function ActivateAccountContent() {
           {!validating && !tokenValid && (
             <div className="space-y-5 text-center py-4">
               <div className="p-4 rounded-2xl bg-[#FDF2F4] border border-[#EADBDA] text-xs sm:text-sm text-[#800020] leading-relaxed">
-                <span className="text-xl block mb-2">⚠️</span>
+                <AlertCircle className="w-6 h-6 mx-auto mb-2 text-[#800020]" />
                 <p className="font-bold text-base mb-1">Activation Link Expired or Invalid</p>
                 <p>{validationError || 'This activation token is invalid, has expired, or was already used.'}</p>
               </div>
@@ -178,13 +179,13 @@ function ActivateAccountContent() {
             <form onSubmit={handleActivate} className="space-y-4">
               {errorMessage && (
                 <div className="p-3.5 rounded-xl bg-[#FDF2F4] border border-[#EADBDA] text-xs sm:text-sm text-[#800020] flex items-start gap-2.5">
-                  <span className="text-base shrink-0">⚠️</span>
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[#800020] mt-0.5" />
                   <div className="flex-1 font-medium">{errorMessage}</div>
                 </div>
               )}
 
               <div className="p-3 rounded-xl bg-[#FAF2F4] border border-[#EADBDA] text-xs text-stone-700">
-                <p className="font-semibold text-[#800020] mb-0.5">🔒 Strict Privacy Guarantee</p>
+                <p className="font-semibold text-[#800020] mb-0.5 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Strict Privacy Guarantee</p>
                 <p>Administrators never view or store your password. Your password is encrypted with bcrypt upon submission.</p>
               </div>
 
@@ -280,7 +281,7 @@ function ActivateAccountContent() {
           {isActivated && (
             <div className="text-center space-y-5 py-4">
               <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl border border-emerald-200">
-                ✓
+                <Check className="w-8 h-8" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-[#5B0612]">Account Activated Successfully!</h3>

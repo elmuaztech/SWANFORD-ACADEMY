@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Lock, AlertCircle, Check } from 'lucide-react';
 import { SCHOOL_PROFILE } from '@/lib/constants';
 
 export default function ChangePasswordPage() {
@@ -120,7 +121,7 @@ export default function ChangePasswordPage() {
           {/* Security Banner */}
           <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
             <p className="font-bold flex items-center gap-1.5">
-              <span>🔒</span> First-Login Security Requirement
+              <Lock className="w-3.5 h-3.5" /> First-Login Security Requirement
             </p>
             <p className="text-amber-800 leading-relaxed">
               Your new password must be at least 8 characters long, contain numbers, letters, and should never be shared.
@@ -129,14 +130,14 @@ export default function ChangePasswordPage() {
 
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-[#FDF2F4] border border-[#EADBDA] text-xs sm:text-sm text-[#800020] flex items-start gap-2.5">
-              <span className="text-base shrink-0">⚠️</span>
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#800020] mt-0.5" />
               <div className="flex-1 font-medium">{errorMessage}</div>
             </div>
           )}
 
           {successMessage && (
             <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs sm:text-sm text-emerald-900 flex items-start gap-2.5">
-              <span className="text-base shrink-0">✓</span>
+              <Check className="w-4 h-4 shrink-0 text-emerald-700 mt-0.5" />
               <div className="flex-1 font-medium">{successMessage}</div>
             </div>
           )}

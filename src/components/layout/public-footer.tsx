@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { Lock } from 'lucide-react';
 import { SCHOOL_PROFILE } from '@/lib/constants';
 
 export function PublicFooter() {
@@ -138,7 +139,7 @@ export function PublicFooter() {
             <div className="pt-3 border-t border-white/20 text-xs text-white space-y-1">
               <p className="font-bold text-white">Online Fee Payments:</p>
               <p className="text-xs text-white flex items-center gap-1.5">
-                <span className="text-amber-300">🔒</span> Secure Online Payment
+                <Lock className="w-3.5 h-3.5 text-amber-300 shrink-0" /> Secure Online Payment
               </p>
               <p className="text-[11px] text-white/90">Debit Cards &bull; Bank Transfer &bull; Instant Receipt</p>
             </div>

@@ -11,15 +11,15 @@ export function renderPasswordResetOtpEmail(data: {
   otpCode: string;
   expiresInMinutes?: number;
 }): RenderedEmail {
-  const minutes = data.expiresInMinutes || 2;
+  const minutes = data.expiresInMinutes || 5;
   return renderMasterEmail('Swanford Academy — Password Reset Verification Code', {
     title: 'Password Reset Verification Code',
     badge: 'Security Verification',
     recipientName: data.recipientName,
-    headline: 'Your 4-Digit Password Reset Verification Code',
+    headline: 'Your 6-Digit Password Reset Verification Code',
     contentParagraphs: [
       'We received a request to verify your identity to reset the password for your Swanford Academy portal account.',
-      `Please enter the 4-digit code below into the verification screen. For your strict protection, this single-use code expires in ${minutes} minutes.`,
+      `Please enter the 6-digit code below into the verification screen. For your strict protection, this single-use code expires in ${minutes} minutes.`,
       'If you did not initiate this request, no action is needed. Your account remains completely safe and secure.',
     ],
     otpBox: {
@@ -531,7 +531,7 @@ export function renderOfficialAdmissionLetterEmail(data: {
                 <tr>
                   <td align="center" style="border-radius: 8px; background-color: ${BRAND_COLORS.maroonPrimary};">
                     <a href="${escapeHtml(data.admissionLetterUrl)}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 28px; font-size: 14px; font-weight: 700; color: #FFFFFF; text-decoration: none; border-radius: 8px; min-height: 44px; line-height: 20px;">
-                      📄 View &amp; Print Official Admission Letter (A4)
+                      View &amp; Print Official Admission Letter (A4)
                     </a>
                   </td>
                 </tr>

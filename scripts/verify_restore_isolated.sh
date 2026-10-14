@@ -31,8 +31,15 @@ if [ ! -f "$BACKUP_FILE" ]; then
   exit 1
 fi
 
-# Load database user
+# Load database configuration
 POSTGRES_USER=$(grep -E "^POSTGRES_USER=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'" || echo "postgres")
+POSTGRES_DB=$(grep -E "^POSTGRES_DB=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'" || echo "swanford_db")
+
+# Safety Assertion: Ensure the target sandbox database is non-empty and NEVER matches the live database
+if [ -z "$TEMP_RESTORE_DB" ] || [ "$TEMP_RESTORE_DB" = "$POSTGRES_DB" ] || [ "$TEMP_RESTORE_DB" = "postgres" ] || [ "$TEMP_RESTORE_DB" = "swanford_db" ]; then
+  echo "[-] FATAL SECURITY ABORT: Isolated test database name collision with live database '$POSTGRES_DB'."
+  exit 1
+fi
 
 # 1. Decrypt if file is encrypted (.enc)
 WORK_FILE="$BACKUP_FILE"
@@ -63,8 +70,11 @@ cleanup() {
   if [ -n "$TEMP_DECRYPTED" ] && [ -f "$TEMP_DECRYPTED" ]; then
     rm -f "$TEMP_DECRYPTED"
   fi
-  echo "[+] Dropping temporary sandbox database '$TEMP_RESTORE_DB'..."
-  docker exec "$POSTGRES_CONTAINER" psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$TEMP_RESTORE_DB\";" >/dev/null 2>&1 || true
+  # Strictly ensure we never drop the live database
+  if [ -n "$TEMP_RESTORE_DB" ] && [ "$TEMP_RESTORE_DB" != "$POSTGRES_DB" ] && [ "$TEMP_RESTORE_DB" != "postgres" ] && [ "$TEMP_RESTORE_DB" != "swanford_db" ]; then
+    echo "[+] Dropping temporary sandbox database '$TEMP_RESTORE_DB'..."
+    docker exec "$POSTGRES_CONTAINER" psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$TEMP_RESTORE_DB\";" >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
 

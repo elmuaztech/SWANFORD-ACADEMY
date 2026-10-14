@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { Check, MapPin } from 'lucide-react';
 import { SCHOOL_PROFILE } from '@/lib/constants';
 import { Navbar, PublicFooter, Button } from '@/components';
 import { AdmissionAnnouncementBanner } from '@/components/public/admission-announcement-banner';
@@ -513,19 +514,27 @@ export default async function HomePage() {
                 {/* Key Facility Highlights */}
                 <div className="space-y-3 text-xs sm:text-sm text-[#524B46]">
                   <div className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0 text-xs font-bold">✓</span>
+                    <span className="w-5 h-5 rounded-full bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0 text-xs font-bold">
+                      <Check className="w-3 h-3 text-[#800020]" />
+                    </span>
                     <span>Secure, peaceful gated perimeter with dedicated security supervision</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0 text-xs font-bold">✓</span>
+                    <span className="w-5 h-5 rounded-full bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0 text-xs font-bold">
+                      <Check className="w-3 h-3 text-[#800020]" />
+                    </span>
                     <span>Dedicated Early Years wing tailored for infant and toddler development</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0 text-xs font-bold">✓</span>
+                    <span className="w-5 h-5 rounded-full bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0 text-xs font-bold">
+                      <Check className="w-3 h-3 text-[#800020]" />
+                    </span>
                     <span>Dedicated Tahfeez library &amp; recitation classrooms with Tajweed instruction</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0 text-xs font-bold">✓</span>
+                    <span className="w-5 h-5 rounded-full bg-[#FDF2F4] text-[#800020] flex items-center justify-center shrink-0 text-xs font-bold">
+                      <Check className="w-3 h-3 text-[#800020]" />
+                    </span>
                     <span>Open for scheduled prospective parent visits and academic counselling</span>
                   </div>
                 </div>
@@ -551,7 +560,7 @@ export default async function HomePage() {
                   {/* Floating Location Badge */}
                   <div className="absolute -bottom-4 left-2 sm:-bottom-5 sm:left-4 z-10 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-2xl border border-[#EADBDA] shadow-md max-w-[280px] sm:max-w-none">
                     <p className="text-xs font-bold text-[#800020] font-display flex items-center gap-1.5">
-                      <span>📍</span> Plot 212, Dr Nuhu Muhammadu Sanusi Way
+                      <MapPin className="w-3.5 h-3.5 text-[#800020] shrink-0" /> Plot 212, Dr Nuhu Muhammadu Sanusi Way
                     </p>
                     <p className="text-[11px] text-[#524B46] font-medium">
                       Dutse, Jigawa State &bull; Main Campus

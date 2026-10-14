@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Check } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -769,7 +770,7 @@ export default function AdminStudentEnrollPage() {
           <Card className="no-print border-2 border-emerald-300 bg-emerald-50/40">
             <CardContent className="p-6 text-center space-y-4">
               <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
-                ✓
+                <Check className="w-7 h-7" />
               </div>
               <div>
                 <h2 className="text-2xl font-extrabold text-stone-900 font-serif">

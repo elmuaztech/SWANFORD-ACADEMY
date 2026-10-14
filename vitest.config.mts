@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(process.cwd(), "./src"),
+      "lucide-react": path.resolve(process.cwd(), "./src/components/ui/icons.tsx"),
     },
   },
 });

@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
 import { StatCard } from "@/components/ui/stat-card";
 import { formatKoboToNaira } from "@/lib/money";
+import { Calendar, CreditCard, BarChart3, User, FileText } from "lucide-react";
 
 interface LinkedChild {
   studentId: string;
@@ -347,7 +348,7 @@ export default function ParentDashboardPage() {
               title="Attendance Rate"
               value={attendance ? `${attendance.attendancePercentage}%` : "—"}
               subtitle={`Total Days: ${attendance?.totalDays || 0} (Absent: ${attendance?.absentCount || 0})`}
-              icon={<span className="text-xl">📅</span>}
+              icon={<Calendar className="w-5 h-5" />}
               badge={
                 <Badge variant="success" size="sm" className="whitespace-nowrap">
                   {attendance ? `${attendance.presentCount} Days Present` : "Loading..."}
@@ -365,7 +366,7 @@ export default function ParentDashboardPage() {
                   ? "Official digital invoices & receipting"
                   : "Not designated to receive financial statements"
               }
-              icon={<span className="text-xl">💳</span>}
+              icon={<CreditCard className="w-5 h-5" />}
               badge={
                 <Badge
                   variant={BigInt(balanceKobo) > BigInt(0) ? "warning" : "success"}
@@ -387,7 +388,7 @@ export default function ParentDashboardPage() {
               title="Academic Results"
               value={results.length}
               subtitle="Finalized evaluations across continuous assessments"
-              icon={<span className="text-xl">📊</span>}
+              icon={<BarChart3 className="w-5 h-5" />}
               badge={<Badge variant="neutral" size="sm" className="whitespace-nowrap">Evaluations</Badge>}
               color="purple"
               href={`/parent/children/${selectedChild.studentId}/results`}
@@ -441,23 +442,23 @@ export default function ParentDashboardPage() {
               <CardContent className="space-y-2.5 pt-0">
                 <Link href={`/parent/children/${selectedChild.studentId}`} className="block">
                   <Button variant="outline" className="w-full justify-start text-xs min-h-[44px]">
-                    👤 Demographics & Profile
+                    <User className="w-4 h-4 mr-2 shrink-0" /> Demographics &amp; Profile
                   </Button>
                 </Link>
                 <Link href={`/parent/children/${selectedChild.studentId}/attendance`} className="block">
                   <Button variant="outline" className="w-full justify-start text-xs min-h-[44px]">
-                    📅 Full Attendance History
+                    <Calendar className="w-4 h-4 mr-2 shrink-0" /> Full Attendance History
                   </Button>
                 </Link>
                 <Link href={`/parent/children/${selectedChild.studentId}/results`} className="block">
                   <Button variant="outline" className="w-full justify-start text-xs min-h-[44px]">
-                    📊 Term Academic Report Card
+                    <FileText className="w-4 h-4 mr-2 shrink-0" /> Term Academic Report Card
                   </Button>
                 </Link>
                 {selectedChild.receivesInvoices && (
                   <Link href={`/parent/children/${selectedChild.studentId}/finance`} className="block">
                     <Button variant="primary" className="w-full justify-start text-xs min-h-[44px] bg-[#800020] hover:bg-[#6b001a] text-white">
-                      💳 View Invoices & Pay Fees
+                      <CreditCard className="w-4 h-4 mr-2 shrink-0" /> View Invoices &amp; Pay Fees
                     </Button>
                   </Link>
                 )}

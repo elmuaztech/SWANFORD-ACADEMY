@@ -376,7 +376,7 @@ export default function AdmissionLetterPage({
             <div className="flex justify-center order-first sm:order-none">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-[#D4AF37] border-double bg-[#FAF7F2] p-1 flex flex-col items-center justify-center text-center shadow-xs">
                 <span className="text-[7px] font-bold uppercase tracking-wider text-[#5B0612]">Official Seal</span>
-                <span className="text-[9px] font-extrabold text-[#D4AF37]">★ 2026 ★</span>
+                <span className="text-[9px] font-extrabold text-[#D4AF37] tracking-widest">2026</span>
                 <span className="text-[6px] text-stone-500 font-semibold uppercase">Verified</span>
               </div>
             </div>

@@ -4,6 +4,7 @@
  */
 
 import { getEnv } from "@/lib/env";
+import { assertPaymentsAllowed } from "@/lib/security/payment_maintenance";
 import {
   PaystackInitializeInput,
   PaystackInitializeResult,
@@ -63,6 +64,9 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
  * Initializes a transaction on Paystack and retrieves authorization URL.
  */
 export async function initializeTransaction(input: PaystackInitializeInput): Promise<PaystackInitializeResult> {
+  // Enforce server-level payment maintenance gate
+  assertPaymentsAllowed();
+
   const secretKey = getSecretKey();
 
   // Paystack expects amount in Kobo as integer number
