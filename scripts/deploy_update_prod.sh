@@ -152,8 +152,10 @@ chmod -R 770 "$TARGET_DIR/storage"
 # -----------------------------------------------------------------------------
 # 7. Container Rebuild & Rolling Restart
 # -----------------------------------------------------------------------------
-echo "[+] Rebuilding and restarting application container..."
-docker compose -f deployment/docker-compose.yml up -d --build app
+echo "[+] Rebuilding application container (no-cache to ensure latest code)..."
+docker compose -f deployment/docker-compose.yml build --no-cache app
+echo "[+] Starting application container..."
+docker compose -f deployment/docker-compose.yml up -d app
 
 echo "[+] Waiting for container initialization and health checks..."
 sleep 10
