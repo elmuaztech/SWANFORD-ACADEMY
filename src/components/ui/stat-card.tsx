@@ -32,77 +32,85 @@ const COLOR_MAP: Record<
     iconText: string;
     titleText: string;
     valueText: string;
+    subtitleText: string;
   }
 > = {
   maroon: {
-    topBar: "bg-gradient-to-r from-[#800020] via-[#5B0612] to-[#3B030A]",
-    border: "border-[#EADBDA]",
-    hoverBorder: "hover:border-[#800020]/60",
-    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#FAF2F4]",
-    iconBg: "bg-[#FAF2F4] border border-[#EADBDA]",
-    iconText: "text-[#800020]",
-    titleText: "text-[#5B0612] font-bold",
-    valueText: "text-[#5B0612]",
+    topBar: "bg-gradient-to-r from-[#D4AF37] via-[#F3E5AB] to-[#D4AF37]",
+    border: "border-[#7D1B28]/80",
+    hoverBorder: "hover:border-[#D4AF37]/70",
+    bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
+    iconBg: "bg-white/10 border border-white/20",
+    iconText: "text-[#F5EBDC]",
+    titleText: "text-[#F5EBDC]",
+    valueText: "text-white",
+    subtitleText: "text-[#E8D7C3]/80",
   },
   emerald: {
-    topBar: "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600",
-    border: "border-emerald-200/80",
-    hoverBorder: "hover:border-emerald-400",
-    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-emerald-50/70",
-    iconBg: "bg-emerald-50 border border-emerald-100",
-    iconText: "text-emerald-700",
-    titleText: "text-emerald-800",
-    valueText: "text-emerald-950",
+    topBar: "bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500",
+    border: "border-[#7D1B28]/80",
+    hoverBorder: "hover:border-emerald-400/70",
+    bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
+    iconBg: "bg-emerald-500/20 border border-emerald-400/30",
+    iconText: "text-emerald-300",
+    titleText: "text-[#F5EBDC]",
+    valueText: "text-white",
+    subtitleText: "text-[#E8D7C3]/80",
   },
   blue: {
-    topBar: "bg-gradient-to-r from-blue-500 via-sky-500 to-indigo-600",
-    border: "border-blue-200/80",
-    hoverBorder: "hover:border-blue-400",
-    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-blue-50/70",
-    iconBg: "bg-blue-50 border border-blue-100",
-    iconText: "text-blue-700",
-    titleText: "text-blue-800",
-    valueText: "text-blue-950",
+    topBar: "bg-gradient-to-r from-sky-400 via-blue-300 to-indigo-500",
+    border: "border-[#7D1B28]/80",
+    hoverBorder: "hover:border-sky-400/70",
+    bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
+    iconBg: "bg-sky-500/20 border border-sky-400/30",
+    iconText: "text-sky-300",
+    titleText: "text-[#F5EBDC]",
+    valueText: "text-white",
+    subtitleText: "text-[#E8D7C3]/80",
   },
   amber: {
-    topBar: "bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600",
-    border: "border-amber-200/80",
-    hoverBorder: "hover:border-amber-400",
-    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-amber-50/70",
-    iconBg: "bg-amber-50 border border-amber-100",
-    iconText: "text-amber-800",
-    titleText: "text-amber-800",
-    valueText: "text-amber-950",
+    topBar: "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500",
+    border: "border-[#7D1B28]/80",
+    hoverBorder: "hover:border-amber-400/70",
+    bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
+    iconBg: "bg-amber-500/20 border border-amber-400/30",
+    iconText: "text-amber-300",
+    titleText: "text-[#F5EBDC]",
+    valueText: "text-white",
+    subtitleText: "text-[#E8D7C3]/80",
   },
   purple: {
-    topBar: "bg-gradient-to-r from-purple-500 via-indigo-500 to-violet-600",
-    border: "border-purple-200/80",
-    hoverBorder: "hover:border-purple-400",
-    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-purple-50/70",
-    iconBg: "bg-purple-50 border border-purple-100",
-    iconText: "text-purple-700",
-    titleText: "text-purple-800",
-    valueText: "text-purple-950",
+    topBar: "bg-gradient-to-r from-purple-400 via-violet-300 to-fuchsia-500",
+    border: "border-[#7D1B28]/80",
+    hoverBorder: "hover:border-purple-400/70",
+    bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
+    iconBg: "bg-purple-500/20 border border-purple-400/30",
+    iconText: "text-purple-300",
+    titleText: "text-[#F5EBDC]",
+    valueText: "text-white",
+    subtitleText: "text-[#E8D7C3]/80",
   },
   rose: {
-    topBar: "bg-gradient-to-r from-rose-500 via-pink-500 to-red-600",
-    border: "border-rose-200/80",
-    hoverBorder: "hover:border-rose-400",
-    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-rose-50/70",
-    iconBg: "bg-rose-50 border border-rose-100",
-    iconText: "text-rose-700",
-    titleText: "text-rose-800",
-    valueText: "text-rose-950",
+    topBar: "bg-gradient-to-r from-rose-400 via-pink-300 to-red-500",
+    border: "border-[#7D1B28]/80",
+    hoverBorder: "hover:border-rose-400/70",
+    bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
+    iconBg: "bg-rose-500/20 border border-rose-400/30",
+    iconText: "text-rose-300",
+    titleText: "text-[#F5EBDC]",
+    valueText: "text-white",
+    subtitleText: "text-[#E8D7C3]/80",
   },
   slate: {
-    topBar: "bg-gradient-to-r from-stone-500 via-slate-600 to-stone-700",
-    border: "border-[#E2D6C5]",
-    hoverBorder: "hover:border-stone-400",
-    bgGradient: "bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F2EBE1]",
-    iconBg: "bg-stone-100 border border-stone-200",
-    iconText: "text-stone-700",
-    titleText: "text-stone-600",
-    valueText: "text-stone-900",
+    topBar: "bg-gradient-to-r from-stone-400 via-stone-200 to-stone-400",
+    border: "border-[#7D1B28]/80",
+    hoverBorder: "hover:border-stone-400/70",
+    bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
+    iconBg: "bg-white/10 border border-white/20",
+    iconText: "text-stone-200",
+    titleText: "text-[#F5EBDC]",
+    valueText: "text-white",
+    subtitleText: "text-[#E8D7C3]/80",
   },
 };
 
@@ -120,9 +128,9 @@ export function StatCard({
 
   const content = (
     <div
-      className={`relative rounded-2xl border ${theme.border} ${theme.hoverBorder} ${theme.bgGradient} shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out hover:-translate-y-1.5 overflow-hidden group cursor-default flex flex-col justify-between ${className}`}
+      className={`relative rounded-2xl border ${theme.border} ${theme.hoverBorder} ${theme.bgGradient} shadow-[0_4px_20px_rgba(40,2,8,0.35)] hover:shadow-[0_12px_32px_rgba(40,2,8,0.55)] transition-all duration-300 ease-out hover:-translate-y-1.5 overflow-hidden group cursor-default flex flex-col justify-between ${className}`}
     >
-      {/* Top Colorful Gradient Accent Bar */}
+      {/* Top Glowing Accent Bar */}
       <div className={`h-1.5 w-full ${theme.topBar} shrink-0`} />
 
       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3 min-w-0">
@@ -156,7 +164,7 @@ export function StatCard({
         {/* Subtitle / Description Row */}
         {subtitle && (
           <p
-            className="text-xs text-stone-600 line-clamp-2 leading-relaxed min-w-0 pt-0.5"
+            className={`text-xs ${theme.subtitleText} line-clamp-2 leading-relaxed min-w-0 pt-0.5`}
             title={subtitle}
           >
             {subtitle}
@@ -168,7 +176,7 @@ export function StatCard({
 
   if (href) {
     return (
-      <Link href={href} className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#800020] rounded-2xl">
+      <Link href={href} className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-2xl">
         {content}
       </Link>
     );

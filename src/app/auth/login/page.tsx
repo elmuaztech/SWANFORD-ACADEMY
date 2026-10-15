@@ -15,7 +15,14 @@ function LoginFormContent() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const initialError = searchParams.get('error') || null;
+  const rawError = searchParams.get('error');
+  const initialError = rawError
+    ? rawError === 'unauthorized_admin'
+      ? 'This account does not have administrator privileges. Please sign in with an administrator account or access your designated portal.'
+      : rawError === 'session_expired'
+      ? 'Your session has expired. Please sign in again to continue.'
+      : rawError
+    : null;
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
 
   async function handleSubmit(e: React.FormEvent) {

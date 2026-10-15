@@ -62,6 +62,17 @@ export async function POST(req: NextRequest) {
         !userRoles.includes(RoleCode.ADMIN)
       ) {
         redirectUrl = '/admin/finance';
+      } else if (
+        !userRoles.includes(RoleCode.SUPER_ADMIN) &&
+        !userRoles.includes(RoleCode.ADMIN)
+      ) {
+        if (userRoles.includes(RoleCode.TEACHER) || Boolean(user.teacherId)) {
+          redirectUrl = '/teacher';
+        } else if (userRoles.includes(RoleCode.PARENT) || Boolean(user.guardianId)) {
+          redirectUrl = '/parent';
+        } else {
+          redirectUrl = '/admin';
+        }
       } else {
         redirectUrl = '/admin';
       }
@@ -71,9 +82,9 @@ export async function POST(req: NextRequest) {
         redirectUrl = '/admin';
       } else if (userRoles.includes(RoleCode.ACCOUNTANT)) {
         redirectUrl = '/admin/finance';
-      } else if (userRoles.includes(RoleCode.TEACHER)) {
+      } else if (userRoles.includes(RoleCode.TEACHER) || Boolean(user.teacherId)) {
         redirectUrl = '/teacher';
-      } else if (userRoles.includes(RoleCode.PARENT)) {
+      } else if (userRoles.includes(RoleCode.PARENT) || Boolean(user.guardianId)) {
         redirectUrl = '/parent';
       } else {
         redirectUrl = '/admin';

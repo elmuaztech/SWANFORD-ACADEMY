@@ -410,6 +410,10 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<RoleCode, PermissionCodeType[]> = {
     PermissionCode.COMMUNICATION_ANNOUNCE,
     PermissionCode.NOTIFICATION_VIEW,
     PermissionCode.NOTIFICATION_RETRY,
+    // Finance (Fee structure configuration & operational billing review)
+    PermissionCode.FEE_STRUCTURE_MANAGE,
+    PermissionCode.FINANCE_INVOICE_VIEW,
+    PermissionCode.FINANCE_REPORT_VIEW,
   ],
 
   [RoleCode.ACCOUNTANT]: [

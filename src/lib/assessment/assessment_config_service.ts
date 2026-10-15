@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { SafeUser } from '@/lib/auth/service';
-import { AuthorizationError, requirePermission } from '@/lib/auth/authorization';
+import { AuthorizationError, requirePermission, requireAnyPermission } from '@/lib/auth/authorization';
 import { PermissionCode } from '@/lib/auth/permissions';
 import { AssessmentType, Prisma } from '@prisma/client';
 
@@ -87,7 +87,10 @@ export async function createAssessmentConfig(
   input: CreateAssessmentConfigInput
 ) {
   const actorUserId = typeof actor === 'string' ? actor : actor.id;
-  await requirePermission(actorUserId, PermissionCode.SYSTEM_CONFIG_MANAGE);
+  await requireAnyPermission(actorUserId, [
+    PermissionCode.SYSTEM_CONFIG_MANAGE,
+    PermissionCode.RESULT_PUBLISH,
+  ]);
 
   if (!input.name || input.name.trim().length === 0) {
     throw new AuthorizationError('Configuration name is required.', 400, 'NAME_REQUIRED');
@@ -181,7 +184,10 @@ export async function updateAssessmentConfig(
   input: UpdateAssessmentConfigInput
 ) {
   const actorUserId = typeof actor === 'string' ? actor : actor.id;
-  await requirePermission(actorUserId, PermissionCode.SYSTEM_CONFIG_MANAGE);
+  await requireAnyPermission(actorUserId, [
+    PermissionCode.SYSTEM_CONFIG_MANAGE,
+    PermissionCode.RESULT_PUBLISH,
+  ]);
 
   const existing = await prisma.assessmentStructureConfig.findUnique({
     where: { id },

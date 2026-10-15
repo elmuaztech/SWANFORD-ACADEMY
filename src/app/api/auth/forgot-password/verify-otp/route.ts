@@ -15,9 +15,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!otp || typeof otp !== 'string' || !/^\d{4}$/.test(otp.trim())) {
+    if (!otp || typeof otp !== 'string' || !/^\d{6}$/.test(otp.trim())) {
       return NextResponse.json(
-        { error: 'Verification code must be exactly 4 numeric digits.' },
+        { error: 'Verification code must be exactly 6 numeric digits.' },
         { status: 400 }
       );
     }

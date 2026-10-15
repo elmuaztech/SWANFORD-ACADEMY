@@ -54,9 +54,19 @@ export function sanitizeUser(user: {
   mustChangePassword?: boolean | null;
   guardianProfile?: { id: string } | null;
   teacherProfile?: { id: string } | null;
+  guardianId?: string | null;
+  teacherId?: string | null;
   profilePhotoId?: string | null;
   userRoles?: Array<{ role: { code: RoleCode } }>;
 }): SafeUser {
+  const roleSet = new Set<RoleCode>(user.userRoles?.map((ur) => ur.role.code) || []);
+  if (user.teacherProfile?.id || user.teacherId) {
+    roleSet.add(RoleCode.TEACHER);
+  }
+  if (user.guardianProfile?.id || user.guardianId) {
+    roleSet.add(RoleCode.PARENT);
+  }
+
   return {
     id: user.id,
     email: user.email,
@@ -68,10 +78,10 @@ export function sanitizeUser(user: {
     firstName: user.firstName || null,
     lastName: user.lastName || null,
     mustChangePassword: Boolean(user.mustChangePassword),
-    guardianId: user.guardianProfile?.id,
-    teacherId: user.teacherProfile?.id,
+    guardianId: user.guardianProfile?.id || user.guardianId || undefined,
+    teacherId: user.teacherProfile?.id || user.teacherId || undefined,
     profilePhotoId: user.profilePhotoId || null,
-    roles: user.userRoles?.map((ur) => ur.role.code),
+    roles: Array.from(roleSet),
   };
 }
 
@@ -1041,6 +1051,11 @@ export async function activateAccount(input: {
       include: {
         guardianProfile: { select: { id: true } },
         teacherProfile: { select: { id: true } },
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
       },
     });
 

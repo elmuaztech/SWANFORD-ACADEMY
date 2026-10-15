@@ -187,20 +187,23 @@ export default function AdminAssessmentsPage() {
 
   const fetchMetadata = () => {
     Promise.all([
-      fetch("/api/super-admin/config").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/admin/academic/sessions").then((r) => r.json()).catch(() => ({})),
       fetch("/api/admin/classes?includeInactive=false").then((r) => r.json()).catch(() => ({})),
       fetch("/api/admin/programmes?includeInactive=false").then((r) => r.json()).catch(() => ({})),
       fetch("/api/admin/subjects?includeInactive=false").then((r) => r.json()).catch(() => ({})),
-    ]).then(([configData, classesData, progData, subjectsData]) => {
-      if (configData.academicSessions) {
-        setSessions(configData.academicSessions);
-        const curr = configData.academicSessions.find((s: any) => s.isCurrent);
+    ]).then(([sessionsData, classesData, progData, subjectsData]) => {
+      const sessList = sessionsData.sessions || sessionsData.academicSessions || [];
+      if (sessList.length > 0) {
+        setSessions(sessList);
+        const curr = sessList.find((s: any) => s.isCurrent) || sessList[0];
         if (curr) setReleaseSessionId(curr.id);
-      }
-      if (configData.academicTerms) {
-        setTerms(configData.academicTerms);
-        const currTerm = configData.academicTerms.find((t: any) => t.isCurrent);
-        if (currTerm) setReleaseTermId(currTerm.id);
+
+        const termsList = sessList.flatMap((s: any) => s.terms || []);
+        if (termsList.length > 0) {
+          setTerms(termsList);
+          const currTerm = termsList.find((t: any) => t.isCurrent) || termsList[0];
+          if (currTerm) setReleaseTermId(currTerm.id);
+        }
       }
       if (classesData.items) setClasses(classesData.items);
       if (progData.items) setProgrammes(progData.items);

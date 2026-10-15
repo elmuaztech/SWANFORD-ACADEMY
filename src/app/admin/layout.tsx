@@ -22,12 +22,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const roles = user.roles || [];
   const isSuperAdmin = roles.includes(RoleCode.SUPER_ADMIN);
   const isAdmin = roles.includes(RoleCode.ADMIN);
+  const isAccountant = roles.includes(RoleCode.ACCOUNTANT);
 
-  if (!isSuperAdmin && !isAdmin) {
+  if (!isSuperAdmin && !isAdmin && !isAccountant) {
+    if (roles.includes(RoleCode.TEACHER) || Boolean(user.teacherId)) {
+      redirect('/teacher');
+    }
+    if (roles.includes(RoleCode.PARENT) || Boolean(user.guardianId)) {
+      redirect('/parent');
+    }
     redirect('/auth/login?error=unauthorized_admin');
   }
 
-  const displayRole = isSuperAdmin ? 'SUPER_ADMIN' : 'ADMIN';
+  const displayRole = isSuperAdmin ? 'SUPER_ADMIN' : isAccountant ? 'ACCOUNTANT' : 'ADMIN';
 
   return (
     <AdminShell

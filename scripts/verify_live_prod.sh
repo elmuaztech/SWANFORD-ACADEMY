@@ -22,11 +22,11 @@ curl -s -X POST http://127.0.0.1:3002/api/admissions/payment/initialize -H "Cont
 echo ""
 
 echo -e "\n=== 4. Unblocked Verification & Webhooks (Must NOT return 503) ==="
-echo -n "GET /api/payments/verify: "
-curl -s -w " [status: %{http_code}]\n" "http://127.0.0.1:3002/api/payments/verify?reference=non_existent_ref"
+echo -n "POST /api/payments/verify: "
+curl -s -X POST -w " [status: %{http_code}]\n" "http://127.0.0.1:3002/api/payments/verify" -H "Content-Type: application/json" -d '{"reference":"non_existent_ref"}'
 
-echo -n "GET /api/admissions/payment/verify: "
-curl -s -w " [status: %{http_code}]\n" "http://127.0.0.1:3002/api/admissions/payment/verify?reference=non_existent_ref"
+echo -n "POST /api/admissions/payment/verify: "
+curl -s -X POST -w " [status: %{http_code}]\n" "http://127.0.0.1:3002/api/admissions/payment/verify" -H "Content-Type: application/json" -d '{"reference":"non_existent_ref"}'
 
 echo -n "POST /api/webhooks/paystack (invalid sig): "
 curl -s -X POST -w " [status: %{http_code}]\n" http://127.0.0.1:3002/api/webhooks/paystack -H "Content-Type: application/json" -d '{}'
@@ -40,16 +40,16 @@ curl -s -X POST http://127.0.0.1:3002/api/auth/forgot-password/request-otp -H "C
 echo ""
 
 echo -e "\n=== 6. Database Record Integrity Check ==="
-docker exec swanford_postgres psql -U swanford -d swanford_prod -c "
+docker exec swanford_postgres psql -U swanford -d swanford_prod -c '
 SELECT 
-  (SELECT count(*) FROM users) as users,
-  (SELECT count(*) FROM roles) as roles,
-  (SELECT count(*) FROM students) as students,
-  (SELECT count(*) FROM guardians) as guardians,
-  (SELECT count(*) FROM admission_applications) as applications,
-  (SELECT count(*) FROM invoices) as invoices,
-  (SELECT count(*) FROM payments) as payments;
-"
+  (SELECT count(*) FROM "users") as users,
+  (SELECT count(*) FROM "roles") as roles,
+  (SELECT count(*) FROM "students") as students,
+  (SELECT count(*) FROM "guardians") as guardians,
+  (SELECT count(*) FROM "applications") as applications,
+  (SELECT count(*) FROM "invoices") as invoices,
+  (SELECT count(*) FROM "payments") as payments;
+'
 
-echo -e "\n=== 7. Recent Docker App Error Logs (last 30 lines) ==="
-docker logs swanford_app --tail 30
+echo -e "\n=== 7. Recent Docker App Error Logs (last 15 lines) ==="
+docker logs swanford_app --tail 15
