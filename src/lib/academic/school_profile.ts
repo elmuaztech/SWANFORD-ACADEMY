@@ -58,8 +58,8 @@ export const SchoolProfileSchema = z.object({
   bankName: z.string().optional(),
   bankAccountName: z.string().optional(),
   bankAccountNumber: z.string().optional(),
-  primaryColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Invalid hex color').optional(),
-  secondaryColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Invalid hex color').optional(),
+  primaryColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, 'Invalid hex color').optional(),
+  secondaryColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, 'Invalid hex color').optional(),
   timezone: z.string().default(LAGOS_TIMEZONE),
 });
 
@@ -125,7 +125,10 @@ export async function getSchoolProfile(): Promise<SchoolProfile> {
     country: configMap.get('school.country') || 'Nigeria',
     phonePrimary: configMap.get('school.phone_primary') || '+234 803 695 0352',
     phoneSecondary: configMap.get('school.phone_secondary') || undefined,
-    email: configMap.get('school.email') || 'info@swanfordacademy.edu.ng',
+    email:
+      !configMap.get('school.email') || configMap.get('school.email') === 'info@swanfordacademy.edu.ng'
+        ? 'swanford99@gmail.com'
+        : configMap.get('school.email')!,
     website: configMap.get('school.website') || undefined,
     proprietor: configMap.get('school.proprietor') || 'Muhammad Kanti, Proprietor',
     logoUrl: configMap.get('school.logo_url') || undefined,

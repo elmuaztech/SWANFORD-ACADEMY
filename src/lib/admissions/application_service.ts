@@ -633,12 +633,13 @@ export async function reviewProgrammeSelection(
     include: {
       application: {
         include: {
-          programmeSelections: { include: { programme: true } },
+          programmeSelections: { include: { programme: true, targetClass: true } },
           admissionCycle: { include: { academicSession: true } },
           profilePhoto: true,
         },
       },
       programme: true,
+      targetClass: true,
     },
   });
 
@@ -739,20 +740,34 @@ export async function reviewProgrammeSelection(
       computedAppStatus === ApplicationStatus.APPROVED ||
       computedAppStatus === ApplicationStatus.PARTIALLY_APPROVED
     ) {
-      // Build list of approved programmes
-      const approvedProgrammeNames = allSelections
-        .filter((s) =>
-          s.id === selectionId
-            ? newSelectionStatus === ProgrammeSelectionStatus.APPROVED
-            : s.status === ProgrammeSelectionStatus.APPROVED
-        )
-        .map((s) => {
-          const matched = application.programmeSelections.find((p) => p.id === s.id);
-          return matched?.programme?.name || 'Academic Programme';
-        });
+      // Build list of approved classes/programmes
+      const approvedProgrammeSelections = allSelections.filter((s) =>
+        s.id === selectionId
+          ? newSelectionStatus === ProgrammeSelectionStatus.APPROVED
+          : s.status === ProgrammeSelectionStatus.APPROVED
+      );
 
-      const programmesList = approvedProgrammeNames.join(', ') || selection.programme.name;
+      const approvedClassOrProgrammeNames = approvedProgrammeSelections.map((s) => {
+        const matched = application.programmeSelections.find((p) => p.id === s.id);
+        return matched?.targetClass?.name || matched?.programme?.name || 'Academic Class';
+      });
+
+      const programmesList =
+        approvedClassOrProgrammeNames.join(', ') ||
+        selection.targetClass?.name ||
+        selection.programme.name;
       const admissionLetterUrl = toAbsoluteEmailUrl(`/admissions/letter/${application.id}`);
+
+      // Resolve the active academic session identically to the admin dashboard and PDF route
+      const activeAcademicSession = await tx.academicSession.findFirst({
+        where: { isCurrent: true },
+      });
+
+      const academicSessionName =
+        activeAcademicSession?.name ||
+        (application.admissionCycle?.academicSession?.isCurrent
+          ? application.admissionCycle.academicSession.name
+          : 'No Active Academic Session Configured');
 
       // Convert applicant photo to base64 Data URI for immediate inline email/letter rendering
       let profilePhotoDataUri: string | null = null;
@@ -777,7 +792,7 @@ export async function reviewProgrammeSelection(
         }),
         applicantGender: application.applicantGender === 'MALE' ? 'Male' : 'Female',
         programmesList,
-        academicSessionName: application.admissionCycle?.academicSession?.name || '2026/2027 Academic Session',
+        academicSessionName,
         profilePhotoDataUri,
         admissionLetterUrl,
         notes: validated.decisionNotes || undefined,

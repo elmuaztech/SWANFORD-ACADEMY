@@ -245,9 +245,11 @@ describe('Integration: Admission Application Deletion, Official Letter & Finance
       },
     });
     expect(notifApproved).not.toBeNull();
-    expect(notifApproved?.subject).toContain('Official Admission Letter for Maryam Dutse');
+    expect(notifApproved?.subject).toContain('Offer of Admission: Maryam Dutse');
     expect(notifApproved?.htmlBody).toContain('SWANFORD ACADEMY');
-    expect(notifApproved?.htmlBody).toContain('OFFICIAL OFFER OF PROVISIONAL ADMISSION');
+    expect(notifApproved?.htmlBody).toContain('OFFER OF ADMISSION');
+    expect(notifApproved?.htmlBody).toContain('swanford99@gmail.com');
+    expect(notifApproved?.htmlBody).toContain('Muhammad Kanti');
     expect(notifApproved?.htmlBody).toContain(`/admissions/letter/${appA.id}`);
 
     // 2. Create candidate B (To be Rejected)

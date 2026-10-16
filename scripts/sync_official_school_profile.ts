@@ -56,7 +56,7 @@ async function main() {
     },
     {
       key: 'school.email',
-      value: 'info@swanfordacademy.edu.ng',
+      value: 'swanford99@gmail.com',
       description: 'Official Inquiries and Administration Email',
     },
     {

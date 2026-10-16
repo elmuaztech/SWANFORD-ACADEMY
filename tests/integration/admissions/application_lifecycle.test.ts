@@ -27,6 +27,12 @@ describe('Stage 7 — Integration: Application Lifecycle, Charges & Trusted Paym
   let tahfeezProgId: string;
 
   beforeEach(async () => {
+    await prisma.systemConfig.upsert({
+      where: { key: 'admissions.form_fee_kobo' },
+      update: { value: '500000' },
+      create: { key: 'admissions.form_fee_kobo', value: '500000', category: 'ADMISSIONS' },
+    });
+
     // 1. Setup Session and First Term
     const session = await prisma.academicSession.create({
       data: {

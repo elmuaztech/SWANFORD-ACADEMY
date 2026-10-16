@@ -64,7 +64,7 @@ export const VERIFIED_SCHOOL_INFO = {
   motto: '“Illuminating the Path to Success”',
   location: 'Dutse, Jigawa State',
   address: 'PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE',
-  email: 'info@swanfordacademy.edu.ng',
+  email: 'swanford99@gmail.com',
   phone: '+234 803 695 0352',
   proprietor: 'Muhammad Kanti, Proprietor',
   bankName: '',

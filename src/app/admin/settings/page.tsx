@@ -342,7 +342,7 @@ export default function AdminSettingsPage() {
                         type="email"
                         value={profile.email}
                         onChange={(e) => updateField("email", e.target.value)}
-                        placeholder="info@swanfordacademy.edu.ng"
+                        placeholder="swanford99@gmail.com"
                         required
                       />
                     </FormGroup>

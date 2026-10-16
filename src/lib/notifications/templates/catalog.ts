@@ -381,7 +381,7 @@ export function renderOfficialAdmissionLetterEmail(data: {
   dateIssued?: string;
   notes?: string;
 }): RenderedEmail {
-  const subject = `Congratulations: Official Admission Letter for ${data.applicantName} (${data.applicationNumber}) — Swanford Academy`;
+  const subject = `Offer of Admission: ${data.applicantName} (${data.applicationNumber}) — Swanford Academy`;
   const formattedDate = data.dateIssued || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
   const logoSrc = process.env.EMAIL_LOGO_URL && process.env.EMAIL_LOGO_URL.startsWith('https://')
@@ -414,7 +414,7 @@ export function renderOfficialAdmissionLetterEmail(data: {
       <td align="center">
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width: 640px; background-color: #FFFFFF; border: 1px solid ${BRAND_COLORS.borderSubtle}; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(91, 6, 18, 0.08);">
           
-          <!-- Institutional Header -->
+          {/* Institutional Header */}
           <tr>
             <td align="center" style="background-color: ${BRAND_COLORS.maroonPrimary}; padding: 26px 20px 20px; border-bottom: 4px solid ${BRAND_COLORS.goldAccent}; text-align: center;">
               <div style="width: 76px; height: 76px; background-color: #FFFFFF; border-radius: 12px; border: 2px solid ${BRAND_COLORS.goldAccent}; text-align: center; vertical-align: middle; overflow: hidden; display: inline-block; margin: 0 auto 10px;">
@@ -432,7 +432,7 @@ export function renderOfficialAdmissionLetterEmail(data: {
               <table role="presentation" width="100%">
                 <tr>
                   <td style="font-family: monospace; font-size: 12px; font-weight: 700; color: ${BRAND_COLORS.maroonPrimary};">
-                    REF: SA/ADM/${new Date().getFullYear()}/${escapeHtml(data.applicationNumber.replace('APP-', ''))}
+                    Admission Reference: ${escapeHtml(data.applicationNumber)}
                   </td>
                   <td style="text-align: right; font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.textDark};">
                     Date: ${escapeHtml(formattedDate)}
@@ -442,24 +442,40 @@ export function renderOfficialAdmissionLetterEmail(data: {
             </td>
           </tr>
 
-          <!-- Congratulations & Offer Title Banner -->
+          <!-- Offer Title Banner & Heading -->
           <tr>
             <td style="padding: 24px 24px 12px; text-align: center;">
-              <div style="display: inline-block; padding: 6px 20px; background-color: ${BRAND_COLORS.goldSoft}; border: 1px solid ${BRAND_COLORS.goldAccent}; border-radius: 9999px; margin-bottom: 12px;">
+              <div style="display: inline-block; padding: 6px 20px; background-color: ${BRAND_COLORS.goldSoft}; border: 1px solid ${BRAND_COLORS.goldAccent}; border-radius: 9999px; margin-bottom: 8px;">
                 <span style="font-size: 12px; font-weight: 800; color: ${BRAND_COLORS.goldText}; letter-spacing: 1px; text-transform: uppercase;">
-                  OFFICIAL OFFER OF PROVISIONAL ADMISSION
+                  OFFER OF ADMISSION
                 </span>
               </div>
-              <h2 style="margin: 0; font-size: 20px; font-weight: 800; color: ${BRAND_COLORS.maroonPrimary};">
-                Congratulations, ${escapeHtml(data.applicantName)}!
+              <h2 style="margin: 4px 0 0; font-size: 16px; font-weight: 700; color: ${BRAND_COLORS.maroonPrimary};">
+                Academic Session: ${escapeHtml(data.academicSessionName)}
               </h2>
+            </td>
+          </tr>
+
+          <!-- Formal Admission Offer Body Paragraphs -->
+          <tr>
+            <td class="mobile-padding" style="padding: 8px 24px 16px; font-size: 14px; line-height: 1.6; color: ${BRAND_COLORS.textSecondary};">
+              <p style="margin: 0 0 14px;">Dear Mr/Mrs ${escapeHtml(data.guardianName)},</p>
+              <p style="margin: 0 0 14px;">
+                We are pleased to inform you that your child, <strong>${escapeHtml(data.applicantName)}</strong>, has been offered admission into <strong>Swanford Academy</strong> for the <strong>${escapeHtml(data.academicSessionName)}</strong> academic session.
+              </p>
+              <p style="margin: 0 0 14px;">
+                We welcome you to our school community and look forward to working together to provide your child with quality education, sound upbringing, good character, and the skills needed for future success.
+              </p>
+              <p style="margin: 0 0 14px;">
+                Please complete the admission requirements outlined below to finalise your child's registration.
+              </p>
             </td>
           </tr>
 
           <!-- Child Profile & Dossier Table -->
           <tr>
-            <td class="mobile-padding" style="padding: 12px 24px 20px;">
-              <div style="background-color: #FAFAFA; border: 1px solid ${BRAND_COLORS.borderLight}; border-radius: 10px; padding: 18px;">
+            <td class="mobile-padding" style="padding: 4px 24px 20px;">
+              <div style="background-color: #FAF7F2; border: 1px solid ${BRAND_COLORS.borderSubtle}; border-radius: 10px; padding: 18px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                   <tr>
                     <td class="mobile-stack" align="center" valign="middle" style="width: 110px; padding-right: 18px; text-align: center;">
@@ -473,11 +489,15 @@ export function renderOfficialAdmissionLetterEmail(data: {
                           <td style="padding: 5px 0; font-weight: 700; color: ${BRAND_COLORS.textDark}; text-align: right;">${escapeHtml(data.applicantName)}</td>
                         </tr>
                         <tr>
-                          <td style="padding: 5px 0; color: ${BRAND_COLORS.textLight}; font-weight: 500;">Application Number:</td>
+                          <td style="padding: 5px 0; color: ${BRAND_COLORS.textLight}; font-weight: 500;">Parent / Guardian:</td>
+                          <td style="padding: 5px 0; font-weight: 600; color: ${BRAND_COLORS.textDark}; text-align: right;">${escapeHtml(data.guardianName)}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 5px 0; color: ${BRAND_COLORS.textLight}; font-weight: 500;">Admission Reference:</td>
                           <td style="padding: 5px 0; font-weight: 700; color: ${BRAND_COLORS.maroonPrimary}; font-family: monospace; text-align: right;">${escapeHtml(data.applicationNumber)}</td>
                         </tr>
                         <tr>
-                          <td style="padding: 5px 0; color: ${BRAND_COLORS.textLight}; font-weight: 500;">Programme Admitted:</td>
+                          <td style="padding: 5px 0; color: ${BRAND_COLORS.textLight}; font-weight: 500;">Class Admitted:</td>
                           <td style="padding: 5px 0; font-weight: 700; color: ${BRAND_COLORS.textDark}; text-align: right;">${escapeHtml(data.programmesList)}</td>
                         </tr>
                         <tr>
@@ -488,10 +508,6 @@ export function renderOfficialAdmissionLetterEmail(data: {
                           <td style="padding: 5px 0; color: ${BRAND_COLORS.textLight}; font-weight: 500;">Date of Birth / Gender:</td>
                           <td style="padding: 5px 0; font-weight: 600; color: ${BRAND_COLORS.textDark}; text-align: right;">${escapeHtml(data.applicantDob)} &bull; ${escapeHtml(data.applicantGender)}</td>
                         </tr>
-                        <tr>
-                          <td style="padding: 5px 0; color: ${BRAND_COLORS.textLight}; font-weight: 500;">Parent / Guardian:</td>
-                          <td style="padding: 5px 0; font-weight: 600; color: ${BRAND_COLORS.textDark}; text-align: right;">${escapeHtml(data.guardianName)}</td>
-                        </tr>
                       </table>
                     </td>
                   </tr>
@@ -500,33 +516,9 @@ export function renderOfficialAdmissionLetterEmail(data: {
             </td>
           </tr>
 
-          <!-- Formal Admission Offer Body Paragraphs -->
-          <tr>
-            <td class="mobile-padding" style="padding: 8px 24px 16px; font-size: 14px; line-height: 1.6; color: ${BRAND_COLORS.textSecondary};">
-              <p style="margin: 0 0 14px;">Dear <strong>${escapeHtml(data.guardianName)}</strong>,</p>
-              <p style="margin: 0 0 14px;">
-                Following the successful entrance screening, document evaluation, and committee assessment, we are delighted to offer <strong>${escapeHtml(data.applicantName)}</strong> provisional admission into <strong>Swanford Academy</strong> for the <strong>${escapeHtml(data.academicSessionName)}</strong>.
-              </p>
-              <p style="margin: 0 0 14px;">
-                Swanford Academy provides a premier integrated learning environment combining the standard Nigerian basic education curriculum with authentic Qur'anic memorization (Tahfeez) and moral character building.
-              </p>
-              
-              <div style="background-color: ${BRAND_COLORS.creamCanvas}; border-left: 3px solid ${BRAND_COLORS.maroonPrimary}; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 13px;">
-                <strong style="color: ${BRAND_COLORS.maroonPrimary}; display: block; margin-bottom: 6px;">Next Steps to Confirm Placement:</strong>
-                <ol style="margin: 0; padding-left: 18px; line-height: 1.5;">
-                  <li>Log in to your parent portal or visit the Admissions Desk to confirm acceptance within fourteen (14) days.</li>
-                  <li>Complete tuition fee settlement to secure your child's classroom seat and uniform kit.</li>
-                  <li>Present original birth certificate and medical immunization records upon physical resumption.</li>
-                </ol>
-              </div>
-
-              ${data.notes ? `<p style="margin: 12px 0; font-size: 13px; color: ${BRAND_COLORS.maroonPrimary};"><strong>Admissions Committee Remarks:</strong> ${escapeHtml(data.notes)}</p>` : ''}
-            </td>
-          </tr>
-
           <!-- A4 Print / Download Call to Action -->
           <tr>
-            <td align="center" style="padding: 10px 24px 24px;">
+            <td align="center" style="padding: 10px 24px 20px;">
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="border-radius: 8px; background-color: ${BRAND_COLORS.maroonPrimary};">
@@ -542,23 +534,17 @@ export function renderOfficialAdmissionLetterEmail(data: {
             </td>
           </tr>
 
-          <!-- Institutional Signatures Block -->
+          <!-- Institutional Signatory Block (Muhammad Kanti Only) -->
           <tr>
             <td class="mobile-padding" style="padding: 16px 24px 24px; border-top: 1px solid ${BRAND_COLORS.borderLight};">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 12px;">
-                <tr>
-                  <td valign="top" style="width: 50%; color: ${BRAND_COLORS.textMuted};">
-                    <div style="font-family: Georgia, serif; font-size: 16px; color: ${BRAND_COLORS.maroonPrimary}; font-style: italic; margin-bottom: 4px;">Admissions Registry</div>
-                    <strong>Admissions Committee Secretary</strong><br />
-                    Swanford Academy, Dutse
-                  </td>
-                  <td valign="top" style="width: 50%; text-align: right; color: ${BRAND_COLORS.textMuted};">
-                    <div style="font-family: Georgia, serif; font-size: 16px; color: ${BRAND_COLORS.maroonPrimary}; font-style: italic; margin-bottom: 4px;">Muhammad Kanti</div>
-                    <strong>School Director / Proprietor</strong><br />
-                    Swanford Academy, Jigawa State
-                  </td>
-                </tr>
-              </table>
+              <div style="font-size: 13px; color: ${BRAND_COLORS.textSecondary};">
+                <p style="margin: 0 0 16px;">Yours faithfully,</p>
+                <div style="font-family: Georgia, serif; font-size: 16px; font-weight: 700; color: ${BRAND_COLORS.maroonPrimary}; margin-bottom: 2px;">
+                  Muhammad Kanti
+                </div>
+                <div style="font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.textDark};">Director</div>
+                <div style="font-size: 12px; color: ${BRAND_COLORS.textLight};">Swanford Academy</div>
+              </div>
             </td>
           </tr>
 
@@ -566,8 +552,8 @@ export function renderOfficialAdmissionLetterEmail(data: {
           <tr>
             <td style="background-color: ${BRAND_COLORS.creamCanvas}; padding: 18px 24px; border-top: 1px solid ${BRAND_COLORS.borderSubtle}; text-align: center; font-size: 11px; color: ${BRAND_COLORS.textLight}; line-height: 1.5;">
               <p style="margin: 0;">${escapeHtml(VERIFIED_SCHOOL_INFO.name)} &bull; ${escapeHtml(VERIFIED_SCHOOL_INFO.address)}</p>
-              <p style="margin: 4px 0 0;">Admissions Desk: ${escapeHtml(VERIFIED_SCHOOL_INFO.email)} &bull; Tel: ${escapeHtml(VERIFIED_SCHOOL_INFO.phone)}</p>
-              <p style="margin: 6px 0 0; color: #94A3B8;">&copy; 2026 ${escapeHtml(VERIFIED_SCHOOL_INFO.name)}. All rights reserved.</p>
+              <p style="margin: 4px 0 0;">Admissions Office: <a href="mailto:swanford99@gmail.com" style="color: ${BRAND_COLORS.maroonPrimary}; text-decoration: none;">swanford99@gmail.com</a> &bull; Tel: ${escapeHtml(VERIFIED_SCHOOL_INFO.phone)}</p>
+              <p style="margin: 6px 0 0; color: #94A3B8;">Computer-Generated Admission Letter &bull; &copy; ${escapeHtml(VERIFIED_SCHOOL_INFO.name)}</p>
             </td>
           </tr>
 
@@ -583,31 +569,32 @@ export function renderOfficialAdmissionLetterEmail(data: {
   text += `${VERIFIED_SCHOOL_INFO.subtitle}\n`;
   text += `"${VERIFIED_SCHOOL_INFO.motto}"\n`;
   text += `====================================================\n\n`;
-  text += `REF: SA/ADM/${new Date().getFullYear()}/${data.applicationNumber.replace('APP-', '')}\n`;
-  text += `DATE: ${formattedDate}\n\n`;
-  text += `OFFICIAL OFFER OF PROVISIONAL ADMISSION\n`;
-  text += `Congratulations, ${data.applicantName}!\n\n`;
+  text += `Admission Reference: ${data.applicationNumber}\n`;
+  text += `Date: ${formattedDate}\n\n`;
+  text += `OFFER OF ADMISSION\n`;
+  text += `Academic Session: ${data.academicSessionName}\n\n`;
+  text += `Dear Mr/Mrs ${data.guardianName},\n\n`;
+  text += `We are pleased to inform you that your child, ${data.applicantName}, has been offered admission into Swanford Academy for the ${data.academicSessionName} academic session.\n\n`;
+  text += `We welcome you to our school community and look forward to working together to provide your child with quality education, sound upbringing, good character, and the skills needed for future success.\n\n`;
+  text += `Please complete the admission requirements outlined below to finalise your child's registration.\n\n`;
   text += `PUPIL DETAILS:\n`;
-  text += `- Name: ${data.applicantName}\n`;
-  text += `- Application Number: ${data.applicationNumber}\n`;
-  text += `- Admitted Programme: ${data.programmesList}\n`;
+  text += `- Pupil Full Name: ${data.applicantName}\n`;
+  text += `- Parent / Guardian: ${data.guardianName}\n`;
+  text += `- Admission Reference: ${data.applicationNumber}\n`;
+  text += `- Class Admitted: ${data.programmesList}\n`;
   text += `- Academic Session: ${data.academicSessionName}\n`;
   text += `- Date of Birth: ${data.applicantDob}\n`;
-  text += `- Gender: ${data.applicantGender}\n`;
-  text += `- Guardian: ${data.guardianName}\n\n`;
-  text += `Dear ${data.guardianName},\n\n`;
-  text += `Following the successful entrance screening and committee assessment, we are pleased to offer ${data.applicantName} provisional admission into Swanford Academy for the ${data.academicSessionName}.\n\n`;
-  text += `NEXT STEPS:\n`;
-  text += `1. Confirm acceptance within 14 days.\n`;
-  text += `2. Complete school fees settlement.\n`;
-  text += `3. Present original birth certificate and medical immunization records upon physical resumption.\n\n`;
-  if (data.notes) {
-    text += `Admissions Committee Remarks: ${data.notes}\n\n`;
-  }
-  text += `Download & Print Official A4 Admission Letter:\n${data.admissionLetterUrl}\n\n`;
-  text += `Warm regards,\n`;
-  text += `Admissions Committee & School Management\n`;
-  text += `${VERIFIED_SCHOOL_INFO.name}, Dutse, Jigawa State\n`;
+  text += `- Gender: ${data.applicantGender}\n\n`;
+  text += `View & Print Admission Letter (A4):\n${data.admissionLetterUrl}\n\n`;
+  text += `Yours faithfully,\n\n`;
+  text += `Muhammad Kanti\n`;
+  text += `Director\n`;
+  text += `Swanford Academy\n\n`;
+  text += `----------------------------------------------------\n`;
+  text += `${VERIFIED_SCHOOL_INFO.name}\n`;
+  text += `${VERIFIED_SCHOOL_INFO.address}\n`;
+  text += `Admissions Office: swanford99@gmail.com | Tel: ${VERIFIED_SCHOOL_INFO.phone}\n`;
+  text += `Computer-Generated Admission Letter\n`;
 
   return { subject, html, text };
 }

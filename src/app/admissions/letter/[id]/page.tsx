@@ -159,7 +159,7 @@ export default function AdmissionLetterPage({
           </Link>
           <span className="text-stone-300">|</span>
           <Badge variant="success" size="sm">
-            Official Admission Letter
+            Offer of Admission
           </Badge>
         </div>
 
@@ -183,220 +183,154 @@ export default function AdmissionLetterPage({
       </div>
 
       {/* The Printable A4 Admission Letter Container */}
-      <main className="a4-page-container letter-content max-w-[210mm] mx-auto bg-white rounded-xl shadow-lg border border-stone-200/80 p-4 sm:p-7 print:shadow-none print:border-none print:p-0">
+      <main className="a4-page-container letter-content max-w-[210mm] mx-auto bg-white rounded-xl shadow-lg border border-stone-200/80 p-6 sm:p-8 print:shadow-none print:border-none print:p-0">
         
         {/* Institutional Letterhead */}
-        <header className="border-b-2 border-[#5B0612] pb-3 mb-3">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3 text-center sm:text-left">
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg overflow-hidden border border-[#D4AF37] bg-white p-1">
+        <header className="border-b-2 border-[#5B0612] pb-4 mb-4">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-3.5">
+              <div className="relative w-16 h-16 sm:w-18 sm:h-18 shrink-0 rounded-lg overflow-hidden border border-[#D4AF37] bg-white p-1">
                 <Image
                   src="/images/swanford-logo.jpg"
                   alt="Swanford Academy Crest"
-                  width={64}
-                  height={64}
+                  width={72}
+                  height={72}
                   className="object-contain w-full h-full"
                   priority
                 />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-extrabold text-[#5B0612] tracking-tight uppercase font-serif">
+                <h1 className="text-xl sm:text-2xl font-black text-[#5B0612] tracking-tight uppercase font-serif">
                   SWANFORD ACADEMY
                 </h1>
-                <p className="text-[11px] sm:text-xs font-semibold text-[#800020] tracking-wide">
+                <p className="text-xs font-bold text-[#800020] tracking-wide mt-0.5">
                   NURSERY &bull; PRIMARY &bull; TAHFEEZ SCHOOL
                 </p>
-                <p className="text-[10px] text-stone-600 italic">
+                <p className="text-[11px] text-stone-600 italic">
                   &ldquo;{data.school.motto}&rdquo;
                 </p>
-                <p className="text-[9px] text-stone-500 mt-0.5">
-                  {data.school.address} &bull; {data.school.phonePrimary} &bull; {data.school.email}
+                <p className="text-[10px] text-stone-500 mt-1">
+                  {data.school.address} &bull; Tel: {data.school.phonePrimary} &bull; Email: swanford99@gmail.com
                 </p>
               </div>
             </div>
 
-            {/* Document Verification Crest Badge */}
+            {/* Admissions Office Meta */}
             <div className="flex flex-col items-center sm:items-end text-center sm:text-right shrink-0">
-              <span className="text-[9px] uppercase font-bold text-stone-500 tracking-wider">Office of Admissions</span>
-              <span className="text-[9px] text-stone-400">Registry Reference</span>
-              <span className="font-mono text-xs font-bold text-[#5B0612] mt-0.5">{data.applicationNumber}</span>
-              <span className="text-[9px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-0.5">
-                Verified Admission
+              <span className="text-xs uppercase font-extrabold text-[#5B0612] tracking-wider">
+                Admissions Office
               </span>
+              <div className="text-[11px] text-stone-600 mt-1">
+                <span className="text-stone-500">Admission Reference:</span>{' '}
+                <span className="font-mono font-bold text-[#5B0612]">{data.applicationNumber}</span>
+              </div>
+              <div className="text-[10px] text-stone-500 mt-0.5">
+                <span>Date: {formattedDate}</span>
+              </div>
             </div>
           </div>
-          <div className="h-0.5 w-full bg-[#D4AF37] mt-2.5" />
+          <div className="h-0.5 w-full bg-[#D4AF37] mt-3" />
         </header>
 
-        {/* Reference & Date Header Line */}
-        <div className="flex flex-col sm:flex-row justify-between items-center text-[11px] text-stone-600 mb-3 pb-1.5 border-b border-stone-100 gap-1 text-center sm:text-left">
-          <div>
-            <span className="font-semibold text-stone-500">Ref:</span>{' '}
-            <span className="font-mono font-bold text-stone-900">SA/ADM/{data.applicationNumber}</span>
-          </div>
-          <div>
-            <span className="font-semibold text-stone-500">Date Issued:</span>{' '}
-            <span className="font-bold text-stone-900">{formattedDate}</span>
-          </div>
+        {/* Heading: OFFER OF ADMISSION & Academic Session */}
+        <div className="text-center my-4 py-2 border-y border-stone-200/80 bg-[#FAF7F2]/60">
+          <h2 className="text-base sm:text-lg font-black text-[#5B0612] uppercase tracking-wider font-serif">
+            OFFER OF ADMISSION
+          </h2>
+          <p className="text-xs sm:text-sm font-bold text-stone-800 mt-0.5">
+            Academic Session: {data.academicSessionName}
+          </p>
         </div>
 
-        {/* Child Dossier & Photo Panel */}
-        <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-lg p-3 mb-3 flex flex-col-reverse sm:flex-row items-center sm:items-start justify-between gap-3">
-          <div className="flex-1 w-full space-y-1 text-[11px]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
+        {/* Letter Body */}
+        <div className="space-y-3 text-xs sm:text-[13px] text-stone-800 leading-relaxed font-normal">
+          <p>
+            Dear Mr/Mrs {data.guardianFullName},
+          </p>
+          <p>
+            We are pleased to inform you that your child, <strong>{data.applicantFullName}</strong>, has been offered admission into Swanford Academy for the <strong>{data.academicSessionName}</strong> academic session.
+          </p>
+          <p>
+            We welcome you to our school community and look forward to working together to provide your child with quality education, sound upbringing, good character, and the skills needed for future success.
+          </p>
+          <p>
+            Please complete the admission requirements outlined below to finalise your child&apos;s registration.
+          </p>
+        </div>
+
+        {/* Pupil & Admission Information Card */}
+        <div className="my-4 bg-[#FAF7F2] border border-[#EADBDA] rounded-xl p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4">
+            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
               <div>
-                <span className="text-stone-500 text-[10px] block">Candidate Full Name:</span>
-                <span className="font-bold text-stone-900 text-xs sm:text-sm">{data.applicantFullName}</span>
+                <span className="text-[10px] uppercase font-bold text-stone-500 block tracking-wide">Pupil Full Name</span>
+                <span className="font-bold text-stone-900 text-sm text-[#5B0612]">{data.applicantFullName}</span>
               </div>
               <div>
-                <span className="text-stone-500 text-[10px] block">Application Reference:</span>
-                <span className="font-mono font-bold text-[#5B0612] text-xs">{data.applicationNumber}</span>
+                <span className="text-[10px] uppercase font-bold text-stone-500 block tracking-wide">Parent / Guardian</span>
+                <span className="font-semibold text-stone-900 text-sm">{data.guardianFullName}</span>
               </div>
               <div>
-                <span className="text-stone-500 text-[10px] block">Date of Birth &amp; Gender:</span>
-                <span className="font-medium text-stone-900">{formattedDob} ({data.applicantGender})</span>
+                <span className="text-[10px] uppercase font-bold text-stone-500 block tracking-wide">Admission Reference</span>
+                <span className="font-mono font-bold text-[#5B0612] text-sm">{data.applicationNumber}</span>
               </div>
               <div>
-                <span className="text-stone-500 text-[10px] block">Academic Session:</span>
-                <span className="font-semibold text-stone-900">{data.academicSessionName}</span>
+                <span className="text-[10px] uppercase font-bold text-stone-500 block tracking-wide">Class Admitted</span>
+                <span className="font-bold text-stone-900 text-sm">
+                  {data.programmes.map((p) => p.className).filter(Boolean).join(', ') || 'Class Assigned'}
+                </span>
               </div>
               <div>
-                <span className="text-stone-500 text-[10px] block">Parent / Guardian:</span>
-                <span className="font-medium text-stone-900">{data.guardianFullName} ({data.guardianRelationship})</span>
+                <span className="text-[10px] uppercase font-bold text-stone-500 block tracking-wide">Academic Session</span>
+                <span className="font-semibold text-stone-900 text-sm">{data.academicSessionName}</span>
               </div>
               <div>
-                <span className="text-stone-500 text-[10px] block">Contact Phone &amp; Email:</span>
-                <span className="font-medium text-stone-900 truncate block">{data.guardianPhone} &bull; {data.guardianEmail}</span>
+                <span className="text-[10px] uppercase font-bold text-stone-500 block tracking-wide">Date Issued</span>
+                <span className="font-medium text-stone-800 text-sm">{formattedDate}</span>
               </div>
             </div>
-          </div>
 
-          {/* Child Profile Photo */}
-          <div className="shrink-0 text-center">
-            {data.profilePhotoDataUri ? (
-              <img
-                src={data.profilePhotoDataUri}
-                alt={data.applicantFullName}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-md object-cover border-2 border-[#D4AF37] shadow-xs"
-              />
-            ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-md bg-[#FAF2F4] border-2 border-dashed border-[#D4AF37] flex flex-col items-center justify-center text-[#5B0612]">
-                <span className="text-xl font-black">{data.applicantFullName.charAt(0)}</span>
-                <span className="text-[8px] uppercase font-bold text-[#800020] mt-0.5">Candidate</span>
+            {/* Candidate Photo if available */}
+            {data.profilePhotoDataUri && (
+              <div className="shrink-0 text-center">
+                <img
+                  src={data.profilePhotoDataUri}
+                  alt={data.applicantFullName}
+                  className="w-20 h-20 sm:w-22 sm:h-22 rounded-lg object-cover border-2 border-[#D4AF37] shadow-xs"
+                />
               </div>
             )}
-            <span className="text-[8px] font-semibold text-stone-400 uppercase tracking-wider block mt-0.5">
-              Photo
-            </span>
           </div>
         </div>
 
-        {/* Letter Title */}
-        <div className="text-center my-2 pb-1.5 border-b border-stone-200">
-          <h2 className="text-xs sm:text-sm font-extrabold text-[#5B0612] uppercase tracking-wide">
-            OFFICIAL OFFER OF PROVISIONAL ADMISSION
-          </h2>
-          <p className="text-[10px] text-stone-500">
-            Admissions Committee Review &bull; {data.academicSessionName}
-          </p>
-        </div>
-
-        {/* Formal Letter Body */}
-        <div className="space-y-2 text-[11px] sm:text-xs text-stone-800 leading-relaxed">
-          <p>
-            <strong>Dear {data.guardianFullName},</strong>
-          </p>
-          <p>
-            On behalf of the Governing Board and Academic Faculty of{' '}
-            <strong>Swanford Academy</strong>, we are pleased to offer your child / ward,{' '}
-            <strong className="text-[#5B0612]">{data.applicantFullName}</strong>, provisional
-            admission for the <strong>{data.academicSessionName}</strong>.
-          </p>
-
-          {/* Placement Table with overflow wrapper */}
-          <div className="my-1.5 border border-stone-200 rounded-md overflow-x-auto">
-            <table className="w-full text-left text-[11px] border-collapse min-w-[320px]">
-              <thead>
-                <tr className="bg-[#FAF7F2] border-b border-stone-200 text-[#5B0612]">
-                  <th className="py-1 px-2.5 font-bold">Approved Programme</th>
-                  <th className="py-1 px-2.5 font-bold">Class Placement</th>
-                  <th className="py-1 px-2.5 font-bold text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {data.programmes.map((prog, idx) => (
-                  <tr key={idx}>
-                    <td className="py-1.5 px-2.5 font-bold text-stone-900">{prog.name}</td>
-                    <td className="py-1.5 px-2.5 text-stone-700">{prog.className}</td>
-                    <td className="py-1.5 px-2.5 text-right">
-                      <span className="inline-block px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 bg-emerald-50 rounded border border-emerald-200">
-                        OFFERED &bull; ACCEPTED
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Terms & Requirements */}
-          <div className="space-y-1 pt-0.5 text-[10px] sm:text-[11px] text-stone-700">
-            <p className="font-bold text-stone-900">Essential Conditions for Matriculation:</p>
-            <ol className="list-decimal list-inside space-y-0.5 pl-1">
-              <li>
-                <strong>Acceptance:</strong> Confirm acceptance via admissions portal or Registry within 14 calendar days.
-              </li>
-              <li>
-                <strong>Documentation:</strong> Submit birth certificate, immunization record, and 2 passport photos to the Registry.
-              </li>
-              <li>
-                <strong>Fees &amp; Resumption:</strong> School fee schedules and resumption guidelines are accessible in the Parent Portal.
-              </li>
-            </ol>
-          </div>
-
-          <p className="pt-0.5">
-            We congratulate you and warmly welcome your family to the Swanford Academy community of academic excellence and moral integrity.
-          </p>
-        </div>
-
-        {/* Institutional Sign-off & Signatures */}
-        <div className="mt-4 pt-3 border-t border-stone-200">
-          <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-3 text-center sm:text-left">
-            <div className="space-y-0.5">
-              <div className="font-serif italic text-sm text-[#5B0612] font-bold tracking-wide">
-                Hajiya Amina Bello
-              </div>
-              <div className="h-0.5 w-28 bg-stone-300 mx-auto sm:mx-0" />
-              <p className="text-[10px] font-bold text-stone-900">Registrar &amp; Admissions Officer</p>
-              <p className="text-[9px] text-stone-500">Swanford Academy Registry</p>
-            </div>
-
-            {/* Official Seal / Crest Stamp */}
-            <div className="flex justify-center order-first sm:order-none">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-[#D4AF37] border-double bg-[#FAF7F2] p-1 flex flex-col items-center justify-center text-center shadow-xs">
-                <span className="text-[7px] font-bold uppercase tracking-wider text-[#5B0612]">Official Seal</span>
-                <span className="text-[9px] font-extrabold text-[#D4AF37] tracking-widest">2026</span>
-                <span className="text-[6px] text-stone-500 font-semibold uppercase">Verified</span>
-              </div>
-            </div>
-
-            <div className="space-y-0.5 text-center sm:text-right">
-              <div className="font-serif italic text-sm text-[#5B0612] font-bold tracking-wide">
-                Dr. Al-Mansur Ibrahim
-              </div>
-              <div className="h-0.5 w-28 bg-stone-300 mx-auto sm:ml-auto sm:mr-0" />
-              <p className="text-[10px] font-bold text-stone-900">Head of School / Director</p>
-              <p className="text-[9px] text-stone-500">Swanford Academy</p>
+        {/* Signatory Section & Subtle Watermark Stamp */}
+        <div className="mt-6 pt-3 flex flex-row items-end justify-between gap-4">
+          <div className="space-y-1 text-left">
+            <p className="text-xs sm:text-sm text-stone-700 font-medium">Yours faithfully,</p>
+            <div className="pt-6 pb-1">
+              <p className="text-sm sm:text-base font-extrabold text-[#5B0612] font-serif">
+                Muhammad Kanti
+              </p>
+              <p className="text-xs font-bold text-stone-900">Director</p>
+              <p className="text-[11px] text-stone-600">Swanford Academy</p>
             </div>
           </div>
 
-          {/* Verification Bar Footer */}
-          <footer className="mt-3 pt-1.5 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between text-[8px] sm:text-[9px] text-stone-400 gap-1 text-center sm:text-left">
-            <span>Official Computer-Generated Admission Letter &bull; Swanford Academy Dutse</span>
-            <span>Verify online at: swanfordacademy.ng/admissions/status &bull; APP: {data.applicationNumber}</span>
-          </footer>
+          {/* Subtle Watermark-style Stamp */}
+          <div className="opacity-25 select-none pointer-events-none">
+            <div className="w-22 h-22 sm:w-24 sm:h-24 rounded-full border-2 border-[#5B0612] p-2 flex flex-col items-center justify-center text-center">
+              <span className="text-[7px] font-extrabold uppercase tracking-widest text-[#5B0612]">Swanford</span>
+              <span className="text-[6.5px] font-bold text-[#5B0612] tracking-wider my-0.5">Admissions Office</span>
+              <span className="text-[7.5px] font-extrabold text-[#5B0612]">DUTSE</span>
+            </div>
+          </div>
         </div>
+
+        {/* Footer */}
+        <footer className="mt-6 pt-2.5 border-t border-stone-200 text-[9px] sm:text-[10px] text-stone-500 flex flex-col sm:flex-row items-center justify-between gap-1 text-center sm:text-left">
+          <span>Computer-Generated Admission Letter &bull; Swanford Academy</span>
+          <span>{data.school.address} &bull; swanford99@gmail.com</span>
+        </footer>
       </main>
     </div>
   );

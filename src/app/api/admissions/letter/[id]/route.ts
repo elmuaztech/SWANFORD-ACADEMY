@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ApplicationStatus, ProgrammeSelectionStatus } from '@prisma/client';
 import { readMediaFile } from '@/lib/media/storage';
+import { getSchoolProfile } from '@/lib/academic/school_profile';
 import { VERIFIED_SCHOOL_INFO } from '@/lib/notifications/templates/theme';
 import { toUserFacingError } from '@/lib/ui/error_messages';
 
@@ -53,12 +54,23 @@ export async function GET(
       return NextResponse.json(
         {
           error:
-            'An official admission letter is only issued once an application has been reviewed and accepted by the Admissions Committee.',
+            'An admission letter is only issued once an application has been reviewed and accepted by the Admissions Office.',
           status: application.status,
         },
         { status: 403 }
       );
     }
+
+    // Resolve the active academic session identically to the admin dashboard
+    const activeAcademicSession = await prisma.academicSession.findFirst({
+      where: { isCurrent: true },
+    });
+
+    const academicSessionName =
+      activeAcademicSession?.name ||
+      (application.admissionCycle?.academicSession?.isCurrent
+        ? application.admissionCycle.academicSession.name
+        : 'No Active Academic Session Configured');
 
     // Filter approved programme selections
     const approvedSelections = application.programmeSelections.filter(
@@ -85,6 +97,17 @@ export async function GET(
       }
     }
 
+    const schoolProfile = await getSchoolProfile();
+    const school = {
+      name: schoolProfile.name,
+      motto: schoolProfile.motto,
+      address: schoolProfile.address || VERIFIED_SCHOOL_INFO.address,
+      phonePrimary: schoolProfile.phonePrimary || VERIFIED_SCHOOL_INFO.phone,
+      phoneSecondary: schoolProfile.phoneSecondary || '',
+      email: 'swanford99@gmail.com',
+      website: schoolProfile.website || '',
+    };
+
     const payload = {
       applicationId: application.id,
       applicationNumber: application.applicationNumber,
@@ -102,14 +125,13 @@ export async function GET(
       guardianEmail: application.guardianEmail,
       guardianPhone: application.guardianPhone,
       guardianRelationship: application.guardianRelationship,
-      academicSessionName:
-        application.admissionCycle?.academicSession?.name || '2026/2027 Academic Session',
-      admissionCycleName: application.admissionCycle?.name || '2026 Admissions',
+      academicSessionName,
+      admissionCycleName: application.admissionCycle?.name || 'Admissions',
       programmes,
       status: application.status,
       dateIssued: application.updatedAt.toISOString(),
       profilePhotoDataUri,
-      school: VERIFIED_SCHOOL_INFO,
+      school,
     };
 
     return NextResponse.json(payload);

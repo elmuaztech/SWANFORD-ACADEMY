@@ -18,7 +18,7 @@ describe('Unit Tests: School Profile & Timezone Configuration', () => {
       phonePrimary: '08031234567',
       email: 'info@swanfordacademy.edu.ng',
       timezone: LAGOS_TIMEZONE,
-      primaryColor: '#1E3A8A',
+      primaryColor: '#2c4ba2ff',
       secondaryColor: '#F59E0B',
     };
 

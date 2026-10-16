@@ -635,7 +635,7 @@ async function seedProductionFoundation(prisma2) {
     { key: "school.vision", value: "To be the premier citadel of blended academic excellence and authentic Islamic values in Northern Nigeria.", category: ConfigCategory.GENERAL },
     { key: "school.address", value: "PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE", category: ConfigCategory.GENERAL },
     { key: "school.phone_primary", value: "08030000001", category: ConfigCategory.GENERAL },
-    { key: "school.email", value: "info@swanfordacademy.edu.ng", category: ConfigCategory.GENERAL },
+    { key: "school.email", value: "swanford99@gmail.com", category: ConfigCategory.GENERAL },
     { key: "school.proprietor", value: "Alhaji Muhammad Sani", category: ConfigCategory.GENERAL },
     { key: "school.timezone", value: "Africa/Lagos", category: ConfigCategory.GENERAL },
     { key: "school.primary_color", value: "#1E3A8A", category: ConfigCategory.GENERAL },
