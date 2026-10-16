@@ -33,7 +33,15 @@ function getSecretKey(): string {
   if (!key || key.trim().length === 0) {
     throw new PaystackApiError("Paystack secret key is not configured.", 500, "PAYSTACK_KEY_MISSING");
   }
-  return key.trim();
+  const cleanKey = key.trim();
+  if (process.env.NODE_ENV !== "production" && cleanKey.startsWith("sk_live_")) {
+    throw new PaystackApiError(
+      "Live Paystack secret key is strictly forbidden in non-production environments.",
+      500,
+      "LIVE_CREDENTIALS_FORBIDDEN"
+    );
+  }
+  return cleanKey;
 }
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Response> {

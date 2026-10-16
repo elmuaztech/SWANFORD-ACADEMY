@@ -98,6 +98,46 @@ export const envSchema = z.object({
       });
     }
   }
+
+  // Paystack Gateway Key Separation & Safety Invariant
+  const secretKey = (data.PAYSTACK_SECRET_KEY || "").trim();
+  const publicKey = (data.PAYSTACK_PUBLIC_KEY || "").trim();
+  const isSecretLive = secretKey.startsWith("sk_live_");
+  const isPublicLive = publicKey.startsWith("pk_live_");
+
+  // In development and test environments, strictly prohibit live credentials
+  if (data.NODE_ENV !== "production") {
+    if (isSecretLive) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["PAYSTACK_SECRET_KEY"],
+        message: "Live Paystack secret key (sk_live_...) is strictly prohibited in development/test environment. Use sandbox credentials (sk_test_...).",
+      });
+    }
+    if (isPublicLive) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["PAYSTACK_PUBLIC_KEY"],
+        message: "Live Paystack public key (pk_live_...) is strictly prohibited in development/test environment. Use sandbox credentials (pk_test_...).",
+      });
+    }
+  }
+
+  // Ensure key modes match: never pair a live secret with a test public key or vice-versa
+  if (isSecretLive && !isPublicLive) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["PAYSTACK_PUBLIC_KEY"],
+      message: "Mismatched Paystack keys: PAYSTACK_SECRET_KEY is live (sk_live_) but PAYSTACK_PUBLIC_KEY is not live (pk_live_).",
+    });
+  }
+  if (isPublicLive && !isSecretLive) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["PAYSTACK_SECRET_KEY"],
+      message: "Mismatched Paystack keys: PAYSTACK_PUBLIC_KEY is live (pk_live_) but PAYSTACK_SECRET_KEY is not live (sk_live_).",
+    });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;
