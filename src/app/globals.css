@@ -101,15 +101,23 @@ h1, h2, h3, h4, h5, h6,
   color: #5B0612;
 }
 
-/* Ensure all titles and headings on light backgrounds adopt institutional maroon instead of black/stone/slate */
-h1:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not(.hero-school-title):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
-h2:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
-h3:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
-h4:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
-h5:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
-h6:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
-[role="heading"]:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]) {
-  color: #5B0612 !important;
+/* Institutional Swanford Deep Maroon for headings, titles, and brand elements on light backgrounds */
+h1, h2, h3, h4, h5, h6,
+[role="heading"],
+.brand-title,
+.card-title {
+  color: #5B0612;
+}
+
+/* Ensure headings on light backgrounds adopt institutional maroon, but NEVER override headings on dark or maroon containers */
+:not([class*="bg-[#6B0B1A]"]):not([class*="bg-[#6b0b1a]"]):not([class*="bg-[#5B0612]"]):not([class*="bg-[#800020]"]):not([class*="bg-[#6B001A]"]):not([class*="bg-[#6b001a]"]):not([class*="bg-[#4A050F]"]):not([class*="bg-[#3B030A]"]):not([class*="bg-[#1C1A1A]"]):not([class*="bg-stone-800"]):not([class*="bg-stone-900"]):not([class*="bg-stone-950"]):not([class*="bg-slate-900"]):not(.text-white):not([class*="text-white"]) > h1:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not(.hero-school-title):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+:not([class*="bg-[#6B0B1A]"]):not([class*="bg-[#6b0b1a]"]):not([class*="bg-[#5B0612]"]):not([class*="bg-[#800020]"]):not([class*="bg-[#6B001A]"]):not([class*="bg-[#6b001a]"]):not([class*="bg-[#4A050F]"]):not([class*="bg-[#3B030A]"]):not([class*="bg-[#1C1A1A]"]):not([class*="bg-stone-800"]):not([class*="bg-stone-900"]):not([class*="bg-stone-950"]):not([class*="bg-slate-900"]):not(.text-white):not([class*="text-white"]) > h2:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+:not([class*="bg-[#6B0B1A]"]):not([class*="bg-[#6b0b1a]"]):not([class*="bg-[#5B0612]"]):not([class*="bg-[#800020]"]):not([class*="bg-[#6B001A]"]):not([class*="bg-[#6b001a]"]):not([class*="bg-[#4A050F]"]):not([class*="bg-[#3B030A]"]):not([class*="bg-[#1C1A1A]"]):not([class*="bg-stone-800"]):not([class*="bg-stone-900"]):not([class*="bg-stone-950"]):not([class*="bg-slate-900"]):not(.text-white):not([class*="text-white"]) > h3:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+:not([class*="bg-[#6B0B1A]"]):not([class*="bg-[#6b0b1a]"]):not([class*="bg-[#5B0612]"]):not([class*="bg-[#800020]"]):not([class*="bg-[#6B001A]"]):not([class*="bg-[#6b001a]"]):not([class*="bg-[#4A050F]"]):not([class*="bg-[#3B030A]"]):not([class*="bg-[#1C1A1A]"]):not([class*="bg-stone-800"]):not([class*="bg-stone-900"]):not([class*="bg-stone-950"]):not([class*="bg-slate-900"]):not(.text-white):not([class*="text-white"]) > h4:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+:not([class*="bg-[#6B0B1A]"]):not([class*="bg-[#6b0b1a]"]):not([class*="bg-[#5B0612]"]):not([class*="bg-[#800020]"]):not([class*="bg-[#6B001A]"]):not([class*="bg-[#6b001a]"]):not([class*="bg-[#4A050F]"]):not([class*="bg-[#3B030A]"]):not([class*="bg-[#1C1A1A]"]):not([class*="bg-stone-800"]):not([class*="bg-stone-900"]):not([class*="bg-stone-950"]):not([class*="bg-slate-900"]):not(.text-white):not([class*="text-white"]) > h5:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+:not([class*="bg-[#6B0B1A]"]):not([class*="bg-[#6b0b1a]"]):not([class*="bg-[#5B0612]"]):not([class*="bg-[#800020]"]):not([class*="bg-[#6B001A]"]):not([class*="bg-[#6b001a]"]):not([class*="bg-[#4A050F]"]):not([class*="bg-[#3B030A]"]):not([class*="bg-[#1C1A1A]"]):not([class*="bg-stone-800"]):not([class*="bg-stone-900"]):not([class*="bg-stone-950"]):not([class*="bg-slate-900"]):not(.text-white):not([class*="text-white"]) > h6:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-gold"]):not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]),
+:not([class*="bg-[#6B0B1A]"]):not([class*="bg-[#6b0b1a]"]):not([class*="bg-[#5B0612]"]):not([class*="bg-[#800020]"]):not([class*="bg-[#6B001A]"]):not([class*="bg-[#6b001a]"]):not([class*="bg-[#4A050F]"]):not([class*="bg-[#3B030A]"]):not([class*="bg-[#1C1A1A]"]):not([class*="bg-stone-800"]):not([class*="bg-stone-900"]):not([class*="bg-stone-950"]):not([class*="bg-slate-900"]):not(.text-white):not([class*="text-white"]) > [role="heading"]:not(.text-white):not([class*="text-white"]):not([class*="text-[#FFFFFF]"]):not([class*="text-[#ffffff]"]) {
+  color: #5B0612;
 }
 
 /* Explicit rule ensuring white text on hero elements stays white */
@@ -125,59 +133,139 @@ h1[class*="text-[#ffffff]"] {
 /* ALL buttons and links with primary or maroon backgrounds MUST have white text */
 button[class*="bg-[#800020]"],
 button[class*="bg-[#5B0612]"],
+button[class*="bg-[#6B0B1A]"],
+button[class*="bg-[#6b0b1a]"],
 button[class*="bg-[#6B001A]"],
 button[class*="bg-[#6b001a]"],
 button[class*="bg-[#4A050F]"],
 button[class*="bg-[#3B030A]"],
 a[class*="bg-[#800020]"],
 a[class*="bg-[#5B0612]"],
+a[class*="bg-[#6B0B1A]"],
+a[class*="bg-[#6b0b1a]"],
 a[class*="bg-[#6B001A]"],
 a[class*="bg-[#6b001a]"],
 a[class*="bg-[#4A050F]"],
 a[class*="bg-[#3B030A]"],
-button:is([class*="bg-[#800020]"], [class*="bg-[#5B0612]"], [class*="bg-[#6b001a]"]),
-a:is([class*="bg-[#800020]"], [class*="bg-[#5B0612]"], [class*="bg-[#6b001a]"]) {
+button:is([class*="bg-[#800020]"], [class*="bg-[#5B0612]"], [class*="bg-[#6B0B1A]"], [class*="bg-[#6b001a]"]),
+a:is([class*="bg-[#800020]"], [class*="bg-[#5B0612]"], [class*="bg-[#6B0B1A]"], [class*="bg-[#6b001a]"]) {
   color: #FFFFFF !important;
 }
 
-/* Maroon cards, sections, banners, callouts MUST have crisp white or cream text */
+/* Maroon & Dark cards, sections, headers, callouts MUST have crisp white text */
+[class*="bg-[#6B0B1A]"],
+[class*="bg-[#6b0b1a]"],
 [class*="bg-[#5B0612]"],
 [class*="bg-[#800020]"],
+[class*="bg-[#6B001A]"],
+[class*="bg-[#6b001a]"],
+[class*="bg-[#4A050F]"],
 [class*="bg-[#3B030A]"],
 [class*="bg-[#45050E]"],
 [class*="bg-[#2F0208]"],
 [class*="bg-[#42040D]"],
 [class*="bg-[#4A0E17]"],
+[class*="bg-[#1C1A1A]"],
+[class*="bg-[#1c1a1a]"],
+[class*="bg-stone-800"],
+[class*="bg-stone-900"],
+[class*="bg-stone-950"],
+[class*="bg-slate-900"],
 [class*="from-[#5B0612]"],
 [class*="from-[#800020]"],
 [class*="from-[#4A0E17]"] {
   color: #FAF7F2;
 }
 
-[class*="bg-[#5B0612]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="bg-[#800020]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="bg-[#3B030A]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="bg-[#45050E]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="bg-[#2F0208]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="bg-[#42040D]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="bg-[#4A0E17]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="from-[#5B0612]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="from-[#800020]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong),
-[class*="from-[#4A0E17]"] :is(h1, h2, h3, h4, h5, h6, [role="heading"], p, span:not([class*="text-[#D4AF37]"]):not([class*="text-[#F3D884]"]):not([class*="text-[#F5D061]"]):not([class*="text-amber"]), a:not([class*="bg-"]), strong) {
+:is(
+  [class*="bg-[#6B0B1A]"],
+  [class*="bg-[#6b0b1a]"],
+  [class*="bg-[#5B0612]"],
+  [class*="bg-[#800020]"],
+  [class*="bg-[#6B001A]"],
+  [class*="bg-[#6b001a]"],
+  [class*="bg-[#4A050F]"],
+  [class*="bg-[#3B030A]"],
+  [class*="bg-[#45050E]"],
+  [class*="bg-[#2F0208]"],
+  [class*="bg-[#42040D]"],
+  [class*="bg-[#4A0E17]"],
+  [class*="bg-[#1C1A1A]"],
+  [class*="bg-[#1c1a1a]"],
+  [class*="bg-stone-800"],
+  [class*="bg-stone-900"],
+  [class*="bg-stone-950"],
+  [class*="bg-slate-900"],
+  [class*="from-[#5B0612]"],
+  [class*="from-[#800020]"],
+  [class*="from-[#4A0E17]"]
+) :is(
+  h1, h2, h3, h4, h5, h6, [role="heading"], .brand-title, .card-title
+) {
   color: #FFFFFF !important;
+}
+
+:is(
+  [class*="bg-[#6B0B1A]"],
+  [class*="bg-[#6b0b1a]"],
+  [class*="bg-[#5B0612]"],
+  [class*="bg-[#800020]"],
+  [class*="bg-[#6B001A]"],
+  [class*="bg-[#6b001a]"],
+  [class*="bg-[#4A050F]"],
+  [class*="bg-[#3B030A]"],
+  [class*="bg-[#45050E]"],
+  [class*="bg-[#2F0208]"],
+  [class*="bg-[#42040D]"],
+  [class*="bg-[#4A0E17]"],
+  [class*="bg-[#1C1A1A]"],
+  [class*="bg-[#1c1a1a]"],
+  [class*="bg-stone-800"],
+  [class*="bg-stone-900"],
+  [class*="bg-stone-950"],
+  [class*="bg-slate-900"],
+  [class*="from-[#5B0612]"],
+  [class*="from-[#800020]"],
+  [class*="from-[#4A0E17]"]
+) :is(
+  p:not([class*="text-"]):not([class*="bg-"]),
+  span:not([class*="text-"]):not([class*="bg-"]),
+  strong:not([class*="text-"])
+) {
+  color: #FFFFFF !important;
+}
+
+/* Ensure subtitles with light rose/stone tints on maroon/dark remain beautifully readable and high-contrast */
+[class*="bg-[#6B0B1A]"] [class*="text-rose-200"],
+[class*="bg-[#6B0B1A]"] [class*="text-rose-100"],
+[class*="bg-[#5B0612]"] [class*="text-rose-200"],
+[class*="bg-[#5B0612]"] [class*="text-rose-100"],
+[class*="bg-[#800020]"] [class*="text-rose-200"],
+[class*="bg-[#800020]"] [class*="text-rose-100"] {
+  color: #FFE4E6 !important; /* Rose-100 high contrast (WCAG AA compliant) */
+}
+
+[class*="bg-[#1C1A1A]"] [class*="text-stone-300"],
+[class*="bg-[#1C1A1A]"] [class*="text-stone-200"],
+[class*="bg-stone-900"] [class*="text-stone-300"],
+[class*="bg-stone-900"] [class*="text-stone-200"] {
+  color: #E7E5E4 !important; /* Stone-200 high contrast (WCAG AA compliant) */
 }
 
 /* Preserving high-contrast gold text on maroon cards */
 [class*="bg-[#5B0612]"] [class*="text-[#D4AF37]"],
 [class*="bg-[#800020]"] [class*="text-[#D4AF37]"],
+[class*="bg-[#6B0B1A]"] [class*="text-[#D4AF37]"],
 [class*="bg-[#3B030A]"] [class*="text-[#D4AF37]"],
 [class*="bg-[#45050E]"] [class*="text-[#D4AF37]"],
 [class*="bg-[#5B0612]"] [class*="text-[#F3D884]"],
 [class*="bg-[#800020]"] [class*="text-[#F3D884]"],
+[class*="bg-[#6B0B1A]"] [class*="text-[#F3D884]"],
 [class*="bg-[#3B030A]"] [class*="text-[#F3D884]"],
 [class*="bg-[#45050E]"] [class*="text-[#F3D884]"],
 [class*="bg-[#5B0612]"] [class*="text-[#F5D061]"],
 [class*="bg-[#800020]"] [class*="text-[#F5D061]"],
+[class*="bg-[#6B0B1A]"] [class*="text-[#F5D061]"],
 [class*="bg-[#3B030A]"] [class*="text-[#F5D061]"],
 [class*="bg-[#45050E]"] [class*="text-[#F5D061]"] {
   color: #D4AF37 !important;
@@ -191,6 +279,7 @@ footer .card-title,
 [class*="bg-[#1C1A1A]"] h1, [class*="bg-[#1C1A1A]"] h2, [class*="bg-[#1C1A1A]"] h3, [class*="bg-[#1C1A1A]"] h4,
 section[class*="bg-[#5B0612]"] h1, section[class*="bg-[#5B0612]"] h2, section[class*="bg-[#5B0612]"] h3, section[class*="bg-[#5B0612]"] h4,
 section[class*="bg-[#3B030A]"] h1, section[class*="bg-[#3B030A]"] h2, section[class*="bg-[#3B030A]"] h3, section[class*="bg-[#3B030A]"] h4,
+[class*="bg-[#6B0B1A]"] h1, [class*="bg-[#6B0B1A]"] h2, [class*="bg-[#6B0B1A]"] h3, [class*="bg-[#6B0B1A]"] h4,
 [class*="bg-[#5B0612]"] h1, [class*="bg-[#5B0612]"] h2, [class*="bg-[#5B0612]"] h3, [class*="bg-[#5B0612]"] h4,
 [class*="bg-[#3B030A]"] h1, [class*="bg-[#3B030A]"] h2, [class*="bg-[#3B030A]"] h3, [class*="bg-[#3B030A]"] h4,
 [class*="bg-[#2F0208]"] h1, [class*="bg-[#2F0208]"] h2, [class*="bg-[#2F0208]"] h3, [class*="bg-[#2F0208]"] h4,

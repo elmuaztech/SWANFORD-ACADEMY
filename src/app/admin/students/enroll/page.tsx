@@ -332,16 +332,16 @@ export default function AdminStudentEnrollPage() {
         <form onSubmit={handleProceedToReview} className="space-y-6">
           {/* SECTION 1: STUDENT'S DETAILS (Matching Image 2 Section 1) */}
           <Card className="border-[#EADBDA] overflow-hidden">
-            <div className="bg-[#6B0B1A] text-white px-5 py-3 flex items-center justify-between">
+            <div className="bg-[#6B0B1A] text-white px-5 py-3.5 flex items-center justify-between">
               <div>
-                <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide">
+                <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-white">
                   STUDENT&apos;S DETAILS
                 </h2>
-                <p className="text-[11px] text-rose-200">
+                <p className="text-xs text-rose-100 font-medium mt-0.5">
                   Section 1: Pupil legal particulars and identification
                 </p>
               </div>
-              <Badge variant="neutral" size="sm" className="bg-rose-900/60 text-white border-rose-700">
+              <Badge variant="outline-white" size="sm" className="bg-rose-950/60 text-white border-rose-300/40 font-bold">
                 Official Form Standard
               </Badge>
             </div>
@@ -494,12 +494,12 @@ export default function AdminStudentEnrollPage() {
 
           {/* SECTION 2: GUARDIAN'S DETAILS (Matching Image 2 Section 2) */}
           <Card className="border-[#EADBDA] overflow-hidden">
-            <div className="bg-[#6B0B1A] text-white px-5 py-3 flex items-center justify-between">
+            <div className="bg-[#6B0B1A] text-white px-5 py-3.5 flex items-center justify-between">
               <div>
-                <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide">
+                <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-white">
                   GUARDIAN&apos;S DETAILS
                 </h2>
-                <p className="text-[11px] text-rose-200">
+                <p className="text-xs text-rose-100 font-medium mt-0.5">
                   Section 2: Primary contact and parental credentials
                 </p>
               </div>
@@ -587,12 +587,12 @@ export default function AdminStudentEnrollPage() {
 
           {/* SECTION 3: FOR OFFICE USE ONLY / ACADEMIC PLACEMENT (Matching Image 2 Section 3) */}
           <Card className="border-[#EADBDA] overflow-hidden">
-            <div className="bg-[#6B0B1A] text-white px-5 py-3 flex items-center justify-between">
+            <div className="bg-[#6B0B1A] text-white px-5 py-3.5 flex items-center justify-between">
               <div>
-                <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide">
+                <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-white">
                   FOR OFFICE USE ONLY &bull; ACADEMIC PLACEMENT
                 </h2>
-                <p className="text-[11px] text-rose-200">
+                <p className="text-xs text-rose-100 font-medium mt-0.5">
                   Section 3: Academic session, main division, and simultaneous tracks
                 </p>
               </div>

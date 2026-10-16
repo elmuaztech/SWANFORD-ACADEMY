@@ -173,35 +173,33 @@ describe('Stage 8 — Integration: Finance Authorization Boundaries & Scopes', (
     expect(summary.totalInvoicedKobo).toBeGreaterThan(BigInt(0));
   });
 
-  it('allows Admin to view invoices, but DENIES financial reports and modifying ledger', async () => {
+  it('allows Admin to view invoices, fee structures, and reports, but DENIES modifying ledger and recording payments', async () => {
     // Admin can view invoice
     const inv = await getInvoiceById(adminUser, invoiceId);
     expect(inv.id).toBe(invoiceId);
 
-    // Admin CANNOT view financial report (reserved for ACCOUNTANT & SUPER_ADMIN)
-    await expect(
-      getFeeCollectionSummary(adminUser, { academicSessionId })
-    ).rejects.toThrow(/Access denied|Missing required permission/i);
+    // Admin can view fee collection summary reports (enabled for admin oversight)
+    const summary = await getFeeCollectionSummary(adminUser, { academicSessionId });
+    expect(summary).toBeDefined();
 
-    // Admin CANNOT create fee structures
-    await expect(
-      createFeeStructure(adminUser, {
-        academicSessionId,
-        academicTermId: termId,
-        programmeId: primaryProgId,
-        name: 'Admin Structure',
-        feeItems: [{ name: 'Tuition', amountKobo: 5000000 }],
-      })
-    ).rejects.toThrow(/Access denied/i);
+    // Admin can manage fee structures
+    const structure = await createFeeStructure(adminUser, {
+      academicSessionId,
+      academicTermId: termId,
+      programmeId: primaryProgId,
+      name: 'Admin Structure',
+      feeItems: [{ name: 'Tuition', amountKobo: 5000000 }],
+    });
+    expect(structure.id).toBeDefined();
 
-    // Admin CANNOT record payments
+    // Admin CANNOT record payments (reserved for ACCOUNTANT & SUPER_ADMIN)
     await expect(
       recordManualPayment(adminUser, {
         invoiceId,
         amountKobo: 1000000,
         paymentMethod: PaymentMethod.CASH,
       })
-    ).rejects.toThrow(/Access denied/i);
+    ).rejects.toThrow(/Access denied|Missing required permission/i);
   });
 
   it('DENIES Teacher from all financial operations', async () => {

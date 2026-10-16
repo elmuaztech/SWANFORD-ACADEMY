@@ -63,7 +63,7 @@ function AdmissionContent() {
   const [step, setStep] = useState<number>(1);
   const [cycles, setCycles] = useState<AdmissionCycleOption[]>([]);
   const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);
-  const [formFeeKobo, setFormFeeKobo] = useState<string>('50000');
+  const [formFeeKobo, setFormFeeKobo] = useState<string>('500000');
   const [isOpen, setIsOpen] = useState<boolean>(true);
   const [activeSessionName, setActiveSessionName] = useState<string>('');
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -592,17 +592,17 @@ function AdmissionContent() {
                 {/* Option 1: Pay Online Now */}
                 <div className="md:col-span-7">
                   <Card className="bg-white border-[#EADBDA] shadow-sm h-full flex flex-col">
-                    <div className="bg-[#6B0B1A] text-white px-5 py-3 rounded-t-xl flex items-center justify-between">
+                    <div className="bg-[#6B0B1A] text-white px-5 py-3.5 rounded-t-xl flex items-center justify-between">
                       <div>
-                        <h2 className="text-sm font-extrabold uppercase tracking-wide">
+                        <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-white">
                           Step 1: Obtain Form (Pay Online)
                         </h2>
-                        <p className="text-[11px] text-rose-200">
-                          Instant card, transfer, or USSD via Paystack
+                        <p className="text-xs text-rose-100 font-medium mt-0.5">
+                          Instant card, bank transfer, or USSD via Paystack
                         </p>
                       </div>
-                      <Badge variant="neutral" size="sm" className="bg-rose-900/60 text-white border-rose-700">
-                        Official Fee
+                      <Badge variant="outline-white" size="sm" className="font-bold border-rose-300/40 bg-rose-950/50 text-white shadow-2xs">
+                        Official Fee: {formatNaira(BigInt(formFeeKobo || 0))}
                       </Badge>
                     </div>
 
@@ -683,28 +683,28 @@ function AdmissionContent() {
                 {/* Option 2: Already Paid / Verify Reference */}
                 <div className="md:col-span-5">
                   <Card className="bg-white border-[#EADBDA] shadow-sm h-full flex flex-col">
-                    <div className="bg-[#1C1A1A] text-white px-5 py-3 rounded-t-xl flex items-center justify-between">
+                    <div className="bg-[#1C1A1A] text-white px-5 py-3.5 rounded-t-xl flex items-center justify-between border-b border-stone-800">
                       <div>
-                        <h2 className="text-sm font-extrabold uppercase tracking-wide">
+                        <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-white">
                           Already Paid?
                         </h2>
-                        <p className="text-[11px] text-stone-300">
+                        <p className="text-xs text-stone-200 font-medium mt-0.5">
                           Verify receipt or transaction reference
                         </p>
                       </div>
-                      <Badge variant="neutral" size="sm" className="bg-stone-800 text-stone-300 border-stone-700">
-                        Unlock
+                      <Badge variant="dark" size="sm" className="bg-stone-800 text-stone-100 border-stone-600 font-semibold shadow-2xs">
+                        Unlock Form
                       </Badge>
                     </div>
 
                     <CardContent className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                      <div className="space-y-3 text-xs text-stone-600 leading-relaxed">
+                      <div className="space-y-3 text-xs text-stone-700 leading-relaxed">
                         <p>
                           If you already completed your application fee payment via Paystack or direct bank transfer, enter your transaction reference below to verify and unlock the admission form immediately.
                         </p>
                         <div className="bg-[#FAF7F2] p-3 rounded-lg border border-[#EADBDA] space-y-1">
-                          <span className="font-bold text-stone-900 block text-[11px]">Note for Applicants:</span>
-                          <span className="text-[11px]">
+                          <span className="font-bold text-[#5B0612] block text-[11px]">Note for Applicants:</span>
+                          <span className="text-[11px] text-stone-700">
                             Application form fields remain locked until payment verification is confirmed by the gateway.
                           </span>
                         </div>
@@ -723,17 +723,17 @@ function AdmissionContent() {
 
                         <Button
                           type="submit"
-                          variant="outline"
+                          variant="primary"
                           size="md"
                           disabled={verifyingPayment}
-                          className="w-full border-[#6B0B1A] text-[#6B0B1A] hover:bg-[#FDF2F4] font-bold py-2.5"
+                          className="w-full bg-[#800020] hover:bg-[#5B0612] text-white font-bold py-3 shadow-xs"
                         >
                           {verifyingPayment ? 'Verifying Reference...' : 'Verify & Unlock Application Form'}
                         </Button>
                       </form>
 
                       <div className="pt-2 text-center">
-                        <Link href="/admissions/status" className="text-xs font-semibold text-[#6B0B1A] hover:underline">
+                        <Link href="/admissions/status" className="text-xs font-semibold text-[#800020] hover:text-[#5B0612] hover:underline">
                           Already submitted? Check Application Status
                         </Link>
                       </div>
@@ -811,16 +811,16 @@ function AdmissionContent() {
               {/* STEP 1: STUDENT'S DETAILS */}
               {step === 1 && (
                 <Card className="bg-white border-[#EADBDA] shadow-xs">
-                  <div className="bg-[#6B0B1A] text-white px-5 py-3 rounded-t-xl flex items-center justify-between">
+                  <div className="bg-[#6B0B1A] text-white px-5 py-3.5 rounded-t-xl flex items-center justify-between">
                     <div>
-                      <h2 className="text-base font-extrabold uppercase tracking-wide">
+                      <h2 className="text-base font-extrabold uppercase tracking-wide text-white">
                         STUDENT&apos;S DETAILS
                       </h2>
-                      <p className="text-[11px] text-rose-200">
+                      <p className="text-xs text-rose-100 font-medium mt-0.5">
                         Section 1 of the official admission application form
                       </p>
                     </div>
-                    <Badge variant="neutral" size="sm" className="bg-rose-900/60 text-white border-rose-700">
+                    <Badge variant="outline-white" size="sm" className="bg-rose-950/60 text-white border-rose-300/40 font-bold">
                       Step 1 of 3
                     </Badge>
                   </div>
@@ -1031,16 +1031,16 @@ function AdmissionContent() {
               {/* STEP 2: GUARDIAN'S DETAILS */}
               {step === 2 && (
                 <Card className="bg-white border-[#EADBDA] shadow-xs">
-                  <div className="bg-[#6B0B1A] text-white px-5 py-3 rounded-t-xl flex items-center justify-between">
+                  <div className="bg-[#6B0B1A] text-white px-5 py-3.5 rounded-t-xl flex items-center justify-between">
                     <div>
-                      <h2 className="text-base font-extrabold uppercase tracking-wide">
+                      <h2 className="text-base font-extrabold uppercase tracking-wide text-white">
                         GUARDIAN&apos;S DETAILS
                       </h2>
-                      <p className="text-[11px] text-rose-200">
+                      <p className="text-xs text-rose-100 font-medium mt-0.5">
                         Section 2 of the official admission application form
                       </p>
                     </div>
-                    <Badge variant="neutral" size="sm" className="bg-rose-900/60 text-white border-rose-700">
+                    <Badge variant="outline-white" size="sm" className="bg-rose-950/60 text-white border-rose-300/40 font-bold">
                       Step 2 of 3
                     </Badge>
                   </div>

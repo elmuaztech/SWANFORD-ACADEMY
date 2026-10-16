@@ -356,16 +356,16 @@ export function FeeConfigurationSection() {
     <div className="space-y-6">
       {/* 1. APPLICATION FORM FEE SECTION */}
       <Card className="bg-white border-[#EADBDA] shadow-xs">
-        <div className="bg-[#6B0B1A] text-white px-5 py-3 rounded-t-xl flex items-center justify-between">
+        <div className="bg-[#6B0B1A] text-white px-5 py-3.5 rounded-t-xl flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-extrabold uppercase tracking-wide">
+            <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-white">
               Admission Application Form Fee
             </h2>
-            <p className="text-[11px] text-rose-200">
+            <p className="text-xs text-rose-100 font-medium mt-0.5">
               Official processing fee charged before prospective students access the application form
             </p>
           </div>
-          <Badge variant="neutral" size="sm" className="bg-rose-900/60 text-white border-rose-700">
+          <Badge variant="outline-white" size="sm" className="bg-rose-950/60 text-white border-rose-300/40 font-bold">
             System Config
           </Badge>
         </div>

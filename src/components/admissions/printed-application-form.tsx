@@ -177,8 +177,8 @@ export function PrintedApplicationForm({
         {/* SECTION 1: STUDENT'S DETAILS */}
         <div className="mt-4 space-y-2">
           {/* Section Ribbon Header */}
-          <div className="bg-[#6B0B1A] text-white px-3 py-1 rounded-t-sm flex items-center justify-between">
-            <h3 className="text-xs sm:text-sm font-extrabold tracking-wide uppercase">
+          <div className="bg-[#6B0B1A] text-white px-3 py-1.5 rounded-t-sm flex items-center justify-between">
+            <h3 className="text-xs sm:text-sm font-extrabold tracking-wide uppercase text-white">
               STUDENT&apos;S DETAILS
             </h3>
             {data.applicationNumber && (
@@ -294,8 +294,8 @@ export function PrintedApplicationForm({
         {/* SECTION 2: GUARDIAN'S DETAILS */}
         <div className="mt-4 space-y-2">
           {/* Section Ribbon Header */}
-          <div className="bg-[#6B0B1A] text-white px-3 py-1 rounded-t-sm flex items-center justify-between">
-            <h3 className="text-xs sm:text-sm font-extrabold tracking-wide uppercase">
+          <div className="bg-[#6B0B1A] text-white px-3 py-1.5 rounded-t-sm flex items-center justify-between">
+            <h3 className="text-xs sm:text-sm font-extrabold tracking-wide uppercase text-white">
               GUARDIAN&apos;S DETAILS
             </h3>
           </div>
@@ -380,8 +380,8 @@ export function PrintedApplicationForm({
         {/* SECTION 3: FOR OFFICE USE ONLY */}
         <div className="mt-4 space-y-2">
           {/* Section Ribbon Header */}
-          <div className="bg-[#6B0B1A] text-white px-3 py-1 rounded-t-sm flex items-center justify-between">
-            <h3 className="text-xs sm:text-sm font-extrabold tracking-wide uppercase">
+          <div className="bg-[#6B0B1A] text-white px-3 py-1.5 rounded-t-sm flex items-center justify-between">
+            <h3 className="text-xs sm:text-sm font-extrabold tracking-wide uppercase text-white">
               FOR OFFICE USE ONLY
             </h3>
           </div>
