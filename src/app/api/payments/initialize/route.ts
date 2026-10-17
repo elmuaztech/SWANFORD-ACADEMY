@@ -7,6 +7,7 @@ import { PaymentTargetType } from "@prisma/client";
 import { toUserFacingError } from "@/lib/ui/error_messages";
 import { getEnv } from "@/lib/env";
 import { isPaymentMaintenanceActive } from "@/lib/security/payment_maintenance";
+import { checkRateLimit, getClientIp } from "@/lib/security/rate_limiter";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,19 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    const rateLimit = checkRateLimit(`pay_init:${ip}`, {
+      windowMs: 60_000,
+      maxRequests: 20,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many payment initialization requests. Please wait a moment." },
+        { status: 429 }
+      );
+    }
+
     if (isPaymentMaintenanceActive()) {
       return NextResponse.json(
         {

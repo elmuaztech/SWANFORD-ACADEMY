@@ -377,16 +377,15 @@ export async function seedProductionFoundation(prisma: PrismaClient) {
   // Production seeds must NEVER purge existing user accounts, roles, profiles, or relationships.
   console.log("-> Ensuring production foundation without altering existing user accounts...");
 
-  // 9. Create Exactly ONE Super Admin Account (swanford99@gmail.com / admin123)
-  // Bcrypt hash with 12 rounds for 'admin123'
-  const superAdminPasswordHash = "$2b$12$N2wHzTdfQrwu6fUQJTwrz.bpZjz/mMPpflEBrpX6iKGTETKuz9Spi";
+  // 9. Create Exactly ONE Super Admin Account (swanford99@gmail.com / swanfordofficial2026)
+  // Bcrypt hash with 12 rounds for 'swanfordofficial2026'
+  const superAdminPasswordHash = "$2b$12$XxPdqumCI/7Yqe3UK6cH8uNcxpTs3BulLCIOOobjIDhFld95zbYYe";
   const superAdminRoleId = rolesMap.get(RoleCode.SUPER_ADMIN)!;
   const adminRoleId = rolesMap.get(RoleCode.ADMIN)!;
 
   const superAdminUser = await prisma.user.upsert({
     where: { email: "swanford99@gmail.com" },
     update: {
-      passwordHash: superAdminPasswordHash,
       status: "ACTIVE",
     },
     create: {

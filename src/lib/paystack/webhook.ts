@@ -34,24 +34,48 @@ export function verifyPaystackSignature(
   }
 
   const env = getEnv();
-  const secretKey = secretKeyOverride || process.env.PAYSTACK_WEBHOOK_SECRET || env.PAYSTACK_SECRET_KEY;
-  if (!secretKey) {
+  const candidateKeys: string[] = [];
+
+  if (secretKeyOverride && secretKeyOverride.trim()) {
+    candidateKeys.push(secretKeyOverride.trim());
+  } else {
+    // Paystack officially signs webhooks using PAYSTACK_SECRET_KEY
+    if (env.PAYSTACK_SECRET_KEY && env.PAYSTACK_SECRET_KEY.trim()) {
+      candidateKeys.push(env.PAYSTACK_SECRET_KEY.trim());
+    }
+    // Also support custom webhook secret if configured
+    if (process.env.PAYSTACK_WEBHOOK_SECRET && process.env.PAYSTACK_WEBHOOK_SECRET.trim()) {
+      const customSecret = process.env.PAYSTACK_WEBHOOK_SECRET.trim();
+      if (!candidateKeys.includes(customSecret)) {
+        candidateKeys.push(customSecret);
+      }
+    }
+  }
+
+  if (candidateKeys.length === 0) {
     return false;
   }
 
-  const expectedSignature = crypto
-    .createHmac("sha512", secretKey.trim())
-    .update(rawBody)
-    .digest("hex");
-
-  const providedBuf = Buffer.from(signatureHeader.trim().toLowerCase(), "hex");
-  const expectedBuf = Buffer.from(expectedSignature.toLowerCase(), "hex");
-
-  if (providedBuf.length !== expectedBuf.length) {
+  const providedSignature = signatureHeader.trim().toLowerCase();
+  if (!/^[0-9a-f]{128}$/i.test(providedSignature)) {
     return false;
   }
+  const providedBuf = Buffer.from(providedSignature, "hex");
 
-  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+  for (const key of candidateKeys) {
+    const expectedSignature = crypto
+      .createHmac("sha512", key)
+      .update(rawBody)
+      .digest("hex");
+
+    const expectedBuf = Buffer.from(expectedSignature.toLowerCase(), "hex");
+
+    if (providedBuf.length === expectedBuf.length && crypto.timingSafeEqual(providedBuf, expectedBuf)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export interface IngestWebhookResult {

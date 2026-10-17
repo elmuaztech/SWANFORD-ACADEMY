@@ -754,13 +754,12 @@ async function seedProductionFoundation(prisma2) {
     }
   });
   console.log("-> Ensuring production foundation without altering existing user accounts...");
-  const superAdminPasswordHash = "$2b$12$N2wHzTdfQrwu6fUQJTwrz.bpZjz/mMPpflEBrpX6iKGTETKuz9Spi";
+  const superAdminPasswordHash = "$2b$12$XxPdqumCI/7Yqe3UK6cH8uNcxpTs3BulLCIOOobjIDhFld95zbYYe";
   const superAdminRoleId = rolesMap.get(RoleCode2.SUPER_ADMIN);
   const adminRoleId = rolesMap.get(RoleCode2.ADMIN);
   const superAdminUser = await prisma2.user.upsert({
     where: { email: "swanford99@gmail.com" },
     update: {
-      passwordHash: superAdminPasswordHash,
       status: "ACTIVE",
     },
     create: {
@@ -801,7 +800,7 @@ async function seedProductionFoundation(prisma2) {
       }
     });
   }
-  console.log("\u2714 Clean superadmin account created: swanford99@gmail.com (Role: SUPER_ADMIN, Password: admin123)");
+  console.log("\u2714 Clean superadmin account created: swanford99@gmail.com (Role: SUPER_ADMIN, Password: swanfordofficial2026)");
   console.log("\u2714 Zero mock accounts, zero extra emails. Single Super Admin created.");
 }
 
