@@ -65,11 +65,7 @@ export default function FeesPage() {
         setData({
           session: json.session || null,
           formFeeKobo: json.formFeeKobo || '500000',
-          bankDetails: json.bankDetails || {
-            bankName: 'Jaiz Bank',
-            accountNumber: '0012031162',
-            accountName: 'Swanford Academy',
-          },
+          bankDetails: json.bankDetails || undefined,
           feeStructures: json.feeStructures || [],
         });
       } catch (err: unknown) {
@@ -82,42 +78,7 @@ export default function FeesPage() {
     loadFees();
   }, []);
 
-  const APPROVED_DEFAULT_STRUCTURES: FeeStructurePublic[] = [
-    {
-      id: "approved-primary-1st-term-boys",
-      name: "Primary 1st Term Boys Admission Fee",
-      programmeName: "Primary",
-      programmeCode: "PRIMARY",
-      termName: "First Term",
-      termCode: "FIRST",
-      applicableGender: "MALE",
-      isAdmissionFee: true,
-      totalAmountKobo: "11000000",
-      items: [
-        { name: "Tuition & Stationery", amountKobo: "7500000" },
-        { name: "Uniform, Cardigan & 2 Polos", amountKobo: "2500000" },
-        { name: "Medical & Exam Fees", amountKobo: "1000000" },
-      ],
-    },
-    {
-      id: "approved-tahfeez-1st-term",
-      name: "Tahfeez 1st Term Admission Fee",
-      programmeName: "Tahfeez (Standalone Programme)",
-      programmeCode: "TAHFEEZ",
-      termName: "First Term",
-      termCode: "FIRST",
-      applicableGender: "ALL",
-      isAdmissionFee: true,
-      totalAmountKobo: "1800000",
-      items: [
-        { name: "Tahfeez Tuition", amountKobo: "1000000" },
-        { name: "Uniform & Books", amountKobo: "800000" },
-      ],
-    },
-  ];
-
-  const rawStructures = data?.feeStructures || [];
-  const feeStructures = rawStructures.length > 0 ? rawStructures : APPROVED_DEFAULT_STRUCTURES;
+  const feeStructures = data?.feeStructures || [];
   const uniqueProgrammes = Array.from(
     new Set(feeStructures.map((fs) => fs.programmeName))
   );
@@ -129,9 +90,9 @@ export default function FeesPage() {
 
   const formFeeKobo = data?.formFeeKobo || '500000';
   const bank = data?.bankDetails || {
-    bankName: 'Jaiz Bank',
-    accountNumber: '0012031162',
-    accountName: 'Swanford Academy',
+    bankName: '',
+    accountNumber: '',
+    accountName: '',
   };
 
   return (

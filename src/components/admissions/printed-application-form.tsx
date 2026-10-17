@@ -76,41 +76,41 @@ export function PrintedApplicationForm({
     <div className="w-full max-w-4xl mx-auto space-y-4">
       {/* Action Toolbar (Hidden during print) */}
       {showActions && (
-        <div className="no-print flex flex-wrap items-center justify-between gap-3 p-4 bg-white border border-[#EADBDA] rounded-xl shadow-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-xs uppercase font-bold tracking-wider text-[#800020] bg-[#FDF2F4] px-2.5 py-1 rounded-md border border-[#EADBDA]">
+        <div className="no-print flex items-center justify-between gap-2 p-3 sm:p-4 bg-white border border-[#EADBDA] rounded-xl shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-3 flex-nowrap min-w-0">
+            <span className="text-[11px] sm:text-xs uppercase font-bold tracking-wider text-[#800020] bg-[#FDF2F4] px-2.5 py-1 rounded-md border border-[#EADBDA] whitespace-nowrap shrink-0">
               Official Form Preview
             </span>
             {data.applicationNumber && (
-              <span className="text-xs font-mono font-bold text-stone-700">
+              <span className="text-[11px] sm:text-xs font-mono font-bold text-stone-700 whitespace-nowrap">
                 Ref: {data.applicationNumber}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               type="button"
               variant="primary"
               size="sm"
               onClick={handlePrint}
-              className="bg-[#800020] hover:bg-[#5B0612] text-white flex items-center gap-2"
+              className="bg-[#800020] hover:bg-[#5B0612] text-white flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 font-semibold shrink-0"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H7a2 2 0 00-2 2v4h10z" />
               </svg>
-              Print / Save PDF
+              <span>Print / Save PDF</span>
             </Button>
           </div>
         </div>
       )}
 
       {/* Official Physical Form Container */}
-      <div className="print-area bg-white text-stone-900 border-2 border-stone-800 rounded-lg p-5 sm:p-8 shadow-sm font-sans relative overflow-hidden">
+      <div className="print-area bg-white text-stone-900 border-2 border-stone-800 rounded-lg p-3 sm:p-6 md:p-8 shadow-sm font-sans relative overflow-hidden">
         {/* TOP BRANDING & HEADER */}
         <div className="relative mb-3">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Crest Logo */}
-            <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center">
+            <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 shrink-0 flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/swanford-logo.jpg"
@@ -120,17 +120,17 @@ export function PrintedApplicationForm({
             </div>
 
             {/* School Name & Subtitle */}
-            <div className="flex-1 text-center pt-1">
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-[#6B0B1A] tracking-wider uppercase font-serif drop-shadow-xs">
+            <div className="flex-1 min-w-0 text-center px-1">
+              <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-[#6B0B1A] tracking-wider uppercase font-serif drop-shadow-xs">
                 SWANFORD
               </h1>
-              <p className="text-xs sm:text-sm font-bold text-[#6B0B1A] tracking-widest uppercase mt-0.5">
+              <p className="text-[10px] sm:text-xs md:text-sm font-bold text-[#6B0B1A] tracking-wider sm:tracking-widest uppercase mt-0.5 leading-tight">
                 NURSERY AND PRIMARY SCHOOL
               </p>
             </div>
 
             {/* Passport Photo Box (Top Right) */}
-            <div className="w-24 h-28 sm:w-28 sm:h-32 shrink-0 border-2 border-dashed border-stone-500 rounded bg-stone-50 flex items-center justify-center overflow-hidden relative shadow-inner">
+            <div className="w-20 h-24 sm:w-24 sm:h-28 md:w-28 md:h-32 shrink-0 border-2 border-dashed border-stone-500 rounded bg-stone-50 flex items-center justify-center overflow-hidden relative shadow-inner">
               {data.passportPhotoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -139,8 +139,8 @@ export function PrintedApplicationForm({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="text-center p-2">
-                  <span className="text-xs font-serif font-bold text-stone-400 rotate-[-45deg] block select-none">
+                <div className="text-center p-1">
+                  <span className="text-[10px] sm:text-xs font-serif font-bold text-stone-400 rotate-[-45deg] block select-none">
                     Passport
                   </span>
                 </div>
@@ -149,14 +149,14 @@ export function PrintedApplicationForm({
           </div>
 
           {/* School Brand Ribbon Banner */}
-          <div className="mt-2 bg-[#5B0612] border border-[#D4AF37] text-white rounded-md px-3 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] sm:text-xs font-medium shadow-xs">
+          <div className="mt-2.5 bg-[#5B0612] border border-[#D4AF37] text-white rounded-md px-3 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-2 text-[10px] sm:text-xs font-medium shadow-xs">
             <div className="flex items-center gap-1.5 text-center sm:text-left">
-              <svg className="w-4 h-4 shrink-0 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-3.5 h-3.5 shrink-0 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
-              <span>Block E5, 60 Housing Units, Ibrahim Aliyu Bye-Pass, Adjacent To Federal University Dutse, Jigawa State.</span>
+              <span>Plot 212, Dr Nuhu Muhammadu Sanusi Way, Dutse, Jigawa State • Main Campus</span>
             </div>
-            <div className="flex items-center gap-2 shrink-0 text-amber-200 font-semibold font-mono">
+            <div className="flex items-center gap-1.5 shrink-0 text-amber-200 font-semibold font-mono text-[10px] sm:text-xs">
               <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
               </svg>

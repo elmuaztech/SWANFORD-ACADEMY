@@ -21,6 +21,7 @@ import {
   PrintedApplicationForm,
   ApplicationFormData,
   DatePicker,
+  SwanfordFeeSchedule,
 } from '@/components';
 import { formatNaira } from '@/lib/money';
 import { parseFullName } from '@/lib/utils/name_parser';
@@ -587,6 +588,11 @@ function AdmissionContent() {
                 </Alert>
               )}
 
+              {/* Official School Fee Structure (Nursery, Primary, Tahfeez, Creche & Islamiyya) */}
+              <div className="space-y-2">
+                <SwanfordFeeSchedule collapsible={true} defaultExpanded={true} />
+              </div>
+
               {/* Form Access Requirements & Gateway Options */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 {/* Option 1: Pay Online Now */}
@@ -754,7 +760,7 @@ function AdmissionContent() {
                   <div className="text-xs sm:text-sm">
                     <span className="font-bold block">Application Fee Payment Verified</span>
                     <span className="text-stone-600 font-mono text-xs">
-                      Ref: {paymentReference} &bull; Form unlocked for official submission
+                      Ref: {paymentReference} & bull; Form unlocked for official submission
                     </span>
                   </div>
                 </div>
@@ -784,19 +790,40 @@ function AdmissionContent() {
                   </div>
                 </div>
 
-                {/* Step Indicator */}
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${step === 1 ? 'bg-[#6B0B1A] text-white' : 'bg-stone-100 text-stone-600'}`}>
-                    1. Student
-                  </span>
-                  <span className="text-stone-300">&rarr;</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${step === 2 ? 'bg-[#6B0B1A] text-white' : 'bg-stone-100 text-stone-600'}`}>
-                    2. Guardian
-                  </span>
-                  <span className="text-stone-300">&rarr;</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${step === 3 ? 'bg-[#6B0B1A] text-white' : 'bg-stone-100 text-stone-600'}`}>
-                    3. Official Form Preview
-                  </span>
+                {/* Step Indicator — Responsive straight horizontal line */}
+                <div className="w-full sm:w-auto overflow-x-auto py-1 flex items-center justify-start sm:justify-end gap-1.5 sm:gap-2">
+                  <div
+                    className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                      step === 1
+                        ? 'bg-[#6B0B1A] text-white shadow-xs'
+                        : 'bg-stone-100 text-stone-600'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
+                    <span>Student</span>
+                  </div>
+                  <span className="text-stone-300 text-xs shrink-0">&rarr;</span>
+                  <div
+                    className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                      step === 2
+                        ? 'bg-[#6B0B1A] text-white shadow-xs'
+                        : 'bg-stone-100 text-stone-600'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
+                    <span>Guardian</span>
+                  </div>
+                  <span className="text-stone-300 text-xs shrink-0">&rarr;</span>
+                  <div
+                    className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                      step === 3
+                        ? 'bg-[#6B0B1A] text-white shadow-xs'
+                        : 'bg-stone-100 text-stone-600'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">3</span>
+                    <span>Official Form Preview</span>
+                  </div>
                 </div>
               </div>
 
@@ -825,7 +852,7 @@ function AdmissionContent() {
                     </Badge>
                   </div>
 
-                  <CardContent className="p-6 space-y-5">
+                  <CardContent className="p-4 sm:p-6 space-y-4">
                     {/* Full Name */}
                     <FormGroup
                       label="Pupil Full Name"
@@ -852,7 +879,7 @@ function AdmissionContent() {
                     </FormGroup>
 
                     {/* Class, Gender, DOB */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                       <FormGroup label="Class Applying For" required>
                         <Select
                           value={formData.className}
@@ -892,6 +919,11 @@ function AdmissionContent() {
                           placeholder="YYYY-MM-DD or DD/MM/YYYY"
                         />
                       </FormGroup>
+                    </div>
+
+                    {/* Quick Fee Structure for Selected Class */}
+                    <div className="pt-0.5">
+                      <SwanfordFeeSchedule selectedCategory={formData.className} collapsible={true} defaultExpanded={false} />
                     </div>
 
                     {/* Place of Birth & State of Origin */}
@@ -989,11 +1021,10 @@ function AdmissionContent() {
                             <div
                               key={p.id}
                               onClick={() => toggleProgramme(p.id)}
-                              className={`p-3 rounded-lg border cursor-pointer text-xs flex items-center justify-between transition-all ${
-                                isSelected
+                              className={`p-3 rounded-lg border cursor-pointer text-xs flex items-center justify-between transition-all ${isSelected
                                   ? 'bg-[#FDF2F4] border-[#6B0B1A] font-bold text-[#6B0B1A]'
                                   : 'bg-white border-stone-200 text-stone-700 hover:border-stone-400'
-                              }`}
+                                }`}
                             >
                               <span>{p.name}</span>
                               <span className="inline-flex items-center gap-1">
@@ -1019,9 +1050,9 @@ function AdmissionContent() {
                         variant="primary"
                         size="md"
                         onClick={handleNextToGuardian}
-                        className="bg-[#6B0B1A] hover:bg-[#5B0612] text-white px-8"
+                        className="w-full sm:w-auto bg-[#6B0B1A] hover:bg-[#5B0612] text-white px-8 font-bold"
                       >
-                        Continue to Guardian Details
+                        Continue to Guardian Details &rarr;
                       </Button>
                     </div>
                   </CardContent>
@@ -1045,7 +1076,7 @@ function AdmissionContent() {
                     </Badge>
                   </div>
 
-                  <CardContent className="p-6 space-y-5">
+                  <CardContent className="p-4 sm:p-6 space-y-4">
                     {/* Guardian Full Name */}
                     <FormGroup
                       label="Guardian Full Name"
@@ -1119,9 +1150,15 @@ function AdmissionContent() {
                     </div>
 
                     {/* Step Navigation */}
-                    <div className="flex items-center justify-between pt-4 border-t border-stone-200">
-                      <Button type="button" variant="outline" size="md" onClick={handleBack}>
-                        Back to Student Details
+                    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-stone-200">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="md"
+                        onClick={handleBack}
+                        className="w-full sm:w-auto text-xs sm:text-sm font-semibold justify-center"
+                      >
+                        &larr; Back to Student Details
                       </Button>
 
                       <Button
@@ -1129,9 +1166,9 @@ function AdmissionContent() {
                         variant="primary"
                         size="md"
                         onClick={handleNextToPreview}
-                        className="bg-[#6B0B1A] hover:bg-[#5B0612] text-white px-8"
+                        className="w-full sm:w-auto bg-[#6B0B1A] hover:bg-[#5B0612] text-white px-6 text-xs sm:text-sm font-bold justify-center whitespace-nowrap"
                       >
-                        Preview Official Form
+                        Preview Official Form &rarr;
                       </Button>
                     </div>
                   </CardContent>
@@ -1142,13 +1179,19 @@ function AdmissionContent() {
               {step === 3 && (
                 <div className="space-y-6">
                   {/* Top Confirmation Guidance */}
-                  <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-stone-800">
-                    <div>
+                  <div className="bg-[#FAF7F2] border border-[#EADBDA] rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs sm:text-sm text-stone-800">
+                    <div className="space-y-0.5 min-w-0">
                       <strong className="font-bold text-[#5B0612] block">Review Your Official Admission Form:</strong>
-                      <span>Check that all particulars match the birth certificate and official records before final submission.</span>
+                      <span className="text-xs text-stone-600 block">Check that all particulars match official records before final submission.</span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button type="button" variant="outline" size="sm" onClick={handleBack}>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBack}
+                        className="flex-1 sm:flex-initial text-xs font-semibold justify-center"
+                      >
                         Edit Particulars
                       </Button>
                       <Button
@@ -1157,9 +1200,9 @@ function AdmissionContent() {
                         size="sm"
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="bg-[#6B0B1A] hover:bg-[#5B0612] text-white px-6 font-bold"
+                        className="flex-1 sm:flex-initial bg-[#6B0B1A] hover:bg-[#5B0612] text-white px-3 sm:px-6 font-bold text-xs justify-center whitespace-nowrap"
                       >
-                        {isSubmitting ? 'Submitting Application...' : 'Confirm & Submit Application'}
+                        {isSubmitting ? 'Submitting...' : 'Confirm & Submit Application'}
                       </Button>
                     </div>
                   </div>
@@ -1168,17 +1211,24 @@ function AdmissionContent() {
                   <PrintedApplicationForm data={previewFormData} onPrint={() => window.print()} />
 
                   {/* Bottom Submission Bar */}
-                  <div className="p-4 bg-white border border-[#EADBDA] rounded-xl flex items-center justify-between gap-4">
-                    <Button type="button" variant="outline" size="md" onClick={handleBack} disabled={isSubmitting}>
+                  <div className="p-3 sm:p-4 bg-white border border-[#EADBDA] rounded-xl flex items-center justify-between gap-2 sm:gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBack}
+                      disabled={isSubmitting}
+                      className="text-xs sm:text-sm font-semibold px-3 sm:px-5 shrink-0"
+                    >
                       Edit Details
                     </Button>
                     <Button
                       type="button"
                       variant="primary"
-                      size="md"
+                      size="sm"
                       onClick={handleSubmit}
                       disabled={isSubmitting}
-                      className="bg-[#6B0B1A] hover:bg-[#5B0612] text-white px-8 font-bold"
+                      className="bg-[#6B0B1A] hover:bg-[#5B0612] text-white px-3 sm:px-8 font-bold text-xs sm:text-sm shrink-0 whitespace-nowrap"
                     >
                       {isSubmitting ? 'Submitting Application...' : 'Confirm & Submit Application'}
                     </Button>

@@ -36,4 +36,5 @@ export * from "./layout/page-container";
 export * from "./layout/public-footer";
 export * from "./public/scroll-observer";
 export * from "./admissions/printed-application-form";
+export * from "./admissions/swanford-fee-schedule";
 export * from "@/lib/ui/tokens";
