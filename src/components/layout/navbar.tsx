@@ -25,7 +25,6 @@ export const DEFAULT_PUBLIC_NAV_ITEMS: NavItem[] = [
   { label: "Programmes", href: "/programmes" },
   { label: "Admissions", href: "/admissions" },
   { label: "Gallery", href: "/gallery" },
-  { label: "Fees", href: "/fees" },
   { label: "Contact", href: "/contact" },
 ];
 

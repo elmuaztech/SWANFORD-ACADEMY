@@ -153,11 +153,6 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/fees" className="text-white hover:text-amber-300 transition-colors">
-                  Fee Schedule
-                </Link>
-              </li>
-              <li>
                 <Link href="/contact" className="text-white hover:text-amber-300 transition-colors">
                   Contact Us
                 </Link>

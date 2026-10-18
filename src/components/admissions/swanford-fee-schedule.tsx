@@ -69,8 +69,10 @@ export const SWANFORD_FEE_SCHEDULE: FeeCategory[] = [
       general: '₦23,000 Total Package',
     },
     covers: 'Admission form, Tuition fee, Books, Uniform, and Exam fee.',
+    secondTerm: '₦8,000',
+    thirdTerm: '₦8,000',
     formFee: 'Included in package',
-    notes: 'Complete package fee covers Form + Tuition + Books + Uniform + Exam fee.',
+    notes: 'Complete package covers Form, First Term Tuition, Books, Uniform, and Exam fee. School fees for Second Term is ₦8,000 and Third Term is ₦8,000.',
   },
 ];
 

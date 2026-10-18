@@ -80,8 +80,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Authentication Context (Super Admin Guard)
-  const [currentUser, setCurrentUser] = useState<{ id: string; isSuperAdmin: boolean } | null>(null);
+  // Authentication Context (Super Admin & Admin Guard)
+  const [currentUser, setCurrentUser] = useState<{ id: string; isSuperAdmin: boolean; canImpersonate: boolean } | null>(null);
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   // Super Admin Edit User Profile Modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -137,7 +138,16 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             }
             return false;
           });
-          setCurrentUser({ id: data.user.id, isSuperAdmin: hasSuperAdmin });
+          const canImpersonate = (data.user.roles || []).some((r: unknown) => {
+            if (typeof r === "string") return r === "SUPER_ADMIN" || r === "ADMIN";
+            if (typeof r === "object" && r !== null) {
+              const roleObj = r as { code?: string; role?: { code?: string } };
+              const code = roleObj.code || roleObj.role?.code;
+              return code === "SUPER_ADMIN" || code === "ADMIN";
+            }
+            return false;
+          });
+          setCurrentUser({ id: data.user.id, isSuperAdmin: hasSuperAdmin, canImpersonate });
         }
       })
       .catch(() => {});
@@ -356,6 +366,29 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  const handleImpersonate = async () => {
+    if (!user) return;
+    const name = fullName || user.email;
+    if (!confirm(`Switch to acting as ${name} (${user.email})? You can return to your administrator account at any time.`)) {
+      return;
+    }
+    setIsImpersonating(true);
+    setActionNotice(null);
+    try {
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to impersonate user.");
+      window.location.assign(data.redirectUrl || "/admin");
+    } catch (err: unknown) {
+      setActionNotice({ type: "error", message: err instanceof Error ? err.message : "Impersonation failed." });
+      setIsImpersonating(false);
+    }
+  };
+
   const handleEmergencyUnlock = async () => {
     const reason = prompt("Enter administrative reason to unlock this account:");
     if (!reason || reason.trim().length < 5) {
@@ -504,6 +537,17 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {currentUser?.canImpersonate && !isSelf && (
+            <Button
+              variant="outline"
+              size="md"
+              disabled={isImpersonating}
+              onClick={handleImpersonate}
+              className="font-bold border-amber-500 bg-amber-50 hover:bg-amber-100 text-amber-950 min-h-[44px]"
+            >
+              {isImpersonating ? "Connecting..." : "Act as User"}
+            </Button>
+          )}
           {currentUser?.isSuperAdmin && (
             <>
               <Button

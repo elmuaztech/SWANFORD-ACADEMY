@@ -54,6 +54,8 @@ export default function AdminUsersPage() {
   // Authenticated User
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string; roles?: string[] } | null>(null);
   const isSuperAdmin = Boolean(currentUser?.roles?.includes("SUPER_ADMIN"));
+  const canImpersonate = Boolean(currentUser?.roles?.includes("SUPER_ADMIN") || currentUser?.roles?.includes("ADMIN"));
+  const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null);
 
   // Create User Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -419,6 +421,44 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleImpersonateUser = async (u: UserItem) => {
+    const profileName =
+      u.teacher
+        ? `${u.teacher.firstName} ${u.teacher.lastName}`
+        : u.guardian
+        ? `${u.guardian.firstName} ${u.guardian.lastName}`
+        : u.student
+        ? `${u.student.firstName} ${u.student.lastName}`
+        : u.firstName && u.lastName
+        ? `${u.firstName} ${u.lastName}`
+        : u.email;
+
+    if (!confirm(`Switch to acting as ${profileName} (${u.email})? You can safely return to your administrator account at any time.`)) {
+      return;
+    }
+
+    setImpersonatingUserId(u.id);
+    setBannerNotice(null);
+
+    try {
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: u.id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to switch user account.");
+      }
+
+      window.location.assign(data.redirectUrl || "/admin");
+    } catch (err: unknown) {
+      setBannerNotice(err instanceof Error ? err.message : "Impersonation failed.");
+      setImpersonatingUserId(null);
+    }
+  };
+
   const isFiltered = Boolean(search || statusFilter || roleFilter);
 
   return (
@@ -610,6 +650,18 @@ export default function AdminUsersPage() {
                                 Governance
                               </Button>
                             </Link>
+                            {canImpersonate && !isSelf && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={Boolean(impersonatingUserId)}
+                                onClick={() => handleImpersonateUser(u)}
+                                className="border-amber-500/80 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold whitespace-nowrap min-h-[36px]"
+                                title={`Act as ${profileName}`}
+                              >
+                                {impersonatingUserId === u.id ? "Connecting..." : "Act as User"}
+                              </Button>
+                            )}
                             {isSuperAdmin && (
                               <>
                                 <Button
@@ -708,6 +760,17 @@ export default function AdminUsersPage() {
                           Governance
                         </Button>
                       </Link>
+                      {canImpersonate && !isSelf && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={Boolean(impersonatingUserId)}
+                          onClick={() => handleImpersonateUser(u)}
+                          className="flex-1 sm:flex-none border-amber-500/80 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold min-h-[44px]"
+                        >
+                          {impersonatingUserId === u.id ? "Connecting..." : "Act as User"}
+                        </Button>
+                      )}
                       {isSuperAdmin && (
                         <>
                           <Button

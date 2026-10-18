@@ -60,19 +60,19 @@ export function AdmissionAnnouncementBanner({ initialData }: { initialData?: Adm
       aria-label="Admissions Announcement"
     >
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 flex items-center justify-between gap-1.5 sm:gap-3 min-h-[40px] sm:min-h-[44px] w-full max-w-full overflow-hidden">
-        {/* Left Indicator Pill (Darker Golden-Amber Card with White Text) */}
+        {/* Left Indicator Pill (Vibrant Golden-Orange Card with Crisp White Text) */}
         <div className="shrink-0 flex items-center gap-1 sm:gap-2 py-1 z-10 bg-[#5B0612]/95 pr-1 sm:pr-2">
           {isOpen ? (
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9.5px] sm:text-xs font-extrabold tracking-wider uppercase bg-[#854D0E] text-white shadow-xs border border-[#A16207]">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping shrink-0" />
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9.5px] sm:text-xs font-extrabold tracking-wider uppercase bg-[#F28C00] text-white shadow-xs border border-[#D97706] drop-shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping shrink-0" />
               <span className="whitespace-nowrap">
                 <span className="hidden sm:inline">Admissions Open</span>
                 <span className="sm:hidden">Open</span>
               </span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9.5px] sm:text-xs font-extrabold tracking-wider uppercase bg-[#854D0E] text-white shadow-xs border border-[#A16207]">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse shrink-0" />
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9.5px] sm:text-xs font-extrabold tracking-wider uppercase bg-[#F28C00] text-white shadow-xs border border-[#D97706] drop-shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
               <span className="whitespace-nowrap">Notice</span>
             </span>
           )}
@@ -119,12 +119,12 @@ export function AdmissionAnnouncementBanner({ initialData }: { initialData?: Adm
           </div>
         </div>
 
-        {/* Right Action Button (Darker Golden-Amber button with crisp White text) */}
+        {/* Right Action Button (Exact Rich Golden-Orange button with crisp White text) */}
         <div className="shrink-0 py-1 z-10 bg-[#5B0612]/95 pl-1 sm:pl-2">
           {isOpen ? (
             <Link
               href="/admissions"
-              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-bold bg-[#854D0E] hover:bg-[#713F12] text-white border border-[#A16207] shadow-xs hover:shadow transition-all min-h-[32px] sm:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-extrabold bg-[#F28C00] hover:bg-[#D97706] text-white border border-[#D97706] shadow-xs hover:shadow transition-all min-h-[32px] sm:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white drop-shadow-xs"
             >
               <span className="hidden sm:inline">Apply Online</span>
               <span className="sm:hidden">Apply</span>
@@ -133,7 +133,7 @@ export function AdmissionAnnouncementBanner({ initialData }: { initialData?: Adm
           ) : (
             <Link
               href="/contact"
-              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-bold bg-[#854D0E] hover:bg-[#713F12] text-white border border-[#A16207] shadow-xs hover:shadow transition-all min-h-[32px] sm:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white shrink-0"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-extrabold bg-[#F28C00] hover:bg-[#D97706] text-white border border-[#D97706] shadow-xs hover:shadow transition-all min-h-[32px] sm:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white shrink-0 drop-shadow-xs"
             >
               <span className="hidden sm:inline">Contact Admissions</span>
               <span className="sm:hidden">Contact</span>

@@ -23,6 +23,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -74,6 +76,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col font-sans bg-[#EFE8DC] text-slate-900 overflow-x-hidden w-full max-w-full relative">
+        <ImpersonationBanner />
         <ScrollObserver />
         <div className="flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
           {children}

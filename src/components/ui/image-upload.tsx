@@ -102,6 +102,7 @@ export function ImageUpload({
   // Synchronize previewUrl if currentImageUrl changes asynchronously after load
   React.useEffect(() => {
     if (currentImageUrl !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewUrl(currentImageUrl);
     }
   }, [currentImageUrl]);
