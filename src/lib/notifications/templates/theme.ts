@@ -65,7 +65,7 @@ export const VERIFIED_SCHOOL_INFO = {
   location: 'Dutse, Jigawa State',
   address: 'PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE',
   email: 'swanford99@gmail.com',
-  phone: '+234 803 695 0352',
+  phone: '+234 803 859 8318',
   proprietor: 'Muhammad Kanti, Proprietor',
   bankName: '',
   bankAccountNumber: '',

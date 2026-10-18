@@ -123,7 +123,7 @@ export async function getSchoolProfile(): Promise<SchoolProfile> {
     address: configMap.get('school.address') || 'PLOT 212, DR NUHU MUHAMMADU SANUSI WAY, DUTSE, JIGAWA STATE',
     state: configMap.get('school.state') || 'Jigawa State',
     country: configMap.get('school.country') || 'Nigeria',
-    phonePrimary: configMap.get('school.phone_primary') || '+234 803 695 0352',
+    phonePrimary: configMap.get('school.phone_primary') || '+234 803 859 8318',
     phoneSecondary: configMap.get('school.phone_secondary') || undefined,
     email:
       !configMap.get('school.email') || configMap.get('school.email') === 'info@swanfordacademy.edu.ng'

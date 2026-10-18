@@ -50,18 +50,6 @@ export const SWANFORD_FEE_SCHEDULE: FeeCategory[] = [
     formFee: '₦5,000',
   },
   {
-    id: 'tahfeez',
-    name: 'Tahfeez Programme',
-    badge: 'Quranic Memorisation & Islamic Character',
-    admissionFee: {
-      general: '₦18,000',
-    },
-    covers: 'Initial tuition fee, 1 set of uniform and books.',
-    secondTerm: '₦8,000',
-    thirdTerm: '₦8,000',
-    formFee: '₦5,000',
-  },
-  {
     id: 'creche',
     name: 'Swanford Creche',
     badge: 'Daycare & Toddlers',
@@ -75,8 +63,8 @@ export const SWANFORD_FEE_SCHEDULE: FeeCategory[] = [
   },
   {
     id: 'islamiyya',
-    name: 'Al-Irshaad Islamiyya',
-    badge: 'Afternoon & Weekend Islamiyya',
+    name: 'AL-IRSHAAD TAHFEEZ مدرسة الإرشاد لتحفيظ القرآن الكريم',
+    badge: 'Afternoon & Weekend Tahfeez & Islamic Studies',
     admissionFee: {
       general: '₦23,000 Total Package',
     },
@@ -107,8 +95,7 @@ export function SwanfordFeeSchedule({
       if (lower.includes('creche')) setActiveTab('creche');
       else if (lower.includes('nursery')) setActiveTab('nursery');
       else if (lower.includes('primary')) setActiveTab('primary');
-      else if (lower.includes('tahfeez')) setActiveTab('tahfeez');
-      else if (lower.includes('islamiyya') || lower.includes('irshaad')) setActiveTab('islamiyya');
+      else if (lower.includes('tahfeez') || lower.includes('islamiyya') || lower.includes('irshaad')) setActiveTab('islamiyya');
     }
   }, [selectedCategory]);
 
@@ -190,7 +177,7 @@ export function SwanfordFeeSchedule({
                     : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                 }`}
               >
-                {cat.name}
+                {cat.id === 'islamiyya' ? 'Al-Irshaad Tahfeez' : cat.name}
               </button>
             ))}
           </div>

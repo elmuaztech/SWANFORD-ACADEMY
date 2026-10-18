@@ -153,7 +153,76 @@ export function AdminHeader({
     }
   };
 
-  // Mark all notifications as read for this actor
+  // Resolve intelligent destination for notification click
+  const getNotificationDestination = (item: NotificationItem): { url: string; label: string } => {
+    const cat = (item.category || "").toUpperCase();
+    const text = `${item.subject} ${item.bodyText}`.toLowerCase();
+
+    if (
+      cat.includes("ADMISSION") ||
+      text.includes("admission") ||
+      text.includes("applicant") ||
+      text.includes("application")
+    ) {
+      return { url: "/admin/admissions", label: "Admission Centre" };
+    }
+
+    if (
+      cat.includes("FINANCE") ||
+      text.includes("fee") ||
+      text.includes("payment") ||
+      text.includes("invoice") ||
+      text.includes("receipt")
+    ) {
+      return { url: "/admin/finance", label: "Finance & Fees" };
+    }
+
+    if (
+      cat.includes("ACADEMIC") ||
+      text.includes("academic") ||
+      text.includes("session") ||
+      text.includes("term") ||
+      text.includes("class") ||
+      text.includes("programme")
+    ) {
+      return { url: "/admin/academic", label: "Academic Sessions" };
+    }
+
+    if (
+      cat.includes("SECURITY") ||
+      text.includes("security") ||
+      text.includes("password") ||
+      text.includes("login") ||
+      text.includes("audit")
+    ) {
+      return { url: "/admin/audit", label: "Audit & Security" };
+    }
+
+    if (text.includes("attendance") || text.includes("absent") || text.includes("present")) {
+      return { url: "/admin/attendance", label: "Attendance" };
+    }
+
+    if (text.includes("student") || text.includes("pupil") || text.includes("enroll")) {
+      return { url: "/admin/students", label: "Students" };
+    }
+
+    if (text.includes("teacher") || text.includes("staff")) {
+      return { url: "/admin/teachers", label: "Teachers" };
+    }
+
+    if (text.includes("parent") || text.includes("guardian")) {
+      return { url: "/admin/guardians", label: "Parents" };
+    }
+
+    return { url: "/admin/notifications", label: "Notification Centre" };
+  };
+
+  const handleNotificationClick = async (item: NotificationItem) => {
+    await handleMarkAsRead(item.id, item.isRead);
+    setIsNotifOpen(false);
+    const dest = getNotificationDestination(item);
+    router.push(dest.url);
+  };
   const handleMarkAllAsRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
@@ -274,42 +343,51 @@ export function AdminHeader({
                       <p className="text-[11px] text-stone-400 mt-0.5">You have no new notifications.</p>
                     </div>
                   ) : (
-                    notifications.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleMarkAsRead(item.id, item.isRead)}
-                        className={`p-3.5 transition-colors cursor-pointer text-left ${
-                          item.isRead ? "bg-white hover:bg-stone-50/80" : "bg-[#FDF2F4]/40 hover:bg-[#FDF2F4]/80"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                item.isRead ? "bg-transparent" : "bg-[#800020]"
-                              }`}
-                            />
-                            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                              {item.category}
+                    notifications.map((item) => {
+                      const dest = getNotificationDestination(item);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleNotificationClick(item)}
+                          className={`p-3.5 transition-colors cursor-pointer text-left ${
+                            item.isRead ? "bg-white hover:bg-stone-50/80" : "bg-[#FDF2F4]/40 hover:bg-[#FDF2F4]/80"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  item.isRead ? "bg-transparent" : "bg-[#800020]"
+                                }`}
+                              />
+                              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                                {item.category}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-stone-400 shrink-0">
+                              {new Date(item.createdAt).toLocaleDateString("en-NG", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                             </span>
                           </div>
-                          <span className="text-[10px] text-stone-400 shrink-0">
-                            {new Date(item.createdAt).toLocaleDateString("en-NG", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                          <p className={`text-xs mt-1 ${item.isRead ? "text-stone-700" : "text-stone-900 font-bold"}`}>
+                            {item.subject}
+                          </p>
+                          <p className="text-[11px] text-stone-500 line-clamp-2 mt-0.5 leading-snug">
+                            {item.bodyText}
+                          </p>
+                          <div className="mt-2 flex items-center justify-between text-[10px]">
+                            <span className="font-bold text-[#800020] hover:text-[#5B0612] flex items-center gap-1">
+                              <span>Go to {dest.label}</span>
+                              <span aria-hidden="true">&rarr;</span>
+                            </span>
+                          </div>
                         </div>
-                        <p className={`text-xs mt-1 ${item.isRead ? "text-stone-700" : "text-stone-900 font-bold"}`}>
-                          {item.subject}
-                        </p>
-                        <p className="text-[11px] text-stone-500 line-clamp-2 mt-0.5 leading-snug">
-                          {item.bodyText}
-                        </p>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
