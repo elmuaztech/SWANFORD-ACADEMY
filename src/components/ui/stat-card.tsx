@@ -37,7 +37,7 @@ const COLOR_MAP: Record<
 > = {
   maroon: {
     topBar: "bg-gradient-to-r from-[#D4AF37] via-[#F3E5AB] to-[#D4AF37]",
-    border: "border-[#7D1B28]/80",
+    border: "border-[#EADBDA]",
     hoverBorder: "hover:border-[#D4AF37]/70",
     bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
     iconBg: "bg-white/10 border border-white/20",
@@ -48,7 +48,7 @@ const COLOR_MAP: Record<
   },
   emerald: {
     topBar: "bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500",
-    border: "border-[#7D1B28]/80",
+    border: "border-[#EADBDA]",
     hoverBorder: "hover:border-emerald-400/70",
     bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
     iconBg: "bg-emerald-500/20 border border-emerald-400/30",
@@ -59,7 +59,7 @@ const COLOR_MAP: Record<
   },
   blue: {
     topBar: "bg-gradient-to-r from-sky-400 via-blue-300 to-indigo-500",
-    border: "border-[#7D1B28]/80",
+    border: "border-[#EADBDA]",
     hoverBorder: "hover:border-sky-400/70",
     bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
     iconBg: "bg-sky-500/20 border border-sky-400/30",
@@ -70,7 +70,7 @@ const COLOR_MAP: Record<
   },
   amber: {
     topBar: "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500",
-    border: "border-[#7D1B28]/80",
+    border: "border-[#EADBDA]",
     hoverBorder: "hover:border-amber-400/70",
     bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
     iconBg: "bg-amber-500/20 border border-amber-400/30",
@@ -81,7 +81,7 @@ const COLOR_MAP: Record<
   },
   purple: {
     topBar: "bg-gradient-to-r from-purple-400 via-violet-300 to-fuchsia-500",
-    border: "border-[#7D1B28]/80",
+    border: "border-[#EADBDA]",
     hoverBorder: "hover:border-purple-400/70",
     bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
     iconBg: "bg-purple-500/20 border border-purple-400/30",
@@ -92,7 +92,7 @@ const COLOR_MAP: Record<
   },
   rose: {
     topBar: "bg-gradient-to-r from-rose-400 via-pink-300 to-red-500",
-    border: "border-[#7D1B28]/80",
+    border: "border-[#EADBDA]",
     hoverBorder: "hover:border-rose-400/70",
     bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
     iconBg: "bg-rose-500/20 border border-rose-400/30",
@@ -103,7 +103,7 @@ const COLOR_MAP: Record<
   },
   slate: {
     topBar: "bg-gradient-to-r from-stone-400 via-stone-200 to-stone-400",
-    border: "border-[#7D1B28]/80",
+    border: "border-[#EADBDA]",
     hoverBorder: "hover:border-stone-400/70",
     bgGradient: "bg-gradient-to-br from-[#4D0610] via-[#5B0612] to-[#3B030A]",
     iconBg: "bg-white/10 border border-white/20",
@@ -128,7 +128,7 @@ export function StatCard({
 
   const content = (
     <div
-      className={`relative rounded-2xl border ${theme.border} ${theme.hoverBorder} ${theme.bgGradient} shadow-[0_4px_20px_rgba(40,2,8,0.35)] hover:shadow-[0_12px_32px_rgba(40,2,8,0.55)] transition-all duration-300 ease-out hover:-translate-y-1.5 overflow-hidden group cursor-default flex flex-col justify-between ${className}`}
+      className={`relative rounded-2xl border ${theme.border} ${theme.hoverBorder} ${theme.bgGradient} shadow-[0_4px_20px_rgba(0,0,0,0.12)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition-all duration-300 ease-out hover:-translate-y-1 overflow-hidden group cursor-default flex flex-col justify-between ${className}`}
     >
       {/* Top Glowing Accent Bar */}
       <div className={`h-1.5 w-full ${theme.topBar} shrink-0`} />
@@ -151,10 +151,10 @@ export function StatCard({
           )}
         </div>
 
-        {/* Value Row: Large bold formatted digits & optional badge */}
+        {/* Value Row: Large bold formatted digits strictly in a straight line */}
         <div className="flex items-baseline justify-between gap-2 min-w-0">
           <div
-            className={`text-xl min-[360px]:text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums ${theme.valueText} break-words leading-tight min-w-0`}
+            className={`text-lg min-[360px]:text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight tabular-nums ${theme.valueText} whitespace-nowrap overflow-hidden text-ellipsis leading-tight min-w-0`}
           >
             {value}
           </div>

@@ -387,16 +387,16 @@ export default async function HomePage() {
                       Standalone Programme
                     </span>
                     <span className="text-base sm:text-lg font-extrabold text-white font-display mt-0.5">
-                      Qur&apos;an &amp; Tajweed Studies
+                      مدرسة الإرشاد لتحفيظ القرآن
                     </span>
                     <div className="absolute top-3 left-3 bg-[#800020] border border-white/20 text-white px-2.5 py-0.5 rounded-md text-[10px] font-bold font-display">
                       Tahfeez Standalone
                     </div>
                   </div>
                   <div className="p-6 space-y-3">
-                    <h3 className="text-xl font-bold text-[#5B0612] font-display">Tahfeez Programme</h3>
+                    <h3 className="text-xl font-bold text-[#5B0612] font-display">مدرسة الإرشاد لتحفيظ القرآن</h3>
                     <p className="text-xs font-semibold text-[#800020] uppercase tracking-wider font-display">
-                      Qur&apos;an Memorisation with Academics
+                      Tahfeez Programme &bull; Qur&apos;an Memorisation
                     </p>
                     <p className="text-sm text-[#524B46] leading-relaxed">
                       Dedicated Quranic memorization, proper Tajweed articulation, and noble Islamic etiquette. Can be taken standalone or alongside primary schooling.
@@ -417,7 +417,7 @@ export default async function HomePage() {
         </section>
 
         {/* ========================================================= */}
-        {/* 4. MAROON CALLOUT BANNER: "BE PART OF THEIR JOURNEY" */}
+        {/* 4. MAROON CALLOUT BANNER: "BE PART OF OUR JOURNEY" */}
         {/* ========================================================= */}
         <section className="py-16 sm:py-20 bg-[#5B0612] text-white relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#FFFFFF_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
@@ -464,7 +464,7 @@ export default async function HomePage() {
               {/* Call to Action on Right */}
               <div className="lg:col-span-6 lg:border-l lg:border-white/20 lg:pl-10 space-y-4" data-reveal="fade-right">
                 <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display">
-                  Be Part of Their Journey
+                  Be Part of Our Journey
                 </h2>
                 <p className="text-sm text-white/80 leading-relaxed max-w-md">
                   Give your child the opportunity to learn, grow, and thrive in a supportive, disciplined, and values-driven environment.

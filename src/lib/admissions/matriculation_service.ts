@@ -297,6 +297,14 @@ export async function matriculateApplication(
       );
 
       enrollments.push(enrollment);
+
+      // Permanently link the assigned target class to the application selection record for authoritative letters & transcripts
+      if (schoolClassId) {
+        await tx.applicationProgrammeSelection.update({
+          where: { id: sel.id },
+          data: { targetClassId: schoolClassId },
+        });
+      }
     }
 
     // 11. Initial School-Fee Invoicing (Stage 8 Integration - Amendment 3)

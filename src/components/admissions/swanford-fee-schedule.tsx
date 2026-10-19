@@ -63,8 +63,8 @@ export const SWANFORD_FEE_SCHEDULE: FeeCategory[] = [
   },
   {
     id: 'islamiyya',
-    name: 'AL-IRSHAAD TAHFEEZ مدرسة الإرشاد لتحفيظ القرآن الكريم',
-    badge: 'Afternoon & Weekend Tahfeez & Islamic Studies',
+    name: 'مدرسة الإرشاد لتحفيظ القرآن',
+    badge: 'Tahfeez & Islamic Studies Programme',
     admissionFee: {
       general: '₦23,000 Total Package',
     },
@@ -179,7 +179,7 @@ export function SwanfordFeeSchedule({
                     : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                 }`}
               >
-                {cat.id === 'islamiyya' ? 'Al-Irshaad Tahfeez' : cat.name}
+                {cat.id === 'islamiyya' ? 'مدرسة الإرشاد' : cat.name}
               </button>
             ))}
           </div>
@@ -189,7 +189,7 @@ export function SwanfordFeeSchedule({
             {displayedList.map((item) => (
               <div
                 key={item.id}
-                className="border border-[#EADBDA] rounded-xl p-3.5 sm:p-4 bg-[#FAF7F2]/60 hover:bg-[#FAF7F2] transition-colors space-y-3"
+                className="border border-[#EADBDA] rounded-xl p-3.5 sm:p-4 bg-[#FAF7F2]/60 hover:bg-[#FAF7F2] transition-colors space-y-3 shadow-xs"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -200,13 +200,13 @@ export function SwanfordFeeSchedule({
                       {item.badge}
                     </span>
                   </div>
-                  <Badge variant="neutral" size="sm" className="font-mono text-[10px]">
+                  <Badge variant="neutral" size="sm" className="font-mono text-[10px] whitespace-nowrap">
                     Form: {item.formFee || '₦5,000'}
                   </Badge>
                 </div>
 
                 {/* Admission / First Term Breakdown */}
-                <div className="bg-white rounded-lg p-3 border border-stone-200/80 space-y-2">
+                <div className="bg-white rounded-lg p-3 border border-[#EADBDA] space-y-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 block">
                     Admission / First Term Fee
                   </span>
@@ -214,13 +214,13 @@ export function SwanfordFeeSchedule({
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-2 rounded bg-[#FDF2F4] border border-[#EADBDA]">
                         <span className="text-stone-600 block text-[11px]">Boys</span>
-                        <strong className="text-[#6B0B1A] font-extrabold text-sm sm:text-base">
+                        <strong className="text-[#6B0B1A] font-extrabold text-sm sm:text-base whitespace-nowrap tabular-nums">
                           {item.admissionFee.boys}
                         </strong>
                       </div>
                       <div className="p-2 rounded bg-[#FDF2F4] border border-[#EADBDA]">
                         <span className="text-stone-600 block text-[11px]">Girls</span>
-                        <strong className="text-[#6B0B1A] font-extrabold text-sm sm:text-base">
+                        <strong className="text-[#6B0B1A] font-extrabold text-sm sm:text-base whitespace-nowrap tabular-nums">
                           {item.admissionFee.girls}
                         </strong>
                       </div>
@@ -228,7 +228,7 @@ export function SwanfordFeeSchedule({
                   ) : (
                     <div className="p-2 rounded bg-[#FDF2F4] border border-[#EADBDA] text-xs">
                       <span className="text-stone-600 block text-[11px]">Official Fee</span>
-                      <strong className="text-[#6B0B1A] font-extrabold text-sm sm:text-base">
+                      <strong className="text-[#6B0B1A] font-extrabold text-sm sm:text-base whitespace-nowrap tabular-nums">
                         {item.admissionFee.general}
                       </strong>
                     </div>

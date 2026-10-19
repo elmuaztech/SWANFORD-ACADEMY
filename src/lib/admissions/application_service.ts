@@ -997,11 +997,31 @@ export async function getApplicationById(
     include: {
       admissionCycle: { include: { academicSession: true } },
       programmeSelections: {
-        include: { programme: true, targetClass: true, reviewedByUser: true },
+        include: {
+          programme: {
+            include: {
+              classes: {
+                where: { isActive: true },
+                orderBy: { displayOrder: 'asc' },
+              },
+            },
+          },
+          targetClass: true,
+          reviewedByUser: true,
+        },
       },
       chargeItems: true,
       reviews: { include: { reviewer: true } },
-      admittedStudent: true,
+      admittedStudent: {
+        include: {
+          programmeEnrollments: {
+            include: {
+              schoolClass: true,
+              programme: true,
+            },
+          },
+        },
+      },
       existingGuardian: true,
     },
   });

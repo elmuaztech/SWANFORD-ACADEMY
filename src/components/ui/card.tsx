@@ -7,7 +7,7 @@ export function Card({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EFE6] border border-[#E2D6C5] rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] overflow-hidden transition-all duration-200 ${className}`}
+      className={`bg-white border border-[#EADBDA] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.08)] overflow-hidden transition-all duration-200 ${className}`}
       {...props}
     >
       {children}

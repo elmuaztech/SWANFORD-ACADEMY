@@ -6,16 +6,38 @@ import { Navbar, PublicFooter, Button, Card, CardContent, Input, FormGroup } fro
 
 export default function ContactPage() {
   const [inquirySent, setInquirySent] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     parentName: '',
     phoneOrEmail: '',
     message: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.parentName || !formData.phoneOrEmail || !formData.message) return;
-    setInquirySent(true);
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const res = await fetch('/api/public/contact-inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to send inquiry. Please try again or reach out on WhatsApp.');
+      }
+
+      setInquirySent(true);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to send inquiry.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -106,9 +128,9 @@ export default function ContactPage() {
                         <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
                           &#10003;
                         </div>
-                        <h3 className="font-bold text-base text-[#5B0612]">Inquiry Submitted</h3>
-                        <p className="text-xs text-[#524B46]">
-                          Thank you. Your message has been received by the admissions office. We will get in touch with you shortly.
+                        <h3 className="font-bold text-base text-[#5B0612]">Inquiry Successfully Dispatched</h3>
+                        <p className="text-xs text-[#524B46] leading-relaxed">
+                          Thank you. Your inquiry has been sent directly to the official school admissions desk (<strong className="text-stone-800">swanford99@gmail.com</strong>). An admissions officer will contact you shortly.
                         </p>
                         <Button
                           variant="outline"
@@ -118,11 +140,16 @@ export default function ContactPage() {
                             setFormData({ parentName: '', phoneOrEmail: '', message: '' });
                           }}
                         >
-                          Send Another Message
+                          Send Another Inquiry
                         </Button>
                       </div>
                     ) : (
                       <form onSubmit={handleSubmit} className="space-y-4">
+                        {submitError && (
+                          <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800">
+                            {submitError}
+                          </div>
+                        )}
                         <FormGroup label="Your Name (Parent / Guardian)" required>
                           <Input
                             placeholder="e.g. Mal. Abdullahi Garba"
@@ -130,6 +157,7 @@ export default function ContactPage() {
                             onChange={(e) =>
                               setFormData({ ...formData, parentName: e.target.value })
                             }
+                            disabled={isSubmitting}
                             required
                           />
                         </FormGroup>
@@ -141,6 +169,7 @@ export default function ContactPage() {
                             onChange={(e) =>
                               setFormData({ ...formData, phoneOrEmail: e.target.value })
                             }
+                            disabled={isSubmitting}
                             required
                           />
                         </FormGroup>
@@ -153,12 +182,19 @@ export default function ContactPage() {
                             onChange={(e) =>
                               setFormData({ ...formData, message: e.target.value })
                             }
+                            disabled={isSubmitting}
                             required
                           />
                         </FormGroup>
 
-                        <Button variant="primary" size="md" type="submit" className="w-full py-3">
-                          Send Inquiry to Admissions Desk &rarr;
+                        <Button
+                          variant="primary"
+                          size="md"
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full py-3 font-bold"
+                        >
+                          {isSubmitting ? 'Sending to swanford99@gmail.com...' : 'Send Inquiry to Admissions Desk →'}
                         </Button>
                       </form>
                     )}

@@ -33,6 +33,16 @@ export async function GET(
           },
         },
         profilePhoto: true,
+        admittedStudent: {
+          include: {
+            programmeEnrollments: {
+              include: {
+                schoolClass: true,
+                programme: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -80,11 +90,18 @@ export async function GET(
     const programmes = (approvedSelections.length > 0
       ? approvedSelections
       : application.programmeSelections
-    ).map((s) => ({
-      name: s.programme.name,
-      code: s.programme.code,
-      className: s.targetClass?.name || 'Class Placement Pending',
-    }));
+    ).map((s) => {
+      const enrolledClass = application.admittedStudent?.programmeEnrollments?.find(
+        (e) => e.programmeId === s.programmeId
+      )?.schoolClass?.name;
+      const targetClassName = s.targetClass?.name || enrolledClass || 'Class Assigned Upon Placement';
+
+      return {
+        name: s.programme.name,
+        code: s.programme.code,
+        className: targetClassName,
+      };
+    });
 
     // Convert profile photo to base64 Data URI if available
     let profilePhotoDataUri: string | null = null;

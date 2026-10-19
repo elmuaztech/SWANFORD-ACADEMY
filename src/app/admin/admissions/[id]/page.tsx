@@ -86,6 +86,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   const [showMatriculateModal, setShowMatriculateModal] = useState(false);
   const [selectedProgrammeId, setSelectedProgrammeId] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("");
+  const [allClasses, setAllClasses] = useState<Array<{ id: string; name: string; programmeId: string }>>([]);
 
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -126,7 +127,8 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
       .then((json) => {
         setApplication(json);
         if (json.programmeSelections?.[0]?.programme) {
-          setSelectedProgrammeId(json.programmeSelections[0].programme.id);
+          const initialProgId = json.programmeSelections[0].programme.id;
+          setSelectedProgrammeId(initialProgId);
           if (json.programmeSelections[0].programme.classes?.[0]) {
             setSelectedClassId(json.programmeSelections[0].programme.classes[0].id);
           }
@@ -141,6 +143,14 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
 
   useEffect(() => {
     fetchApplication();
+    fetch("/api/admin/classes?includeInactive=false")
+      .then((res) => (res.ok ? res.json() : { items: [] }))
+      .then((data) => {
+        if (Array.isArray(data.items)) {
+          setAllClasses(data.items);
+        }
+      })
+      .catch(() => {});
   }, [applicationId]);
 
   const handleReviewSubmit = async () => {
@@ -249,6 +259,28 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   const selectedProgramme = application.programmeSelections.find(
     (p) => p.programme.id === selectedProgrammeId
   )?.programme;
+
+  // Resolve available classes for matriculation:
+  // 1. Programme-specific classes from application response
+  // 2. Filtered classes from /api/admin/classes matching selected programme
+  // 3. Fallback to all active school classes
+  const availableClasses = React.useMemo(() => {
+    if (selectedProgramme?.classes && selectedProgramme.classes.length > 0) {
+      return selectedProgramme.classes;
+    }
+    if (selectedProgrammeId && allClasses.length > 0) {
+      const filtered = allClasses.filter((c) => c.programmeId === selectedProgrammeId);
+      if (filtered.length > 0) return filtered;
+    }
+    return allClasses;
+  }, [selectedProgramme, selectedProgrammeId, allClasses]);
+
+  // Ensure a valid class is auto-selected as soon as available
+  React.useEffect(() => {
+    if ((!selectedClassId || !availableClasses.some((c) => c.id === selectedClassId)) && availableClasses.length > 0) {
+      setSelectedClassId(availableClasses[0].id);
+    }
+  }, [availableClasses, selectedClassId]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -627,6 +659,28 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
             Number (e.g. SWN-YYYY-NNNNN) will be automatically generated.
           </p>
 
+          {application.programmeSelections.length > 1 && (
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">Academic Programme</label>
+              <Select
+                value={selectedProgrammeId}
+                onChange={(e) => {
+                  const newProgId = e.target.value;
+                  setSelectedProgrammeId(newProgId);
+                  const progClasses = allClasses.filter((c) => c.programmeId === newProgId);
+                  if (progClasses[0]) setSelectedClassId(progClasses[0].id);
+                }}
+                className="w-full"
+              >
+                {application.programmeSelections.map((ps) => (
+                  <option key={ps.programme.id} value={ps.programme.id}>
+                    {ps.programme.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-stone-700 mb-1">Target Class</label>
             <Select
@@ -634,11 +688,12 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="w-full"
             >
-              {selectedProgramme?.classes?.map((c) => (
+              {availableClasses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
-              )) || <option value="">No classes available</option>}
+              ))}
+              {availableClasses.length === 0 && <option value="">No classes available</option>}
             </Select>
           </div>
 

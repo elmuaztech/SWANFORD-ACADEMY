@@ -155,7 +155,7 @@ export default function ProgrammesPage() {
                     Standalone Programme
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">
-                    Tahfeez Quranic Memorization Programme
+                    مدرسة الإرشاد لتحفيظ القرآن (Tahfeez Programme)
                   </h2>
                 </div>
                 <div className="text-left sm:text-right">
