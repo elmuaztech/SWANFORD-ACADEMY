@@ -150,13 +150,22 @@ export default function ProgrammesPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto bg-[#FDFBF7] p-8 sm:p-12 rounded-2xl border-2 border-[#5B0612] space-y-6 shadow-xs" data-reveal="fade-up">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EADBDA] pb-6">
-                <div>
-                  <div className="inline-block px-3 py-1 bg-[#5B0612] text-white rounded text-xs font-bold uppercase tracking-wider mb-2">
-                    Standalone Programme
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white p-1 border-2 border-[#EADBDA] shadow-xs shrink-0 flex items-center justify-center overflow-hidden">
+                    <img
+                      src="/images/tahfeez-logo.jpg"
+                      alt="مدرسة الإرشاد لتحفيظ القرآن Logo"
+                      className="w-full h-full object-contain rounded-full"
+                    />
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">
-                    مدرسة الإرشاد لتحفيظ القرآن (Tahfeez Programme)
-                  </h2>
+                  <div>
+                    <div className="inline-block px-3 py-1 bg-[#5B0612] text-white rounded text-xs font-bold uppercase tracking-wider mb-2">
+                      Standalone Programme
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-[#5B0612]">
+                      مدرسة الإرشاد لتحفيظ القرآن (Tahfeez Programme)
+                    </h2>
+                  </div>
                 </div>
                 <div className="text-left sm:text-right">
                   <span className="text-xs text-[#8C827A] block">Programme Code:</span>

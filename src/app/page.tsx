@@ -378,10 +378,12 @@ export default async function HomePage() {
                 <div>
                   <div className="h-52 w-full bg-gradient-to-br from-[#3B030A] via-[#5B0612] to-[#45050E] relative border-b border-[#EADBDA] flex flex-col items-center justify-center p-6 text-center text-white overflow-hidden group-hover:from-[#45050E] group-hover:to-[#5B0612] transition-colors">
                     <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#F5D061_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-                    <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white mb-2.5 shadow-inner">
-                      <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
+                    <div className="w-20 h-20 rounded-full bg-white p-1 border-2 border-white/40 shadow-md flex items-center justify-center overflow-hidden mb-2.5 transition-transform duration-300 group-hover:scale-105">
+                      <img
+                        src="/images/tahfeez-logo.jpg"
+                        alt="مدرسة الإرشاد لتحفيظ القرآن"
+                        className="w-full h-full object-contain rounded-full"
+                      />
                     </div>
                     <span className="text-lg sm:text-xl font-extrabold text-white font-display mt-1 tracking-wide">
                       مدرسة الإرشاد لتحفيظ القرآن
