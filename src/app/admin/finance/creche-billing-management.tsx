@@ -96,7 +96,7 @@ export function CrecheBillingManagement() {
       let cProgId = "";
       if (progRes.ok) {
         const progData = await progRes.json();
-        const progList = Array.isArray(progData) ? progData : progData.programmes || [];
+        const progList = Array.isArray(progData) ? progData : (progData.items || progData.programmes || []);
         const creche = progList.find((p: any) => p.code === "CRECHE" || p.name.toLowerCase().includes("creche"));
         if (creche) {
           cProgId = creche.id;

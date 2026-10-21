@@ -150,7 +150,7 @@ export function FeeConfigurationSection() {
 
       if (pRes.ok) {
         const pData = await pRes.json();
-        setProgrammes(Array.isArray(pData) ? pData : pData.programmes || []);
+        setProgrammes(Array.isArray(pData) ? pData : (pData.items || pData.programmes || []));
       }
 
       if (cRes.ok) {
@@ -362,7 +362,7 @@ export function FeeConfigurationSection() {
       <Tabs
         tabs={[
           { id: "structures", label: `Standard Fee Plans (${feeStructures.length})` },
-          { id: "special_rates", label: "Old / Special Rates (Grandfathered)" },
+          { id: "special_rates", label: "Old Students / Special Rates" },
           { id: "creche", label: "Creche Monthly Billing (₦10,000/mo)" },
         ]}
         activeTab={feeSubTab}

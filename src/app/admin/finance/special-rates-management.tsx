@@ -148,10 +148,12 @@ export function SpecialRatesManagement() {
 
       if (progRes.ok) {
         const progData = await progRes.json();
-        const progList = Array.isArray(progData) ? progData : progData.programmes || [];
+        const progList = Array.isArray(progData)
+          ? progData
+          : (progData.items || progData.programmes || []);
         setProgrammes(progList);
-        if (progList.length > 0 && !targetProgrammeId) {
-          setTargetProgrammeId(progList[0].id);
+        if (progList.length > 0) {
+          setTargetProgrammeId((prev) => prev || progList[0].id);
         }
       }
 
@@ -355,7 +357,7 @@ export function SpecialRatesManagement() {
               <UserCheck className="w-5 h-5" />
             </span>
             <h3 className="text-lg font-bold text-stone-900">
-              Old &amp; Grandfathered Student Special Fee Rates
+              Old &amp; Continuing Student Special Fee Rates
             </h3>
           </div>
           <p className="text-xs text-stone-600 mt-1 max-w-2xl">
@@ -368,6 +370,9 @@ export function SpecialRatesManagement() {
           onClick={() => {
             setIsAssignModalOpen(true);
             setSelectedStudentIds([]);
+            if (programmes.length > 0 && !targetProgrammeId) {
+              setTargetProgrammeId(programmes[0].id);
+            }
           }}
           className="bg-[#800020] hover:bg-[#5B0612] text-white shrink-0 min-h-[44px]"
         >
@@ -586,7 +591,7 @@ export function SpecialRatesManagement() {
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-1">
               <p className="font-bold text-amber-950 flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-amber-600" />
-                Grandfathered Rate Protection
+                Continuing &amp; Old Student Rate Protection
               </p>
               <p className="text-amber-900 leading-relaxed">
                 Selected students will be billed at this approved rate rather than the standard programme tuition. Approved rates take precedence when issuing single or batch invoices, and display with an official verification badge in the parent portal.
