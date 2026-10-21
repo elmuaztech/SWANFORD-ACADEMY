@@ -53,6 +53,9 @@ interface ParentInvoice {
   sessionName: string;
   termName: string;
   programmeName: string;
+  billingMonth?: number;
+  billingPeriodName?: string | null;
+  isSpecialRate?: boolean;
   status: string;
   totalAmountKobo: string;
   amountPaidKobo: string;
@@ -678,7 +681,13 @@ export default function ParentFinancePage() {
                             </TableCell>
                           )}
                           <TableCell className="w-32 text-xs text-stone-600">
-                            {inv.termName} ({inv.sessionName})
+                            <div className="font-semibold text-stone-800">{inv.billingPeriodName || inv.termName}</div>
+                            <div className="text-[10px] text-stone-400">({inv.sessionName})</div>
+                            {inv.isSpecialRate && (
+                              <Badge variant="brand" size="sm" className="mt-1 bg-amber-100 text-amber-900 border-amber-200">
+                                Approved Special Rate
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="w-28 text-xs font-bold text-stone-900">
                             {formatNaira(safeBigInt(inv.totalAmountKobo))}
@@ -773,8 +782,10 @@ export default function ParentFinancePage() {
                     }
                     fields={[
                       {
-                        label: "Term & Session",
-                        value: `${inv.termName} (${inv.sessionName})`,
+                        label: "Period & Session",
+                        value: `${inv.billingPeriodName || inv.termName} (${inv.sessionName})${
+                          inv.isSpecialRate ? " • Approved Special Rate" : ""
+                        }`,
                       },
                       {
                         label: "Total Fee",

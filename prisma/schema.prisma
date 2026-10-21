@@ -437,6 +437,7 @@ model User {
   selectionReviews     ApplicationProgrammeSelection[]  @relation("SelectionReviewedBy")
   auditLogs            AuditLog[]
   studentImportBatches StudentImportBatch[]
+  assignedSpecialFeeRates StudentSpecialFeeRate[] @relation("SpecialFeeAssignedBy")
   notificationPreferences NotificationPreference[]
   userNotificationReads   UserNotificationRead[]
   createdAssessments   Assessment[]                     @relation("AssessmentCreatedBy")
@@ -649,6 +650,7 @@ model Student {
   attendanceRecords AttendanceRecord[]
   assessmentScores  AssessmentScore[]
   reportReleases    ReportRelease[]
+  specialFeeRates   StudentSpecialFeeRate[]
   profilePhotoId    String?            @map("profile_photo_id") @db.Uuid
   profilePhoto      MediaAsset?        @relation("StudentProfilePhoto", fields: [profilePhotoId], references: [id], onDelete: SetNull)
 
@@ -741,6 +743,7 @@ model AcademicSession {
   assignmentHistories  TeacherAssignmentHistory[]
   reportTemplates      ReportTemplateConfig[]
   reportReleases       ReportRelease[]
+  specialFeeRates      StudentSpecialFeeRate[]
 
   @@map("academic_sessions")
 }
@@ -767,6 +770,7 @@ model AcademicTerm {
   scheduledReminders ScheduledReminder[]
   assessmentConfigs AssessmentStructureConfig[]
   reportReleases    ReportRelease[]
+  specialFeeRates   StudentSpecialFeeRate[]
 
   @@unique([academicSessionId, termCode])
   @@map("academic_terms")
@@ -796,6 +800,7 @@ model Programme {
   assessments                 Assessment[]
   assessmentConfigs           AssessmentStructureConfig[]
   assignmentHistories         TeacherAssignmentHistory[]
+  specialFeeRates             StudentSpecialFeeRate[]
 
   @@map("programmes")
 }
@@ -1262,6 +1267,7 @@ model FeeStructure {
   schoolClass       SchoolClass?        @relation(fields: [schoolClassId], references: [id], onDelete: Restrict)
   feeItems          FeeItem[]
   invoices          Invoice[]
+  specialFeeRates   StudentSpecialFeeRate[]
 
   @@index([academicSessionId, academicTermId, programmeId])
   @@map("fee_structures")
@@ -1290,6 +1296,9 @@ model Invoice {
   academicTermId         String           @map("academic_term_id") @db.Uuid
   programmeId            String           @map("programme_id") @db.Uuid // Primary or Tahfeez
   feeStructureId         String?          @map("fee_structure_id") @db.Uuid
+  billingMonth           Int?             @default(0) @map("billing_month") // 0 = standard term invoice, 1..12 = monthly fee (e.g. Creche)
+  billingPeriodName      String?          @map("billing_period_name") // e.g. "October 2026", "First Term 2026/2027"
+  isSpecialRate          Boolean          @default(false) @map("is_special_rate") // true if an approved old/grandfathered rate was applied
   
   totalAmountKobo        BigInt           @map("total_amount_kobo") @db.BigInt
   amountPaidKobo         BigInt           @default(0) @map("amount_paid_kobo") @db.BigInt
@@ -1314,8 +1323,8 @@ model Invoice {
   paymentTransactions    PaymentTransaction[]
   paymentSessions        PaymentSession[]
 
-  // Duplicate Invoice Prevention: same student cannot be billed twice for same programme in same term
-  @@unique([studentId, programmeId, academicSessionId, academicTermId], name: "unique_student_programme_term_invoice")
+  // Duplicate Invoice Prevention: same student cannot be billed twice for same programme in same term/month
+  @@unique([studentId, programmeId, academicSessionId, academicTermId, billingMonth], name: "unique_student_programme_term_invoice")
   @@index([studentId, status])
   @@index([guardianId])
   @@index([academicSessionId, academicTermId])
@@ -1337,6 +1346,35 @@ model InvoiceItem {
 
   @@index([invoiceId])
   @@map("invoice_items")
+}
+
+/// Approved special or grandfathered fee rates assigned to selected students
+model StudentSpecialFeeRate {
+  id                String          @id @default(uuid()) @db.Uuid
+  studentId         String          @map("student_id") @db.Uuid
+  programmeId       String          @map("programme_id") @db.Uuid
+  academicSessionId String          @map("academic_session_id") @db.Uuid
+  academicTermId    String?         @map("academic_term_id") @db.Uuid
+  feeStructureId    String?         @map("fee_structure_id") @db.Uuid
+  customAmountKobo  BigInt?         @map("custom_amount_kobo") @db.BigInt
+  effectiveDate     DateTime        @default(now()) @map("effective_date")
+  endDate           DateTime?       @map("end_date")
+  notes             String?
+  isActive          Boolean         @default(true) @map("is_active")
+  assignedByUserId  String?         @map("assigned_by_user_id") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  student           Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  programme         Programme       @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  academicSession   AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Restrict)
+  academicTerm      AcademicTerm?   @relation(fields: [academicTermId], references: [id], onDelete: SetNull)
+  feeStructure      FeeStructure?   @relation(fields: [feeStructureId], references: [id], onDelete: SetNull)
+  assignedByUser    User?           @relation("SpecialFeeAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, isActive])
+  @@index([programmeId, academicSessionId])
+  @@map("student_special_fee_rates")
 }
 
 /// Official school financial credit ledger entry

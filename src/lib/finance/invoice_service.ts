@@ -33,6 +33,26 @@ export const InvoiceItemInputSchema = z.object({
   quantity: z.number().int().min(1).default(1),
 });
 
+const MONTH_NAMES = [
+  '',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+export function getBillingMonthName(monthNumber: number): string {
+  return MONTH_NAMES[monthNumber] || `Month ${monthNumber}`;
+}
+
 export const CreateInvoiceSchema = z.object({
   studentId: z.string().uuid(),
   guardianId: z.string().uuid().optional(),
@@ -41,6 +61,9 @@ export const CreateInvoiceSchema = z.object({
   programmeId: z.string().uuid(),
   feeStructureId: z.string().uuid().optional().nullable(),
   dueDate: z.coerce.date(),
+  billingMonth: z.number().int().min(0).max(12).default(0),
+  billingPeriodName: z.string().optional().nullable(),
+  isSpecialRate: z.boolean().default(false),
   items: z.array(InvoiceItemInputSchema).optional(),
 });
 
@@ -52,6 +75,8 @@ export const BatchInvoiceGenerationSchema = z.object({
   programmeId: z.string().uuid(),
   schoolClassId: z.string().uuid().optional().nullable(),
   dueDate: z.coerce.date(),
+  billingMonth: z.number().int().min(0).max(12).default(0),
+  billingPeriodName: z.string().optional().nullable(),
   isAdmissionFee: z.boolean().default(false),
 });
 
@@ -106,7 +131,9 @@ export async function createInvoice(
       guardianId = primaryLink.guardianId;
     }
 
-    // 3. Duplicate Prevention Guard (Unique student-programme-session-term)
+    const billingMonth = validated.billingMonth ?? 0;
+
+    // 3. Duplicate Prevention Guard (Unique student-programme-session-term-month)
     const existing = await tx.invoice.findUnique({
       where: {
         unique_student_programme_term_invoice: {
@@ -114,19 +141,60 @@ export async function createInvoice(
           programmeId: validated.programmeId,
           academicSessionId: validated.academicSessionId,
           academicTermId: validated.academicTermId,
+          billingMonth,
         },
       },
     });
 
     if (existing) {
+      const periodLabel = existing.billingPeriodName
+        ? ` for ${existing.billingPeriodName}`
+        : ' for the specified term';
       throw new AuthorizationError(
-        `Invoice (${existing.invoiceNumber}) has already been issued for this student and programme for the specified term.`,
+        `Invoice (${existing.invoiceNumber}) has already been issued for this student and programme${periodLabel}.`,
         400,
         'DUPLICATE_INVOICE'
       );
     }
 
-    // 4. Resolve Line Items: from input items OR originating FeeStructure
+    // 4. Resolve Special Fee Rate (if student has an approved legacy/special rate)
+    let isSpecialRate = validated.isSpecialRate ?? false;
+    let specialRate = null;
+
+    if (!validated.items || validated.items.length === 0) {
+      specialRate = await tx.studentSpecialFeeRate.findFirst({
+        where: {
+          studentId: validated.studentId,
+          programmeId: validated.programmeId,
+          academicSessionId: validated.academicSessionId,
+          isActive: true,
+          OR: [
+            { academicTermId: null },
+            { academicTermId: validated.academicTermId },
+          ],
+          AND: [
+            {
+              OR: [
+                { endDate: null },
+                { endDate: { gte: new Date() } },
+              ],
+            },
+          ],
+        },
+        include: {
+          feeStructure: {
+            include: { feeItems: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (specialRate) {
+        isSpecialRate = true;
+      }
+    }
+
+    // 5. Resolve Line Items: from input items OR special rate OR originating FeeStructure
     let lineItems: Array<{ description: string; unitAmountKobo: bigint; quantity: number; totalAmountKobo: bigint }> = [];
 
     if (validated.items && validated.items.length > 0) {
@@ -140,6 +208,27 @@ export async function createInvoice(
           totalAmountKobo: unit * BigInt(qty),
         };
       });
+    } else if (specialRate) {
+      if (specialRate.customAmountKobo != null) {
+        const label = specialRate.notes
+          ? `Approved Special Rate Tuition (${specialRate.notes})`
+          : 'Approved Special Rate Tuition';
+        lineItems = [
+          {
+            description: label,
+            unitAmountKobo: specialRate.customAmountKobo,
+            quantity: 1,
+            totalAmountKobo: specialRate.customAmountKobo,
+          },
+        ];
+      } else if (specialRate.feeStructure && specialRate.feeStructure.feeItems.length > 0) {
+        lineItems = specialRate.feeStructure.feeItems.map((item) => ({
+          description: `${item.name} (Approved Special Rate)`,
+          unitAmountKobo: item.amountKobo,
+          quantity: 1,
+          totalAmountKobo: item.amountKobo,
+        }));
+      }
     } else if (validated.feeStructureId) {
       const feeStructure = await tx.feeStructure.findUnique({
         where: { id: validated.feeStructureId },
@@ -161,6 +250,10 @@ export async function createInvoice(
         totalAmountKobo: item.amountKobo,
       }));
     } else {
+      // Check program for Creche monthly care fee
+      const programme = await tx.programme.findUnique({ where: { id: validated.programmeId } });
+      const isCreche = programme?.code === 'CRECHE' || billingMonth > 0;
+
       // Automatically resolve matching active fee structure
       const resolved = await resolveFeeStructureForStudent(
         {
@@ -172,20 +265,31 @@ export async function createInvoice(
         tx
       );
 
-      if (!resolved || resolved.feeItems.length === 0) {
+      if (resolved && resolved.feeItems.length > 0) {
+        lineItems = resolved.feeItems.map((item) => ({
+          description: item.name,
+          unitAmountKobo: item.amountKobo,
+          quantity: 1,
+          totalAmountKobo: item.amountKobo,
+        }));
+      } else if (isCreche) {
+        // Standard Creche monthly tuition fee: ₦10,000 (1,000,000 Kobo)
+        const monthName = validated.billingPeriodName || (billingMonth > 0 ? getBillingMonthName(billingMonth) : 'Monthly');
+        lineItems = [
+          {
+            description: `${monthName} Creche Care & Tuition Fee`,
+            unitAmountKobo: BigInt(1000000), // ₦10,000 in Kobo
+            quantity: 1,
+            totalAmountKobo: BigInt(1000000),
+          },
+        ];
+      } else {
         throw new AuthorizationError(
           'No applicable fee structure found to generate invoice line items.',
           400,
           'FEE_STRUCTURE_NOT_FOUND'
         );
       }
-
-      lineItems = resolved.feeItems.map((item) => ({
-        description: item.name,
-        unitAmountKobo: item.amountKobo,
-        quantity: 1,
-        totalAmountKobo: item.amountKobo,
-      }));
     }
 
     if (lineItems.length === 0) {
@@ -196,17 +300,17 @@ export async function createInvoice(
       );
     }
 
-    // 5. Authoritative recalculation of totals on the server
+    // 6. Authoritative recalculation of totals on the server
     let totalAmountKobo = BigInt(0);
     for (const item of lineItems) {
       totalAmountKobo += item.totalAmountKobo;
     }
 
-    // 6. Concurrency-safe atomic invoice number allocation
+    // 7. Concurrency-safe atomic invoice number allocation
     const invoiceYear = validated.dueDate.getFullYear();
     const invoiceNumber = await getNextInvoiceNumber(tx, invoiceYear);
 
-    // 7. Persist Invoice and frozen line item snapshots
+    // 8. Persist Invoice and frozen line item snapshots
     const invoice = await tx.invoice.create({
       data: {
         invoiceNumber,
@@ -215,7 +319,10 @@ export async function createInvoice(
         academicSessionId: validated.academicSessionId,
         academicTermId: validated.academicTermId,
         programmeId: validated.programmeId,
-        feeStructureId: validated.feeStructureId || null,
+        feeStructureId: validated.feeStructureId || specialRate?.feeStructureId || null,
+        billingMonth,
+        billingPeriodName: validated.billingPeriodName || (billingMonth > 0 ? getBillingMonthName(billingMonth) : null),
+        isSpecialRate,
         totalAmountKobo,
         amountPaidKobo: BigInt(0),
         outstandingBalanceKobo: totalAmountKobo,
@@ -375,8 +482,10 @@ export async function generateBatchTermInvoices(
       createdInvoices: [] as string[],
     };
 
+    const billingMonth = validated.billingMonth ?? 0;
+
     for (const enrollment of enrollments) {
-      // Check if student already has an invoice for this term & programme
+      // Check if student already has an invoice for this term & programme & billingMonth
       const existing = await tx.invoice.findUnique({
         where: {
           unique_student_programme_term_invoice: {
@@ -384,6 +493,7 @@ export async function generateBatchTermInvoices(
             programmeId: enrollment.programmeId,
             academicSessionId: enrollment.academicSessionId,
             academicTermId: enrollment.academicTermId,
+            billingMonth,
           },
         },
       });
@@ -404,22 +514,51 @@ export async function generateBatchTermInvoices(
         continue;
       }
 
-      // Resolve fee structure
-      const feeStructure = await resolveFeeStructureForStudent(
-        {
+      // Check if student has special rate
+      const hasSpecialRate = await tx.studentSpecialFeeRate.findFirst({
+        where: {
           studentId: enrollment.studentId,
           programmeId: enrollment.programmeId,
           academicSessionId: enrollment.academicSessionId,
-          academicTermId: enrollment.academicTermId,
-          schoolClassId: enrollment.schoolClassId,
-          isAdmissionFee: validated.isAdmissionFee,
+          isActive: true,
+          OR: [
+            { academicTermId: null },
+            { academicTermId: enrollment.academicTermId },
+          ],
+          AND: [
+            {
+              OR: [
+                { endDate: null },
+                { endDate: { gte: new Date() } },
+              ],
+            },
+          ],
         },
-        tx
-      );
+      });
 
-      if (!feeStructure || feeStructure.feeItems.length === 0) {
-        results.skippedNoFeeStructureCount++;
-        continue;
+      const programme = await tx.programme.findUnique({ where: { id: enrollment.programmeId } });
+      const isCreche = programme?.code === 'CRECHE' || billingMonth > 0;
+
+      // Resolve fee structure
+      let feeStructureId: string | null = null;
+      if (!hasSpecialRate) {
+        const feeStructure = await resolveFeeStructureForStudent(
+          {
+            studentId: enrollment.studentId,
+            programmeId: enrollment.programmeId,
+            academicSessionId: enrollment.academicSessionId,
+            academicTermId: enrollment.academicTermId,
+            schoolClassId: enrollment.schoolClassId,
+            isAdmissionFee: validated.isAdmissionFee,
+          },
+          tx
+        );
+
+        if ((!feeStructure || feeStructure.feeItems.length === 0) && !isCreche) {
+          results.skippedNoFeeStructureCount++;
+          continue;
+        }
+        feeStructureId = feeStructure?.id ?? null;
       }
 
       // Create invoice
@@ -431,8 +570,10 @@ export async function generateBatchTermInvoices(
           academicSessionId: enrollment.academicSessionId,
           academicTermId: enrollment.academicTermId,
           programmeId: enrollment.programmeId,
-          feeStructureId: feeStructure.id,
+          feeStructureId,
           dueDate: validated.dueDate,
+          billingMonth,
+          billingPeriodName: validated.billingPeriodName,
         },
         tx
       );

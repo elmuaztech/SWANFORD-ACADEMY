@@ -24,8 +24,11 @@ import {
   Select,
   FormGroup,
   Alert,
+  Tabs,
 } from "@/components";
 import { formatNaira } from "@/lib/money";
+import { SpecialRatesManagement } from "./special-rates-management";
+import { CrecheBillingManagement } from "./creche-billing-management";
 
 interface FeeItemData {
   id?: string;
@@ -82,6 +85,7 @@ export function FeeConfigurationSection() {
   const [formFeeFeedback, setFormFeeFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   // Filter state
+  const [feeSubTab, setFeeSubTab] = useState<"structures" | "special_rates" | "creche">("structures");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProgrammeFilter, setSelectedProgrammeFilter] = useState("ALL");
 
@@ -354,8 +358,24 @@ export function FeeConfigurationSection() {
 
   return (
     <div className="space-y-6">
-      {/* 1. APPLICATION FORM FEE SECTION */}
-      <Card className="bg-white border-[#EADBDA] shadow-xs">
+      {/* Sub-navigation Tabs */}
+      <Tabs
+        tabs={[
+          { id: "structures", label: `Standard Fee Plans (${feeStructures.length})` },
+          { id: "special_rates", label: "Old / Special Rates (Grandfathered)" },
+          { id: "creche", label: "Creche Monthly Billing (₦10,000/mo)" },
+        ]}
+        activeTab={feeSubTab}
+        onChange={(tabId) => setFeeSubTab(tabId as "structures" | "special_rates" | "creche")}
+      />
+
+      {feeSubTab === "special_rates" && <SpecialRatesManagement />}
+      {feeSubTab === "creche" && <CrecheBillingManagement />}
+
+      {feeSubTab === "structures" && (
+        <>
+          {/* 1. APPLICATION FORM FEE SECTION */}
+          <Card className="bg-white border-[#EADBDA] shadow-xs">
         <div className="bg-[#6B0B1A] text-white px-5 py-3.5 rounded-t-xl flex items-center justify-between">
           <div>
             <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-white">
@@ -558,6 +578,8 @@ export function FeeConfigurationSection() {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
 
       {/* 3. MODAL: CREATE / EDIT FEE STRUCTURE */}
       {isModalOpen && (

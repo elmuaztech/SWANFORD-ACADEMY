@@ -319,6 +319,7 @@ export async function matriculateApplication(
             programmeId: sel.programmeId,
             academicSessionId: application.academicSessionId,
             academicTermId: firstTerm.id,
+            billingMonth: 0,
           },
         },
       });

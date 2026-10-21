@@ -410,6 +410,11 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<RoleCode, PermissionCodeType[]> = {
     PermissionCode.COMMUNICATION_ANNOUNCE,
     PermissionCode.NOTIFICATION_VIEW,
     PermissionCode.NOTIFICATION_RETRY,
+    // Finance Oversight & Billing (Manage invoices, fee structures, special rates; payment recording reserved for ACCOUNTANT & SUPER_ADMIN)
+    PermissionCode.FINANCE_INVOICE_VIEW,
+    PermissionCode.FINANCE_INVOICE_MANAGE,
+    PermissionCode.FINANCE_REPORT_VIEW,
+    PermissionCode.FEE_STRUCTURE_MANAGE,
   ],
 
   [RoleCode.ACCOUNTANT]: [

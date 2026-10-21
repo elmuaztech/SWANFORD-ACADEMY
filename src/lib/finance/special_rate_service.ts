@@ -1,0 +1,209 @@
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+import { requirePermission, AuthorizationError } from '@/lib/auth/authorization';
+import { PermissionCode } from '@/lib/auth/permissions';
+import { SafeUser } from '@/lib/auth/service';
+import { z } from 'zod';
+import { parseKoboFromDto } from '@/lib/money';
+
+export const AssignSpecialRatesSchema = z.object({
+  studentIds: z.array(z.string().uuid()).min(1, 'Select at least one student'),
+  programmeId: z.string().uuid(),
+  academicSessionId: z.string().uuid(),
+  academicTermId: z.string().uuid().optional().nullable(),
+  feeStructureId: z.string().uuid().optional().nullable(),
+  customAmountNaira: z.union([z.string(), z.number()]).optional().nullable(),
+  notes: z.string().max(250).optional().nullable(),
+  effectiveDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional().nullable(),
+});
+
+export type AssignSpecialRatesInput = z.input<typeof AssignSpecialRatesSchema>;
+
+/**
+ * Lists assigned special or grandfathered fee rates, optionally filtered by programme or session.
+ */
+export async function listSpecialFeeRates(
+  actor: SafeUser,
+  filters: {
+    programmeId?: string;
+    academicSessionId?: string;
+    studentId?: string;
+    isActive?: boolean;
+  } = {},
+  client: Prisma.TransactionClient | typeof prisma = prisma
+) {
+  await requirePermission(actor, PermissionCode.FINANCE_INVOICE_VIEW);
+
+  return client.studentSpecialFeeRate.findMany({
+    where: {
+      ...(filters.programmeId && { programmeId: filters.programmeId }),
+      ...(filters.academicSessionId && { academicSessionId: filters.academicSessionId }),
+      ...(filters.studentId && { studentId: filters.studentId }),
+      ...(filters.isActive !== undefined && { isActive: filters.isActive }),
+    },
+    include: {
+      student: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          admissionNumber: true,
+          gender: true,
+        },
+      },
+      programme: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+      academicSession: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      academicTerm: {
+        select: {
+          id: true,
+          name: true,
+          termCode: true,
+        },
+      },
+      feeStructure: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      assignedByUser: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+/**
+ * Assigns approved special/grandfathered fee rates to one or multiple students.
+ */
+export async function assignSpecialFeeRates(
+  actor: SafeUser,
+  input: AssignSpecialRatesInput,
+  client: Prisma.TransactionClient | typeof prisma = prisma
+) {
+  await requirePermission(actor, PermissionCode.FINANCE_INVOICE_MANAGE);
+  const validated = AssignSpecialRatesSchema.parse(input);
+
+  // Parse custom amount if provided
+  let customAmountKobo: bigint | null = null;
+  if (validated.customAmountNaira !== undefined && validated.customAmountNaira !== null && validated.customAmountNaira !== '') {
+    const parsedNum = Number(validated.customAmountNaira);
+    if (isNaN(parsedNum) || parsedNum < 0) {
+      throw new AuthorizationError('Custom fee amount must be a positive number.', 400, 'INVALID_AMOUNT');
+    }
+    // Convert Naira to Kobo
+    customAmountKobo = BigInt(Math.round(parsedNum * 100));
+  }
+
+  if (!customAmountKobo && !validated.feeStructureId) {
+    throw new AuthorizationError(
+      'You must specify either a custom fee amount (₦) or an existing special fee structure.',
+      400,
+      'SPECIFY_AMOUNT_OR_STRUCTURE'
+    );
+  }
+
+  const execute = async (tx: Prisma.TransactionClient) => {
+    const results = [];
+
+    for (const studentId of validated.studentIds) {
+      // Deactivate any currently active special rate for the same student & programme & session
+      await tx.studentSpecialFeeRate.updateMany({
+        where: {
+          studentId,
+          programmeId: validated.programmeId,
+          academicSessionId: validated.academicSessionId,
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+          endDate: new Date(),
+        },
+      });
+
+      // Create new active special rate record
+      const rate = await tx.studentSpecialFeeRate.create({
+        data: {
+          studentId,
+          programmeId: validated.programmeId,
+          academicSessionId: validated.academicSessionId,
+          academicTermId: validated.academicTermId || null,
+          feeStructureId: validated.feeStructureId || null,
+          customAmountKobo,
+          effectiveDate: validated.effectiveDate || new Date(),
+          endDate: validated.endDate || null,
+          notes: validated.notes?.trim() || null,
+          isActive: true,
+          assignedByUserId: actor.id,
+        },
+        include: {
+          student: true,
+          programme: true,
+        },
+      });
+
+      results.push(rate);
+    }
+
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'SPECIAL_FEE_RATES_ASSIGNED',
+        entityType: 'StudentSpecialFeeRate',
+        entityId: validated.programmeId,
+        newValues: {
+          assignedCount: results.length,
+          studentIds: validated.studentIds,
+          customAmountKobo: customAmountKobo?.toString() || null,
+          feeStructureId: validated.feeStructureId,
+          notes: validated.notes,
+        },
+      },
+    });
+
+    return results;
+  };
+
+  if ('$transaction' in client) {
+    return (client as typeof prisma).$transaction(execute);
+  }
+  return execute(client as Prisma.TransactionClient);
+}
+
+/**
+ * Toggles or updates the status of an assigned special fee rate.
+ */
+export async function toggleSpecialFeeRateStatus(
+  actor: SafeUser,
+  rateId: string,
+  isActive: boolean,
+  client: Prisma.TransactionClient | typeof prisma = prisma
+) {
+  await requirePermission(actor, PermissionCode.FINANCE_INVOICE_MANAGE);
+
+  return client.studentSpecialFeeRate.update({
+    where: { id: rateId },
+    data: {
+      isActive,
+      ...(isActive ? { endDate: null } : { endDate: new Date() }),
+    },
+  });
+}
