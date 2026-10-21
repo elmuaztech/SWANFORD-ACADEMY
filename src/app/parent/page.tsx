@@ -128,7 +128,11 @@ export default function ParentDashboardPage() {
         let totalUnpaidKobo = BigInt(0);
         if (finData.invoices && Array.isArray(finData.invoices)) {
           for (const inv of finData.invoices) {
-            totalUnpaidKobo += BigInt(inv.balanceAmountKobo || 0);
+            const raw =
+              inv.outstandingBalanceKobo ??
+              inv.balanceAmountKobo ??
+              (inv.balance ? Math.round(Number(inv.balance) * 100) : 0);
+            totalUnpaidKobo += BigInt(raw || 0);
           }
         }
         setBalanceKobo(totalUnpaidKobo);
@@ -341,6 +345,40 @@ export default function ParentDashboardPage() {
               </Badge>
             ))}
           </div>
+
+          {/* Outstanding Fee Quick-Pay Banner */}
+          {BigInt(balanceKobo) > BigInt(0) && (
+            <div className="bg-gradient-to-r from-amber-50 via-[#FAF7F2] to-rose-50 border border-amber-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#800020] text-white">
+                    Fee Due
+                  </span>
+                  <span className="text-xs font-semibold text-stone-600">
+                    Official Term Invoice Outstanding
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-extrabold text-stone-900">
+                  {selectedChild.firstName}&apos;s Outstanding Balance:{" "}
+                  <span className="text-[#800020] font-black">{formatKoboToNaira(balanceKobo)}</span>
+                </h3>
+                <p className="text-xs text-stone-600">
+                  Pay securely online via Paystack card, bank transfer, or USSD. Digital receipt is issued immediately upon confirmation.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <Link
+                  href={`/parent/children/${selectedChild.studentId}/finance`}
+                  className="w-full sm:w-auto"
+                >
+                  <Button className="w-full bg-[#800020] hover:bg-[#5B0612] text-white min-h-[44px] px-6 font-bold flex items-center justify-center gap-2 shadow-sm">
+                    <CreditCard className="w-4 h-4" />
+                    Pay Now
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Quick Metrics Grid: Animated Multi-Color StatCards with Prominent Shadow & Large Digit Support */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

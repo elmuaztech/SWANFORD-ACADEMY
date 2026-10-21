@@ -5,6 +5,7 @@ import { PermissionCode } from '@/lib/auth/permissions';
 import { SafeUser } from '@/lib/auth/service';
 import { z } from 'zod';
 import { parseKoboFromDto } from '@/lib/money';
+import { getNextInvoiceNumber } from './sequences';
 
 export const AssignSpecialRatesSchema = z.object({
   studentIds: z.array(z.string().uuid()).min(1, 'Select at least one student'),
@@ -16,6 +17,7 @@ export const AssignSpecialRatesSchema = z.object({
   notes: z.string().max(250).optional().nullable(),
   effectiveDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional().nullable(),
+  autoIssueInvoice: z.boolean().optional().default(false),
 });
 
 export type AssignSpecialRatesInput = z.input<typeof AssignSpecialRatesSchema>;
@@ -124,6 +126,20 @@ export async function assignSpecialFeeRates(
   const execute = async (tx: Prisma.TransactionClient) => {
     const results = [];
 
+    // Resolve target term for immediate invoice issuance only if requested
+    const shouldIssueInvoice = Boolean(validated.academicTermId || validated.autoIssueInvoice);
+    const targetTerm = shouldIssueInvoice
+      ? (validated.academicTermId
+          ? await tx.academicTerm.findUnique({ where: { id: validated.academicTermId } })
+          : (await tx.academicTerm.findFirst({
+              where: { academicSessionId: validated.academicSessionId, isCurrent: true },
+            })) ||
+            (await tx.academicTerm.findFirst({
+              where: { academicSessionId: validated.academicSessionId },
+              orderBy: { startDate: 'asc' },
+            })))
+      : null;
+
     for (const studentId of validated.studentIds) {
       // Deactivate any currently active special rate for the same student & programme & session
       await tx.studentSpecialFeeRate.updateMany({
@@ -161,6 +177,117 @@ export async function assignSpecialFeeRates(
       });
 
       results.push(rate);
+
+      // Immediately issue or update official invoice so parent can view and pay in portal
+      if (targetTerm) {
+        let invoiceLineItems: Array<{ description: string; amountKobo: bigint }> = [];
+        let invoiceTotalKobo = BigInt(0);
+
+        if (customAmountKobo != null) {
+          const desc = validated.notes?.trim()
+            ? `Approved Special Rate Tuition (${validated.notes.trim()})`
+            : 'Approved Special Rate Tuition';
+          invoiceLineItems = [{ description: desc, amountKobo: customAmountKobo }];
+          invoiceTotalKobo = customAmountKobo;
+        } else if (validated.feeStructureId) {
+          const fs = await tx.feeStructure.findUnique({
+            where: { id: validated.feeStructureId },
+            include: { feeItems: true },
+          });
+          if (fs && fs.feeItems.length > 0) {
+            invoiceLineItems = fs.feeItems.map((fi) => ({
+              description: `${fi.name} (Approved Special Rate)`,
+              amountKobo: fi.amountKobo,
+            }));
+            invoiceTotalKobo = fs.feeItems.reduce((acc, fi) => acc + fi.amountKobo, BigInt(0));
+          }
+        }
+
+        if (invoiceLineItems.length > 0) {
+          const existingInv = await tx.invoice.findFirst({
+            where: {
+              studentId,
+              programmeId: validated.programmeId,
+              academicSessionId: validated.academicSessionId,
+              academicTermId: targetTerm.id,
+              billingMonth: 0,
+            },
+          });
+
+          if (existingInv) {
+            // Update unpaid existing invoice to reflect the approved rate
+            if (existingInv.amountPaidKobo === BigInt(0)) {
+              await tx.invoiceItem.deleteMany({ where: { invoiceId: existingInv.id } });
+              await tx.invoiceItem.createMany({
+                data: invoiceLineItems.map((li) => ({
+                  invoiceId: existingInv.id,
+                  description: li.description,
+                  unitAmountKobo: li.amountKobo,
+                  quantity: 1,
+                  totalAmountKobo: li.amountKobo,
+                })),
+              });
+              await tx.invoice.update({
+                where: { id: existingInv.id },
+                data: {
+                  totalAmountKobo: invoiceTotalKobo,
+                  outstandingBalanceKobo: invoiceTotalKobo,
+                  isSpecialRate: true,
+                  billingPeriodName: `${targetTerm.name} Special Rate`,
+                  status: 'ISSUED',
+                },
+              });
+            }
+            // Create a new invoice immediately
+            const studentRecord = await tx.student.findUnique({
+              where: { id: studentId },
+              include: {
+                guardianLinks: true,
+              },
+            });
+            const primaryLink =
+              studentRecord?.guardianLinks.find((l) => l.receivesInvoices && l.isPrimaryContact) ||
+              studentRecord?.guardianLinks.find((l) => l.receivesInvoices) ||
+              studentRecord?.guardianLinks[0];
+
+            if (primaryLink) {
+              const guardianId = primaryLink.guardianId;
+              const invoiceYear = new Date().getFullYear();
+              const invoiceNumber = await getNextInvoiceNumber(tx, invoiceYear);
+              const dueDate = new Date();
+              dueDate.setDate(dueDate.getDate() + 30);
+
+              await tx.invoice.create({
+                data: {
+                  invoiceNumber,
+                  studentId,
+                  guardianId,
+                  academicSessionId: validated.academicSessionId,
+                  academicTermId: targetTerm.id,
+                  programmeId: validated.programmeId,
+                  billingMonth: 0,
+                  billingPeriodName: `${targetTerm.name} Special Rate`,
+                  isSpecialRate: true,
+                  totalAmountKobo: invoiceTotalKobo,
+                  amountPaidKobo: BigInt(0),
+                  outstandingBalanceKobo: invoiceTotalKobo,
+                  status: 'ISSUED',
+                  dueDate,
+                  issuedAt: new Date(),
+                  items: {
+                    create: invoiceLineItems.map((li) => ({
+                      description: li.description,
+                      unitAmountKobo: li.amountKobo,
+                      quantity: 1,
+                      totalAmountKobo: li.amountKobo,
+                    })),
+                  },
+                },
+              });
+            }
+          }
+        }
+      }
     }
 
     await tx.auditLog.create({

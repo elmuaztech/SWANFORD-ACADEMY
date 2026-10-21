@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth/request_auth';
 import { getParentChildFinance } from '@/lib/parent/parent_service';
 import { AuthorizationError } from '@/lib/auth/authorization';
 import { toUserFacingError } from '@/lib/ui/error_messages';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,48 @@ export async function GET(
     const { id: studentId } = await params;
     const finance = await getParentChildFinance(user.id, studentId);
 
-    return NextResponse.json({ invoices: finance });
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, firstName: true, lastName: true, admissionNumber: true },
+    });
+    const childName = student ? `${student.firstName} ${student.lastName}`.trim() : 'Student';
+    const admissionNumber = student?.admissionNumber || 'N/A';
+
+    let totalBilled = 0;
+    let totalPaid = 0;
+    let totalOutstanding = 0;
+    for (const inv of finance) {
+      totalBilled += Number(inv.totalAmountKobo || 0) / 100;
+      totalPaid += Number(inv.amountPaidKobo || 0) / 100;
+      totalOutstanding += Number(inv.outstandingBalanceKobo || 0) / 100;
+    }
+
+    const mappedInvoices = finance.map((inv) => ({
+      ...inv,
+      title: inv.billingPeriodName || `${inv.termName || 'Term'} Fee`,
+      totalAmount: Number(inv.totalAmountKobo || 0) / 100,
+      amountPaid: Number(inv.amountPaidKobo || 0) / 100,
+      balance: Number(inv.outstandingBalanceKobo || 0) / 100,
+      lineItems: inv.items.map((it: any) => ({
+        id: it.id,
+        description: it.description,
+        amount: Number(it.totalAmountKobo || 0) / 100,
+      })),
+    }));
+
+    return NextResponse.json({
+      child: {
+        id: studentId,
+        name: childName,
+        admissionNumber,
+      },
+      totals: {
+        totalBilled,
+        totalPaid,
+        totalOutstanding,
+      },
+      invoices: mappedInvoices,
+    });
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });

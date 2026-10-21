@@ -91,6 +91,7 @@ interface SessionOption {
   id: string;
   name: string;
   isCurrent: boolean;
+  terms?: Array<{ id: string; name: string; termCode: string; isCurrent: boolean }>;
 }
 
 interface FeeStructureOption {
@@ -124,6 +125,7 @@ export function SpecialRatesManagement() {
   // Assignment Form State
   const [targetProgrammeId, setTargetProgrammeId] = useState("");
   const [targetSessionId, setTargetSessionId] = useState("");
+  const [targetTermId, setTargetTermId] = useState("");
   const [rateType, setRateType] = useState<"AMOUNT" | "STRUCTURE">("AMOUNT");
   const [customAmountNaira, setCustomAmountNaira] = useState("");
   const [selectedFeeStructureId, setSelectedFeeStructureId] = useState("");
@@ -162,8 +164,12 @@ export function SpecialRatesManagement() {
         const sessList = Array.isArray(sessData) ? sessData : sessData.sessions || [];
         setSessions(sessList);
         const current = sessList.find((s: SessionOption) => s.isCurrent) || sessList[0];
-        if (current && !targetSessionId) {
-          setTargetSessionId(current.id);
+        if (current) {
+          setTargetSessionId((prev) => prev || current.id);
+          const curTerm = current.terms?.find((t: any) => t.isCurrent) || current.terms?.[0];
+          if (curTerm) {
+            setTargetTermId((prev) => prev || curTerm.id);
+          }
         }
       }
 
@@ -308,10 +314,12 @@ export function SpecialRatesManagement() {
           studentIds: selectedStudentIds,
           programmeId: targetProgrammeId,
           academicSessionId: targetSessionId,
+          academicTermId: targetTermId || null,
           customAmountNaira: rateType === "AMOUNT" ? customAmountNaira : null,
           feeStructureId: rateType === "STRUCTURE" ? selectedFeeStructureId : null,
           notes: notes.trim() || undefined,
           effectiveDate: new Date(effectiveDate),
+          autoIssueInvoice: true,
         }),
       });
 
@@ -598,7 +606,7 @@ export function SpecialRatesManagement() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <FormGroup label="Programme" required>
                 <Select
                   value={targetProgrammeId}
@@ -619,7 +627,13 @@ export function SpecialRatesManagement() {
               <FormGroup label="Academic Session" required>
                 <Select
                   value={targetSessionId}
-                  onChange={(e) => setTargetSessionId(e.target.value)}
+                  onChange={(e) => {
+                    const sId = e.target.value;
+                    setTargetSessionId(sId);
+                    const found = sessions.find((s) => s.id === sId);
+                    const defTerm = found?.terms?.find((t) => t.isCurrent) || found?.terms?.[0];
+                    if (defTerm) setTargetTermId(defTerm.id);
+                  }}
                   required
                 >
                   {sessions.map((s) => (
@@ -629,6 +643,27 @@ export function SpecialRatesManagement() {
                   ))}
                 </Select>
               </FormGroup>
+
+              <FormGroup label="Academic Term" required>
+                <Select
+                  value={targetTermId}
+                  onChange={(e) => setTargetTermId(e.target.value)}
+                  required
+                >
+                  {(sessions.find((s) => s.id === targetSessionId)?.terms || []).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} {t.isCurrent ? "(Current)" : ""}
+                    </option>
+                  ))}
+                </Select>
+              </FormGroup>
+            </div>
+
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs flex items-start gap-2 text-emerald-900">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <span>
+                <strong>Immediate Parent Invoice &amp; Paystack:</strong> An official invoice for this term will be automatically issued/updated for each selected student so their parent immediately sees the bill and can click &quot;Pay Now&quot;.
+              </span>
             </div>
 
             {/* Student Selection Section */}
