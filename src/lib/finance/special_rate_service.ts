@@ -238,6 +238,7 @@ export async function assignSpecialFeeRates(
                 },
               });
             }
+          } else {
             // Create a new invoice immediately
             const studentRecord = await tx.student.findUnique({
               where: { id: studentId },
@@ -245,13 +246,17 @@ export async function assignSpecialFeeRates(
                 guardianLinks: true,
               },
             });
-            const primaryLink =
-              studentRecord?.guardianLinks.find((l) => l.receivesInvoices && l.isPrimaryContact) ||
-              studentRecord?.guardianLinks.find((l) => l.receivesInvoices) ||
-              studentRecord?.guardianLinks[0];
+            let guardianId =
+              studentRecord?.guardianLinks.find((l) => l.receivesInvoices && l.isPrimaryContact)?.guardianId ||
+              studentRecord?.guardianLinks.find((l) => l.receivesInvoices)?.guardianId ||
+              studentRecord?.guardianLinks[0]?.guardianId;
 
-            if (primaryLink) {
-              const guardianId = primaryLink.guardianId;
+            if (!guardianId) {
+              const fallbackGuardian = await tx.guardian.findFirst();
+              guardianId = fallbackGuardian?.id;
+            }
+
+            if (guardianId) {
               const invoiceYear = new Date().getFullYear();
               const invoiceNumber = await getNextInvoiceNumber(tx, invoiceYear);
               const dueDate = new Date();

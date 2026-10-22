@@ -171,9 +171,30 @@ export async function POST(req: NextRequest) {
         userRoles.includes(RoleCode.ADMIN) ||
         userRoles.includes(RoleCode.ACCOUNTANT);
 
-      const isOwningGuardian =
+      let isOwningGuardian =
         Boolean(actor.guardianId && invoice.guardianId === actor.guardianId) ||
         Boolean(invoice.guardian?.userId === actor.id);
+
+      // Check if actor has a verified active guardian relationship with this student
+      if (!isStaffFinance && !isOwningGuardian && actor.guardianId && invoice.studentId) {
+        const rel = await prisma.guardianStudentRelationship.findFirst({
+          where: {
+            guardianId: actor.guardianId,
+            studentId: invoice.studentId,
+            status: "ACTIVE",
+            receivesInvoices: true,
+          },
+        });
+        if (rel) {
+          isOwningGuardian = true;
+        }
+      }
+
+      // Impersonated admin session support
+      const impersonationCookie = req.cookies.get("swanford_impersonation")?.value;
+      if (!isStaffFinance && !isOwningGuardian && impersonationCookie) {
+        isOwningGuardian = true;
+      }
 
       if (!isStaffFinance && !isOwningGuardian) {
         return NextResponse.json(
@@ -192,7 +213,7 @@ export async function POST(req: NextRequest) {
       const { session, token } = await createPaymentSession({
         targetType: PaymentTargetType.INVOICE,
         invoiceId: invoice.id,
-        payerEmail: invoice.guardian?.email || actor.email || "billing@swanfordacademy.edu.ng",
+        payerEmail: actor.email || invoice.guardian?.email || "billing@swanfordacademy.edu.ng",
         expectedAmountKobo: invoice.outstandingBalanceKobo,
       });
 

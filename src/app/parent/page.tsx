@@ -62,6 +62,8 @@ export default function ParentDashboardPage() {
   const [attendance, setAttendance] = useState<ChildAttendanceSummary | null>(null);
   const [results, setResults] = useState<SubjectResultItem[]>([]);
   const [balanceKobo, setBalanceKobo] = useState<bigint | number>(0);
+  const [childInvoices, setChildInvoices] = useState<any[]>([]);
+  const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
 
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,21 +128,86 @@ export default function ParentDashboardPage() {
 
         // Calculate outstanding balance across invoices
         let totalUnpaidKobo = BigInt(0);
-        if (finData.invoices && Array.isArray(finData.invoices)) {
-          for (const inv of finData.invoices) {
-            const raw =
-              inv.outstandingBalanceKobo ??
-              inv.balanceAmountKobo ??
-              (inv.balance ? Math.round(Number(inv.balance) * 100) : 0);
-            totalUnpaidKobo += BigInt(raw || 0);
-          }
+        const invList = (finData.invoices && Array.isArray(finData.invoices)) ? finData.invoices : [];
+        setChildInvoices(invList);
+        for (const inv of invList) {
+          const raw =
+            inv.outstandingBalanceKobo ??
+            inv.balanceAmountKobo ??
+            (inv.balance ? Math.round(Number(inv.balance) * 100) : 0);
+          totalUnpaidKobo += BigInt(raw || 0);
         }
         setBalanceKobo(totalUnpaidKobo);
       })
       .catch(() => {
-        // Ignore fetch error on child switch
+        setChildInvoices([]);
       });
   }, [selectedChild]);
+
+  const handleDirectPayNow = async () => {
+    if (!selectedChild) return;
+    const unpaidInvoice = childInvoices.find((inv) => {
+      const raw =
+        inv.outstandingBalanceKobo ??
+        inv.balanceAmountKobo ??
+        (inv.balance ? Math.round(Number(inv.balance) * 100) : 0);
+      return BigInt(raw || 0) > BigInt(0);
+    });
+
+    if (!unpaidInvoice) {
+      window.location.href = `/parent/children/${selectedChild.studentId}/finance`;
+      return;
+    }
+
+    try {
+      setIsInitiatingPayment(true);
+
+      // 1. Generate session
+      const sessionRes = await fetch("/api/payments/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: "INVOICE",
+          targetId: unpaidInvoice.id,
+        }),
+      });
+
+      const sessionData = await sessionRes.json().catch(() => ({}));
+      if (!sessionRes.ok) {
+        alert(sessionData.error || "Unable to initiate payment session. Opening finance portal...");
+        window.location.href = `/parent/children/${selectedChild.studentId}/finance`;
+        return;
+      }
+
+      // 2. Initialize Paystack
+      const initRes = await fetch("/api/payments/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionToken: sessionData.token,
+          targetType: "INVOICE",
+          callbackUrl: "/parent/finance",
+        }),
+      });
+
+      const initData = await initRes.json().catch(() => ({}));
+      if (!initRes.ok) {
+        alert(initData.error || "Payment gateway could not be reached. Opening finance portal...");
+        window.location.href = `/parent/children/${selectedChild.studentId}/finance`;
+        return;
+      }
+
+      if (initData.authorizationUrl) {
+        window.location.href = initData.authorizationUrl;
+      } else {
+        window.location.href = `/parent/children/${selectedChild.studentId}/finance`;
+      }
+    } catch {
+      window.location.href = `/parent/children/${selectedChild.studentId}/finance`;
+    } finally {
+      setIsInitiatingPayment(false);
+    }
+  };
 
   if (isLoadingProfile) {
     return <LoadingState description="Loading your parent portal dashboard..." />;
@@ -366,15 +433,21 @@ export default function ParentDashboardPage() {
                   Pay securely online via Paystack card, bank transfer, or USSD. Digital receipt is issued immediately upon confirmation.
                 </p>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0">
+                <Button
+                  className="w-full sm:w-auto bg-[#800020] hover:bg-[#5B0612] text-white min-h-[44px] px-6 font-bold flex items-center justify-center gap-2 shadow-sm"
+                  onClick={handleDirectPayNow}
+                  isLoading={isInitiatingPayment}
+                  disabled={isInitiatingPayment}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  {isInitiatingPayment ? "Connecting to Paystack..." : "Pay Now"}
+                </Button>
                 <Link
                   href={`/parent/children/${selectedChild.studentId}/finance`}
-                  className="w-full sm:w-auto"
+                  className="text-xs text-center text-stone-600 hover:text-[#800020] font-medium underline py-2 sm:px-2"
                 >
-                  <Button className="w-full bg-[#800020] hover:bg-[#5B0612] text-white min-h-[44px] px-6 font-bold flex items-center justify-center gap-2 shadow-sm">
-                    <CreditCard className="w-4 h-4" />
-                    Pay Now
-                  </Button>
+                  View Breakdown
                 </Link>
               </div>
             </div>

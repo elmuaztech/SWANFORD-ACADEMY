@@ -101,7 +101,10 @@ export default function ChildFinancePage() {
   const handlePayOnline = async (invoiceId: string) => {
     try {
       setPayingInvoiceId(invoiceId);
-      const res = await fetch("/api/payments/initialize", {
+      setError(null);
+
+      // 1. Generate authoritative server payment session
+      const sessionRes = await fetch("/api/payments/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -110,21 +113,40 @@ export default function ChildFinancePage() {
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Unable to initiate payment session. Please try again or contact the school.");
+      const sessionData = await sessionRes.json().catch(() => ({}));
+      if (!sessionRes.ok) {
+        alert(sessionData.error || "Unable to initiate payment session. Please try again or contact the school.");
+        setPayingInvoiceId(null);
         return;
       }
 
-      const body = await res.json();
-      if (body.authorizationUrl) {
-        window.location.assign(body.authorizationUrl);
+      // 2. Initialize Paystack gateway transaction
+      const initRes = await fetch("/api/payments/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionToken: sessionData.token,
+          targetType: "INVOICE",
+          callbackUrl: `/parent/children/${childId}/finance`,
+        }),
+      });
+
+      const initData = await initRes.json().catch(() => ({}));
+      if (!initRes.ok) {
+        alert(initData.error || "Payment gateway could not be initialized. Please try again.");
+        setPayingInvoiceId(null);
+        return;
+      }
+
+      if (initData.authorizationUrl) {
+        // Direct redirect to Paystack
+        window.location.href = initData.authorizationUrl;
       } else {
-        alert("Payment initialization response did not contain an authorization URL.");
+        alert("Payment initialization did not return a checkout gateway link.");
+        setPayingInvoiceId(null);
       }
     } catch {
       alert("Payment initiation failed. Please check your network connection.");
-    } finally {
       setPayingInvoiceId(null);
     }
   };
@@ -280,11 +302,11 @@ export default function ChildFinancePage() {
                   </div>
 
                   {/* Payment & Receipt History */}
-                  {(inv.payments.length > 0 || inv.receipts.length > 0) && (
+                  {((inv.payments && inv.payments.length > 0) || (inv.receipts && inv.receipts.length > 0)) && (
                     <div className="pt-2 border-t border-stone-100">
                       <p className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-2">Receipts & Payment History</p>
                       <div className="space-y-2">
-                        {inv.receipts.map((rcpt) => (
+                        {(inv.receipts || []).map((rcpt) => (
                           <div key={rcpt.id} className="flex items-center justify-between p-2.5 rounded border border-emerald-200 bg-emerald-50/40 text-xs sm:text-sm">
                             <div className="flex items-center gap-2">
                               <div>
@@ -297,7 +319,7 @@ export default function ChildFinancePage() {
                             </span>
                           </div>
                         ))}
-                        {inv.payments.map((pmt) => (
+                        {(inv.payments || []).map((pmt) => (
                           <div key={pmt.id} className="flex items-center justify-between p-2 rounded border border-stone-200 bg-stone-50 text-xs">
                             <div className="flex items-center gap-2">
                               <span className="text-stone-700 font-mono">{pmt.reference} ({pmt.paymentMethod})</span>

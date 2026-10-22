@@ -42,11 +42,26 @@ export async function GET(
       totalAmount: Number(inv.totalAmountKobo || 0) / 100,
       amountPaid: Number(inv.amountPaidKobo || 0) / 100,
       balance: Number(inv.outstandingBalanceKobo || 0) / 100,
-      lineItems: inv.items.map((it: any) => ({
+      lineItems: (inv.items || []).map((it: any) => ({
         id: it.id,
         description: it.description,
         amount: Number(it.totalAmountKobo || 0) / 100,
       })),
+      payments: (inv.payments || []).map((p: any) => ({
+        id: p.id,
+        reference: p.paymentReference,
+        amount: Number(p.amountKobo || 0) / 100,
+        paymentMethod: p.paymentMethod,
+        paidAt: p.paidAt,
+      })),
+      receipts: (inv.payments || [])
+        .filter((p: any) => p.receipt)
+        .map((p: any) => ({
+          id: p.receipt.id,
+          receiptNumber: p.receipt.receiptNumber,
+          amount: Number(p.receipt.amountKobo || p.amountKobo || 0) / 100,
+          issuedAt: p.receipt.issuedAt || p.paidAt,
+        })),
     }));
 
     return NextResponse.json({
