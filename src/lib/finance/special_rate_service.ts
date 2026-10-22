@@ -14,6 +14,8 @@ export const AssignSpecialRatesSchema = z.object({
   academicTermId: z.string().uuid().optional().nullable(),
   feeStructureId: z.string().uuid().optional().nullable(),
   customAmountNaira: z.union([z.string(), z.number()]).optional().nullable(),
+  rateType: z.enum(['SPECIAL_RATE', 'SCHOLARSHIP']).default('SPECIAL_RATE'),
+  isScholarship: z.boolean().optional().default(false),
   notes: z.string().max(250).optional().nullable(),
   effectiveDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional().nullable(),
@@ -115,7 +117,15 @@ export async function assignSpecialFeeRates(
     customAmountKobo = BigInt(Math.round(parsedNum * 100));
   }
 
-  if (!customAmountKobo && !validated.feeStructureId) {
+  const isScholarship = validated.rateType === 'SCHOLARSHIP' || Boolean(validated.isScholarship);
+
+  if (isScholarship && !validated.feeStructureId) {
+    throw new AuthorizationError(
+      'Scholarship tuition exemption requires selecting an applicable fee structure so compulsory non-tuition fees (books, uniform, materials) can be accurately billed.',
+      400,
+      'SPECIFY_STRUCTURE_FOR_SCHOLARSHIP'
+    );
+  } else if (!isScholarship && !customAmountKobo && !validated.feeStructureId) {
     throw new AuthorizationError(
       'You must specify either a custom fee amount (₦) or an existing special fee structure.',
       400,
@@ -163,10 +173,12 @@ export async function assignSpecialFeeRates(
           academicSessionId: validated.academicSessionId,
           academicTermId: validated.academicTermId || null,
           feeStructureId: validated.feeStructureId || null,
-          customAmountKobo,
+          customAmountKobo: isScholarship ? null : customAmountKobo,
+          isScholarship,
+          rateType: isScholarship ? 'SCHOLARSHIP' : 'SPECIAL_RATE',
           effectiveDate: validated.effectiveDate || new Date(),
           endDate: validated.endDate || null,
-          notes: validated.notes?.trim() || null,
+          notes: validated.notes?.trim() || (isScholarship ? 'Scholarship - 100% Tuition Exemption' : null),
           isActive: true,
           assignedByUserId: actor.id,
         },
@@ -182,8 +194,31 @@ export async function assignSpecialFeeRates(
       if (targetTerm) {
         let invoiceLineItems: Array<{ description: string; amountKobo: bigint }> = [];
         let invoiceTotalKobo = BigInt(0);
+        let minDepositKobo: bigint | null = null;
 
-        if (customAmountKobo != null) {
+        if (isScholarship && validated.feeStructureId) {
+          const fs = await tx.feeStructure.findUnique({
+            where: { id: validated.feeStructureId },
+            include: { feeItems: true },
+          });
+          if (fs && fs.feeItems.length > 0) {
+            minDepositKobo = fs.minimumDepositKobo || null;
+            invoiceLineItems = fs.feeItems.map((fi) => {
+              const isTuition = /tuition/i.test(fi.name);
+              if (isTuition) {
+                return {
+                  description: `${fi.name} (100% Scholarship Waived)`,
+                  amountKobo: BigInt(0),
+                };
+              }
+              return {
+                description: fi.name,
+                amountKobo: fi.amountKobo,
+              };
+            });
+            invoiceTotalKobo = invoiceLineItems.reduce((acc, fi) => acc + fi.amountKobo, BigInt(0));
+          }
+        } else if (customAmountKobo != null) {
           const desc = validated.notes?.trim()
             ? `Approved Special Rate Tuition (${validated.notes.trim()})`
             : 'Approved Special Rate Tuition';
@@ -195,6 +230,7 @@ export async function assignSpecialFeeRates(
             include: { feeItems: true },
           });
           if (fs && fs.feeItems.length > 0) {
+            minDepositKobo = fs.minimumDepositKobo || null;
             invoiceLineItems = fs.feeItems.map((fi) => ({
               description: `${fi.name} (Approved Special Rate)`,
               amountKobo: fi.amountKobo,
@@ -213,6 +249,10 @@ export async function assignSpecialFeeRates(
               billingMonth: 0,
             },
           });
+
+          const periodName = isScholarship
+            ? `${targetTerm.name} Scholarship Rate`
+            : `${targetTerm.name} Special Rate`;
 
           if (existingInv) {
             // Update unpaid existing invoice to reflect the approved rate
@@ -233,7 +273,9 @@ export async function assignSpecialFeeRates(
                   totalAmountKobo: invoiceTotalKobo,
                   outstandingBalanceKobo: invoiceTotalKobo,
                   isSpecialRate: true,
-                  billingPeriodName: `${targetTerm.name} Special Rate`,
+                  isScholarship,
+                  minimumDepositKobo: minDepositKobo,
+                  billingPeriodName: periodName,
                   status: 'ISSUED',
                 },
               });
@@ -270,9 +312,12 @@ export async function assignSpecialFeeRates(
                   academicSessionId: validated.academicSessionId,
                   academicTermId: targetTerm.id,
                   programmeId: validated.programmeId,
+                  feeStructureId: validated.feeStructureId || null,
                   billingMonth: 0,
-                  billingPeriodName: `${targetTerm.name} Special Rate`,
+                  billingPeriodName: periodName,
                   isSpecialRate: true,
+                  isScholarship,
+                  minimumDepositKobo: minDepositKobo,
                   totalAmountKobo: invoiceTotalKobo,
                   amountPaidKobo: BigInt(0),
                   outstandingBalanceKobo: invoiceTotalKobo,

@@ -1257,6 +1257,7 @@ model FeeStructure {
   applicableGender  FeeApplicableGender @default(ALL) @map("applicable_gender")
   isAdmissionFee    Boolean             @default(false) @map("is_admission_fee")
   name              String              // e.g. "Primary 1st Term Boys Admission Fee"
+  minimumDepositKobo BigInt?            @map("minimum_deposit_kobo") @db.BigInt // Optional minimum threshold required for partial payment deposits
   isActive          Boolean             @default(true) @map("is_active")
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
@@ -1298,7 +1299,9 @@ model Invoice {
   feeStructureId         String?          @map("fee_structure_id") @db.Uuid
   billingMonth           Int?             @default(0) @map("billing_month") // 0 = standard term invoice, 1..12 = monthly fee (e.g. Creche)
   billingPeriodName      String?          @map("billing_period_name") // e.g. "October 2026", "First Term 2026/2027"
-  isSpecialRate          Boolean          @default(false) @map("is_special_rate") // true if an approved old/grandfathered rate was applied
+  isSpecialRate          Boolean          @default(false) @map("is_special_rate") // true if an approved old/continuing rate was applied
+  isScholarship          Boolean          @default(false) @map("is_scholarship") // true if tuition is exempt under scholarship
+  minimumDepositKobo     BigInt?          @map("minimum_deposit_kobo") @db.BigInt // Minimum deposit allowed for partial payment
   
   totalAmountKobo        BigInt           @map("total_amount_kobo") @db.BigInt
   amountPaidKobo         BigInt           @default(0) @map("amount_paid_kobo") @db.BigInt
@@ -1357,6 +1360,8 @@ model StudentSpecialFeeRate {
   academicTermId    String?         @map("academic_term_id") @db.Uuid
   feeStructureId    String?         @map("fee_structure_id") @db.Uuid
   customAmountKobo  BigInt?         @map("custom_amount_kobo") @db.BigInt
+  isScholarship     Boolean         @default(false) @map("is_scholarship")
+  rateType          String          @default("SPECIAL_RATE") @map("rate_type") // 'SPECIAL_RATE' | 'SCHOLARSHIP'
   effectiveDate     DateTime        @default(now()) @map("effective_date")
   endDate           DateTime?       @map("end_date")
   notes             String?

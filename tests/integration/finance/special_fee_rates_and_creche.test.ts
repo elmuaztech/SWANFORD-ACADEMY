@@ -195,4 +195,71 @@ describe('Special Grandfathered Fee Rates and Creche Monthly Billing', () => {
     expect(novemberInvoice.billingPeriodName).toBe('November 2026');
     expect(novemberInvoice.totalAmountKobo).toBe(BigInt(1000000));
   });
+
+  it('assigns scholarship rate and waives tuition while billing compulsory non-tuition fees on the invoice', async () => {
+    // 1. Create a fee structure with tuition and non-tuition items
+    const testStructure = await prisma.feeStructure.create({
+      data: {
+        academicSessionId: testSession.id,
+        academicTermId: testTerm.id,
+        programmeId: primaryProg.id,
+        name: 'Primary 1st Term Scholarship Test Structure',
+        minimumDepositKobo: BigInt(1000000), // ₦10,000 min deposit
+        feeItems: {
+          create: [
+            { name: '1st Term Tuition Fee', amountKobo: BigInt(5000000) }, // ₦50,000
+            { name: 'Books & Learning Materials', amountKobo: BigInt(1200000) }, // ₦12,000
+            { name: 'School Uniform & Cardigan', amountKobo: BigInt(1500000) }, // ₦15,000
+          ],
+        },
+      },
+      include: { feeItems: true },
+    });
+
+    // 2. Assign scholarship rate to student
+    const [assignedRate] = await assignSpecialFeeRates(adminUser, {
+      studentIds: [testStudent.id],
+      programmeId: primaryProg.id,
+      academicSessionId: testSession.id,
+      academicTermId: testTerm.id,
+      feeStructureId: testStructure.id,
+      rateType: 'SCHOLARSHIP',
+      isScholarship: true,
+      autoIssueInvoice: true,
+    });
+
+    expect(assignedRate.isScholarship).toBe(true);
+    expect(assignedRate.rateType).toBe('SCHOLARSHIP');
+
+    // 3. Verify issued invoice has tuition fee waived to ₦0 and non-tuition fees retained
+    const issuedInvoice = await prisma.invoice.findFirst({
+      where: {
+        studentId: testStudent.id,
+        programmeId: primaryProg.id,
+        academicSessionId: testSession.id,
+        academicTermId: testTerm.id,
+        billingMonth: 0,
+      },
+      include: { items: true },
+    });
+
+    expect(issuedInvoice).toBeDefined();
+    expect(issuedInvoice?.isScholarship).toBe(true);
+    expect(issuedInvoice?.minimumDepositKobo).toBe(BigInt(1000000));
+
+    // Tuition waived (₦0), Books (₦12,000) + Uniform (₦15,000) = ₦27,000
+    expect(issuedInvoice?.totalAmountKobo).toBe(BigInt(2700000));
+
+    const tuitionItem = issuedInvoice?.items.find((i) => /tuition/i.test(i.description));
+    expect(tuitionItem).toBeDefined();
+    expect(tuitionItem?.unitAmountKobo).toBe(BigInt(0));
+    expect(tuitionItem?.description).toContain('100% Scholarship Waived');
+
+    const booksItem = issuedInvoice?.items.find((i) => /books/i.test(i.description));
+    expect(booksItem?.unitAmountKobo).toBe(BigInt(1200000));
+
+    // Cleanup fee structure
+    await prisma.feeItem.deleteMany({ where: { feeStructureId: testStructure.id } });
+    await prisma.feeStructure.delete({ where: { id: testStructure.id } });
+  });
 });

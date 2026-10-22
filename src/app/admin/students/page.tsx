@@ -39,12 +39,47 @@ interface StudentListItem {
   }>;
 }
 
+interface ProgrammeOption {
+  id: string;
+  name: string;
+  code: string;
+}
+
+interface ClassOption {
+  id: string;
+  name: string;
+  arm: string | null;
+  programmeId: string;
+}
+
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<StudentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [programmeFilter, setProgrammeFilter] = useState<string>("");
+  const [classFilter, setClassFilter] = useState<string>("");
+
+  const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);
+  const [allClasses, setAllClasses] = useState<ClassOption[]>([]);
+
+  // Load available programmes and classes
+  useEffect(() => {
+    fetch("/api/admin/programmes")
+      .then((res) => (res.ok ? res.json() : { items: [] }))
+      .then((data) => setProgrammes(data.items || data.programmes || []))
+      .catch(() => setProgrammes([]));
+
+    fetch("/api/admin/classes")
+      .then((res) => (res.ok ? res.json() : { items: [] }))
+      .then((data) => setAllClasses(data.items || []))
+      .catch(() => setAllClasses([]));
+  }, []);
+
+  const availableClasses = programmeFilter
+    ? allClasses.filter((c) => c.programmeId === programmeFilter)
+    : allClasses;
 
   const fetchStudents = () => {
     setLoading(true);
@@ -52,6 +87,8 @@ export default function AdminStudentsPage() {
     let url = "/api/admin/students";
     const params = new URLSearchParams();
     if (statusFilter) params.append("status", statusFilter);
+    if (programmeFilter) params.append("programmeId", programmeFilter);
+    if (classFilter) params.append("schoolClassId", classFilter);
     if (search) params.append("search", search);
     if (params.toString()) url += `?${params.toString()}`;
 
@@ -74,28 +111,8 @@ export default function AdminStudentsPage() {
   };
 
   useEffect(() => {
-    let url = "/api/admin/students";
-    const params = new URLSearchParams();
-    if (statusFilter) params.append("status", statusFilter);
-    if (params.toString()) url += `?${params.toString()}`;
-
-    fetch(url)
-      .then(async (res) => {
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error || "Failed to load students directory.");
-        }
-        return res.json();
-      })
-      .then((json) => {
-        setStudents(json.students || json);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load students.");
-        setLoading(false);
-      });
-  }, [statusFilter]);
+    fetchStudents();
+  }, [statusFilter, programmeFilter, classFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,23 +122,11 @@ export default function AdminStudentsPage() {
   const handleClearFilters = () => {
     setSearch("");
     setStatusFilter("");
-    setLoading(true);
-    fetch("/api/admin/students")
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to reload students.");
-        return res.json();
-      })
-      .then((json) => {
-        setStudents(json.students || json);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load students.");
-        setLoading(false);
-      });
+    setProgrammeFilter("");
+    setClassFilter("");
   };
 
-  const isFiltered = Boolean(search || statusFilter);
+  const isFiltered = Boolean(search || statusFilter || programmeFilter || classFilter);
 
   return (
     <div className="space-y-6">
@@ -152,7 +157,7 @@ export default function AdminStudentsPage() {
       <Card className="border border-[#EADBDA]/80">
         <CardContent className="p-4">
           <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full">
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex-1 min-w-[180px]">
               <Input
                 placeholder="Search name or admission number..."
                 value={search}
@@ -161,13 +166,49 @@ export default function AdminStudentsPage() {
               />
             </div>
 
-            <div className="w-full md:w-56 shrink-0">
+            {/* Programme Filter */}
+            <div className="w-full sm:w-44 shrink-0">
+              <Select
+                value={programmeFilter}
+                onChange={(e) => {
+                  setProgrammeFilter(e.target.value);
+                  setClassFilter("");
+                }}
+                className="w-full"
+              >
+                <option value="">All Programmes</option>
+                {programmes.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* Class Filter */}
+            <div className="w-full sm:w-44 shrink-0">
+              <Select
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="w-full"
+              >
+                <option value="">All Classes</option>
+                {availableClasses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.arm ? `(${c.arm})` : ""}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="w-full sm:w-40 shrink-0">
               <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full"
               >
-                <option value="">All Enrollment Statuses</option>
+                <option value="">All Statuses</option>
                 <option value="ACTIVE">Active</option>
                 <option value="SUSPENDED">Suspended</option>
                 <option value="EXPELLED">Expelled</option>
@@ -176,14 +217,16 @@ export default function AdminStudentsPage() {
               </Select>
             </div>
 
-            <Button type="submit" variant="primary" size="md" className="font-bold whitespace-nowrap shrink-0">
-              Search
-            </Button>
-            {isFiltered && (
-              <Button type="button" variant="outline" size="md" onClick={handleClearFilters} className="whitespace-nowrap shrink-0">
-                Clear
+            <div className="flex items-center gap-2 shrink-0">
+              <Button type="submit" variant="primary" size="md" className="font-bold whitespace-nowrap">
+                Search
               </Button>
-            )}
+              {isFiltered && (
+                <Button type="button" variant="outline" size="md" onClick={handleClearFilters} className="whitespace-nowrap">
+                  Clear
+                </Button>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>

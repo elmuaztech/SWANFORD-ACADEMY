@@ -893,20 +893,19 @@ export default function AdminFinancePage() {
               </button>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <Button
                 variant="primary"
                 size="md"
                 onClick={() => setIsImmediateReminderOpen(true)}
-                className="bg-[#800020] hover:bg-[#5B0612] text-white font-bold"
+                className="bg-[#800020] hover:bg-[#5B0612] text-white font-bold shadow-sm"
               >
                 Send Reminders Now
               </Button>
               <Button
-                variant="outline"
                 size="md"
                 onClick={() => setIsScheduleReminderOpen(true)}
-                className="border-[#800020] text-[#800020] hover:bg-[#800020]/10 font-bold"
+                className="bg-stone-100 hover:bg-stone-200 text-[#800020] border-2 border-[#800020] font-bold shadow-sm"
               >
                 Schedule Reminder
               </Button>

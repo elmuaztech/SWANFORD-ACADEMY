@@ -40,6 +40,8 @@ interface StudentSpecialRate {
   endDate: string | null;
   notes: string | null;
   isActive: boolean;
+  isScholarship?: boolean;
+  rateType?: string;
   student: {
     id: string;
     firstName: string;
@@ -126,7 +128,7 @@ export function SpecialRatesManagement() {
   const [targetProgrammeId, setTargetProgrammeId] = useState("");
   const [targetSessionId, setTargetSessionId] = useState("");
   const [targetTermId, setTargetTermId] = useState("");
-  const [rateType, setRateType] = useState<"AMOUNT" | "STRUCTURE">("AMOUNT");
+  const [rateType, setRateType] = useState<"AMOUNT" | "STRUCTURE" | "SCHOLARSHIP">("AMOUNT");
   const [customAmountNaira, setCustomAmountNaira] = useState("");
   const [selectedFeeStructureId, setSelectedFeeStructureId] = useState("");
   const [notes, setNotes] = useState("");
@@ -299,14 +301,20 @@ export function SpecialRatesManagement() {
       return;
     }
 
-    if (rateType === "STRUCTURE" && !selectedFeeStructureId) {
-      setFeedback({ type: "error", message: "Please select an applicable fee structure." });
+    if ((rateType === "STRUCTURE" || rateType === "SCHOLARSHIP") && !selectedFeeStructureId) {
+      setFeedback({
+        type: "error",
+        message: rateType === "SCHOLARSHIP"
+          ? "Please select a fee structure so compulsory non-tuition items (books, uniform, materials) can be itemized."
+          : "Please select an applicable fee structure."
+      });
       return;
     }
 
     setIsSubmitting(true);
     setFeedback(null);
     try {
+      const isScholarship = rateType === "SCHOLARSHIP";
       const res = await fetch("/api/admin/finance/special-rates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -316,8 +324,10 @@ export function SpecialRatesManagement() {
           academicSessionId: targetSessionId,
           academicTermId: targetTermId || null,
           customAmountNaira: rateType === "AMOUNT" ? customAmountNaira : null,
-          feeStructureId: rateType === "STRUCTURE" ? selectedFeeStructureId : null,
-          notes: notes.trim() || undefined,
+          feeStructureId: (rateType === "STRUCTURE" || isScholarship) ? selectedFeeStructureId : null,
+          rateType: isScholarship ? "SCHOLARSHIP" : "SPECIAL_RATE",
+          isScholarship,
+          notes: notes.trim() || (isScholarship ? "Scholarship - 100% Tuition Exemption" : undefined),
           effectiveDate: new Date(effectiveDate),
           autoIssueInvoice: true,
         }),
@@ -443,7 +453,7 @@ export function SpecialRatesManagement() {
           description={
             searchQuery || selectedProgrammeFilter !== "ALL"
               ? "No student rates match the selected programme or search criteria."
-              : "No grandfathered or custom fee rates have been assigned yet. Click 'Assign Special Rate' to grant special tuition rates to old students."
+              : "No continuing student rates or scholarships have been assigned yet. Click 'Assign Special Rate' to grant special tuition rates or scholarship exemptions."
           }
           actionLabel="Assign Special Rate"
           onAction={() => setIsAssignModalOpen(true)}
@@ -459,7 +469,7 @@ export function SpecialRatesManagement() {
                     <TableHeaderCell className="w-12 text-center font-semibold text-stone-700">S/N</TableHeaderCell>
                     <TableHeaderCell className="text-left font-semibold text-stone-700">Student</TableHeaderCell>
                     <TableHeaderCell className="w-36 text-left font-semibold text-stone-700">Programme</TableHeaderCell>
-                    <TableHeaderCell className="w-32 text-left font-semibold text-stone-700">Assigned Rate</TableHeaderCell>
+                    <TableHeaderCell className="w-36 text-left font-semibold text-stone-700">Assigned Rate</TableHeaderCell>
                     <TableHeaderCell className="w-40 text-left font-semibold text-stone-700">Notes / Reason</TableHeaderCell>
                     <TableHeaderCell className="w-28 text-left font-semibold text-stone-700">Effective Date</TableHeaderCell>
                     <TableHeaderCell className="w-24 text-center font-semibold text-stone-700">Status</TableHeaderCell>
@@ -485,13 +495,26 @@ export function SpecialRatesManagement() {
                       <TableCell className="w-36 text-xs font-semibold text-stone-700">
                         {rate.programme?.name}
                       </TableCell>
-                      <TableCell className="w-32 text-xs font-bold text-[#800020]">
-                        {rate.customAmountKobo
-                          ? formatNaira(BigInt(rate.customAmountKobo))
-                          : rate.feeStructure?.name || "Special Structure"}
+                      <TableCell className="w-36 text-xs">
+                        {rate.isScholarship || rate.rateType === "SCHOLARSHIP" ? (
+                          <div>
+                            <Badge variant="success" size="sm" className="bg-emerald-100 text-emerald-900 border-emerald-200">
+                              Scholarship
+                            </Badge>
+                            <div className="text-[11px] text-stone-500 mt-0.5">
+                              Tuition Waived (₦0)
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="font-bold text-[#800020]">
+                            {rate.customAmountKobo
+                              ? formatNaira(BigInt(rate.customAmountKobo))
+                              : rate.feeStructure?.name || "Special Structure"}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="w-40 text-xs text-stone-600">
-                        {rate.notes || "Grandfathered rate"}
+                        {rate.notes || (rate.isScholarship ? "Scholarship Exemption" : "Continuing student rate")}
                       </TableCell>
                       <TableCell className="w-28 text-xs text-stone-500">
                         {new Date(rate.effectiveDate).toLocaleDateString()}
@@ -742,8 +765,8 @@ export function SpecialRatesManagement() {
 
             {/* Rate Definition */}
             <div className="space-y-3 pt-1">
-              <div className="flex gap-3">
-                <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <label className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs font-semibold cursor-pointer transition-colors ${rateType === "AMOUNT" ? "border-[#800020] bg-rose-50/50 text-[#800020]" : "border-stone-200 hover:bg-stone-50"}`}>
                   <input
                     type="radio"
                     name="rateType"
@@ -751,9 +774,9 @@ export function SpecialRatesManagement() {
                     onChange={() => setRateType("AMOUNT")}
                     className="text-[#800020] focus:ring-[#800020]"
                   />
-                  <span>Custom Fee Amount (₦)</span>
+                  <span>Custom Fee (₦)</span>
                 </label>
-                <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+                <label className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs font-semibold cursor-pointer transition-colors ${rateType === "STRUCTURE" ? "border-[#800020] bg-rose-50/50 text-[#800020]" : "border-stone-200 hover:bg-stone-50"}`}>
                   <input
                     type="radio"
                     name="rateType"
@@ -761,11 +784,21 @@ export function SpecialRatesManagement() {
                     onChange={() => setRateType("STRUCTURE")}
                     className="text-[#800020] focus:ring-[#800020]"
                   />
-                  <span>Select Fee Plan / Structure</span>
+                  <span>Select Fee Plan</span>
+                </label>
+                <label className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs font-semibold cursor-pointer transition-colors ${rateType === "SCHOLARSHIP" ? "border-emerald-600 bg-emerald-50 text-emerald-950 font-bold" : "border-stone-200 hover:bg-stone-50"}`}>
+                  <input
+                    type="radio"
+                    name="rateType"
+                    checked={rateType === "SCHOLARSHIP"}
+                    onChange={() => setRateType("SCHOLARSHIP")}
+                    className="text-emerald-700 focus:ring-emerald-600"
+                  />
+                  <span>Scholarship (Tuition Exemption)</span>
                 </label>
               </div>
 
-              {rateType === "AMOUNT" ? (
+              {rateType === "AMOUNT" && (
                 <FormGroup label="Special Fee Amount (₦)" required>
                   <Input
                     type="number"
@@ -778,7 +811,9 @@ export function SpecialRatesManagement() {
                     className="text-sm font-bold text-stone-900"
                   />
                 </FormGroup>
-              ) : (
+              )}
+
+              {rateType === "STRUCTURE" && (
                 <FormGroup label="Assigned Fee Structure" required>
                   <Select
                     value={selectedFeeStructureId}
@@ -795,10 +830,38 @@ export function SpecialRatesManagement() {
                 </FormGroup>
               )}
 
+              {rateType === "SCHOLARSHIP" && (
+                <div className="space-y-3">
+                  <div className="p-3 bg-emerald-50/90 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-1">
+                    <div className="font-bold flex items-center gap-1.5 text-emerald-900">
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      100% Tuition Fee Exemption
+                    </div>
+                    <p className="text-stone-700">
+                      Tuition fee will be waived completely (₦0). Select the class Fee Structure below so compulsory non-tuition items (books, uniform, cardigan, materials) are itemized on the student&apos;s invoice for parent online payment.
+                    </p>
+                  </div>
+                  <FormGroup label="Class Fee Structure (for Compulsory Non-Tuition Items)" required>
+                    <Select
+                      value={selectedFeeStructureId}
+                      onChange={(e) => setSelectedFeeStructureId(e.target.value)}
+                      required
+                    >
+                      <option value="">Select applicable fee structure...</option>
+                      {feeStructures.map((fs) => (
+                        <option key={fs.id} value={fs.id}>
+                          {fs.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormGroup>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormGroup label="Notes / Reason" helperText="E.g. 'Old 2024 student grandfathered tuition'">
+                <FormGroup label="Notes / Reason" helperText="E.g. 'Continuing student rate from 2025/2026 session'">
                   <Input
-                    placeholder="Grandfathered rate reason..."
+                    placeholder="Rate notes or scholarship details..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     className="text-xs"

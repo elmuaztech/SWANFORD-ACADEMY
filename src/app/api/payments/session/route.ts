@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { targetType, targetId } = body;
+    const { targetType, targetId, amountKobo, customAmountNaira } = body;
 
     if (!targetType || !targetId) {
       return NextResponse.json(
@@ -210,11 +210,69 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Authoritative partial payment & minimum deposit resolution
+      let chargeAmountKobo = invoice.outstandingBalanceKobo;
+
+      if (amountKobo !== undefined && amountKobo !== null && amountKobo !== "") {
+        const parsedKobo = BigInt(amountKobo);
+        if (parsedKobo <= BigInt(0)) {
+          return NextResponse.json(
+            { error: "Payment amount must be greater than ₦0." },
+            { status: 400 }
+          );
+        }
+        if (parsedKobo > invoice.outstandingBalanceKobo) {
+          return NextResponse.json(
+            { error: `Payment amount cannot exceed the outstanding balance of ₦${(Number(invoice.outstandingBalanceKobo) / 100).toLocaleString()}.` },
+            { status: 400 }
+          );
+        }
+        if (
+          invoice.minimumDepositKobo &&
+          invoice.amountPaidKobo === BigInt(0) &&
+          parsedKobo < invoice.minimumDepositKobo
+        ) {
+          const minDepositFormatted = `₦${(Number(invoice.minimumDepositKobo) / 100).toLocaleString()}`;
+          return NextResponse.json(
+            { error: `A minimum deposit of ${minDepositFormatted} is required for the initial payment on this invoice.` },
+            { status: 400 }
+          );
+        }
+        chargeAmountKobo = parsedKobo;
+      } else if (customAmountNaira !== undefined && customAmountNaira !== null && customAmountNaira !== "") {
+        const parsedNaira = Number(customAmountNaira);
+        if (isNaN(parsedNaira) || parsedNaira <= 0) {
+          return NextResponse.json(
+            { error: "Please enter a valid payment amount." },
+            { status: 400 }
+          );
+        }
+        const parsedKobo = BigInt(Math.round(parsedNaira * 100));
+        if (parsedKobo > invoice.outstandingBalanceKobo) {
+          return NextResponse.json(
+            { error: `Payment amount cannot exceed the outstanding balance of ₦${(Number(invoice.outstandingBalanceKobo) / 100).toLocaleString()}.` },
+            { status: 400 }
+          );
+        }
+        if (
+          invoice.minimumDepositKobo &&
+          invoice.amountPaidKobo === BigInt(0) &&
+          parsedKobo < invoice.minimumDepositKobo
+        ) {
+          const minDepositFormatted = `₦${(Number(invoice.minimumDepositKobo) / 100).toLocaleString()}`;
+          return NextResponse.json(
+            { error: `A minimum deposit of ${minDepositFormatted} is required for the initial payment on this invoice.` },
+            { status: 400 }
+          );
+        }
+        chargeAmountKobo = parsedKobo;
+      }
+
       const { session, token } = await createPaymentSession({
         targetType: PaymentTargetType.INVOICE,
         invoiceId: invoice.id,
         payerEmail: actor.email || invoice.guardian?.email || "billing@swanfordacademy.edu.ng",
-        expectedAmountKobo: invoice.outstandingBalanceKobo,
+        expectedAmountKobo: chargeAmountKobo,
       });
 
       return NextResponse.json({

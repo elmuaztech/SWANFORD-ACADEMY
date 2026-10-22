@@ -64,6 +64,8 @@ export const CreateInvoiceSchema = z.object({
   billingMonth: z.number().int().min(0).max(12).default(0),
   billingPeriodName: z.string().optional().nullable(),
   isSpecialRate: z.boolean().default(false),
+  isScholarship: z.boolean().default(false),
+  minimumDepositKobo: z.union([z.string(), z.number(), z.bigint()]).optional().nullable(),
   items: z.array(InvoiceItemInputSchema).optional(),
 });
 
@@ -157,8 +159,10 @@ export async function createInvoice(
       );
     }
 
-    // 4. Resolve Special Fee Rate (if student has an approved legacy/special rate)
+    // 4. Resolve Special Fee Rate (if student has an approved legacy/special/scholarship rate)
     let isSpecialRate = validated.isSpecialRate ?? false;
+    let isScholarship = validated.isScholarship ?? false;
+    let minimumDepositKobo: bigint | null = validated.minimumDepositKobo ? BigInt(validated.minimumDepositKobo) : null;
     let specialRate = null;
 
     if (!validated.items || validated.items.length === 0) {
@@ -191,6 +195,9 @@ export async function createInvoice(
 
       if (specialRate) {
         isSpecialRate = true;
+        if (specialRate.isScholarship || specialRate.rateType === 'SCHOLARSHIP') {
+          isScholarship = true;
+        }
       }
     }
 
@@ -209,7 +216,19 @@ export async function createInvoice(
         };
       });
     } else if (specialRate) {
-      if (specialRate.customAmountKobo != null) {
+      const isRateScholarship = isScholarship || specialRate.isScholarship || specialRate.rateType === 'SCHOLARSHIP';
+      if (isRateScholarship && specialRate.feeStructure && specialRate.feeStructure.feeItems.length > 0) {
+        minimumDepositKobo = specialRate.feeStructure.minimumDepositKobo || minimumDepositKobo;
+        lineItems = specialRate.feeStructure.feeItems.map((item) => {
+          const isTuition = /tuition/i.test(item.name);
+          return {
+            description: isTuition ? `${item.name} (100% Scholarship Waived)` : item.name,
+            unitAmountKobo: isTuition ? BigInt(0) : item.amountKobo,
+            quantity: 1,
+            totalAmountKobo: isTuition ? BigInt(0) : item.amountKobo,
+          };
+        });
+      } else if (specialRate.customAmountKobo != null) {
         const label = specialRate.notes
           ? `Approved Special Rate Tuition (${specialRate.notes})`
           : 'Approved Special Rate Tuition';
@@ -222,6 +241,7 @@ export async function createInvoice(
           },
         ];
       } else if (specialRate.feeStructure && specialRate.feeStructure.feeItems.length > 0) {
+        minimumDepositKobo = specialRate.feeStructure.minimumDepositKobo || minimumDepositKobo;
         lineItems = specialRate.feeStructure.feeItems.map((item) => ({
           description: `${item.name} (Approved Special Rate)`,
           unitAmountKobo: item.amountKobo,
@@ -243,12 +263,28 @@ export async function createInvoice(
         );
       }
 
-      lineItems = feeStructure.feeItems.map((item) => ({
-        description: item.name,
-        unitAmountKobo: item.amountKobo,
-        quantity: 1,
-        totalAmountKobo: item.amountKobo,
-      }));
+      if (feeStructure.minimumDepositKobo && !minimumDepositKobo) {
+        minimumDepositKobo = feeStructure.minimumDepositKobo;
+      }
+
+      if (isScholarship) {
+        lineItems = feeStructure.feeItems.map((item) => {
+          const isTuition = /tuition/i.test(item.name);
+          return {
+            description: isTuition ? `${item.name} (100% Scholarship Waived)` : item.name,
+            unitAmountKobo: isTuition ? BigInt(0) : item.amountKobo,
+            quantity: 1,
+            totalAmountKobo: isTuition ? BigInt(0) : item.amountKobo,
+          };
+        });
+      } else {
+        lineItems = feeStructure.feeItems.map((item) => ({
+          description: item.name,
+          unitAmountKobo: item.amountKobo,
+          quantity: 1,
+          totalAmountKobo: item.amountKobo,
+        }));
+      }
     } else {
       // Check program for Creche monthly care fee
       const programme = await tx.programme.findUnique({ where: { id: validated.programmeId } });
@@ -266,12 +302,28 @@ export async function createInvoice(
       );
 
       if (resolved && resolved.feeItems.length > 0) {
-        lineItems = resolved.feeItems.map((item) => ({
-          description: item.name,
-          unitAmountKobo: item.amountKobo,
-          quantity: 1,
-          totalAmountKobo: item.amountKobo,
-        }));
+        if (resolved.minimumDepositKobo && !minimumDepositKobo) {
+          minimumDepositKobo = resolved.minimumDepositKobo;
+        }
+
+        if (isScholarship) {
+          lineItems = resolved.feeItems.map((item) => {
+            const isTuition = /tuition/i.test(item.name);
+            return {
+              description: isTuition ? `${item.name} (100% Scholarship Waived)` : item.name,
+              unitAmountKobo: isTuition ? BigInt(0) : item.amountKobo,
+              quantity: 1,
+              totalAmountKobo: isTuition ? BigInt(0) : item.amountKobo,
+            };
+          });
+        } else {
+          lineItems = resolved.feeItems.map((item) => ({
+            description: item.name,
+            unitAmountKobo: item.amountKobo,
+            quantity: 1,
+            totalAmountKobo: item.amountKobo,
+          }));
+        }
       } else if (isCreche) {
         // Standard Creche monthly tuition fee: ₦10,000 (1,000,000 Kobo)
         const monthName = validated.billingPeriodName || (billingMonth > 0 ? getBillingMonthName(billingMonth) : 'Monthly');
@@ -323,6 +375,8 @@ export async function createInvoice(
         billingMonth,
         billingPeriodName: validated.billingPeriodName || (billingMonth > 0 ? getBillingMonthName(billingMonth) : null),
         isSpecialRate,
+        isScholarship,
+        minimumDepositKobo,
         totalAmountKobo,
         amountPaidKobo: BigInt(0),
         outstandingBalanceKobo: totalAmountKobo,

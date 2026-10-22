@@ -56,6 +56,9 @@ interface ParentInvoice {
   billingMonth?: number;
   billingPeriodName?: string | null;
   isSpecialRate?: boolean;
+  isScholarship?: boolean;
+  minimumDepositKobo?: string | null;
+  minimumDepositNaira?: number | null;
   status: string;
   totalAmountKobo: string;
   amountPaidKobo: string;
@@ -98,8 +101,17 @@ export default function ParentFinancePage() {
 
   // Payment checkout state
   const [paymentInvoice, setPaymentInvoice] = useState<ParentInvoice | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"full" | "deposit">("full");
+  const [customPaymentAmount, setCustomPaymentAmount] = useState<string>("");
   const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  const openPaymentModal = (inv: ParentInvoice) => {
+    setPaymentInvoice(inv);
+    setPaymentMode("full");
+    setCustomPaymentAmount("");
+    setPaymentError(null);
+  };
 
   // Verification toast state
   const [verificationNotice, setVerificationNotice] = useState<{
@@ -242,6 +254,28 @@ export default function ParentFinancePage() {
     setPaymentError(null);
 
     try {
+      const outstanding = safeBigInt(paymentInvoice.outstandingBalanceKobo);
+      let amountKoboToSend: string | undefined = undefined;
+
+      if (paymentMode === "deposit") {
+        const parsedNaira = Number(customPaymentAmount);
+        if (isNaN(parsedNaira) || parsedNaira <= 0) {
+          throw new Error("Please enter a valid deposit amount.");
+        }
+        const koboVal = BigInt(Math.round(parsedNaira * 100));
+        if (koboVal > outstanding) {
+          throw new Error(`Deposit amount cannot exceed the outstanding balance of ${formatNaira(outstanding)}.`);
+        }
+        if (
+          paymentInvoice.minimumDepositKobo &&
+          safeBigInt(paymentInvoice.amountPaidKobo) === BigInt(0) &&
+          koboVal < safeBigInt(paymentInvoice.minimumDepositKobo)
+        ) {
+          throw new Error(`A minimum deposit of ${formatNaira(safeBigInt(paymentInvoice.minimumDepositKobo))} is required for the initial payment.`);
+        }
+        amountKoboToSend = koboVal.toString();
+      }
+
       // 1. Create secure server-side payment session
       const sessionRes = await fetch("/api/payments/session", {
         method: "POST",
@@ -249,6 +283,7 @@ export default function ParentFinancePage() {
         body: JSON.stringify({
           targetType: "INVOICE",
           targetId: paymentInvoice.id,
+          amountKobo: amountKoboToSend,
         }),
       });
 
@@ -542,6 +577,96 @@ export default function ParentFinancePage() {
         </Card>
       </div>
 
+      {/* Multi-Child School Fees Overview */}
+      {selectedChildId === "all" && children.length > 1 && (
+        <Card className="border border-stone-200 bg-gradient-to-r from-stone-50 via-white to-amber-50/20 shadow-xs">
+          <CardHeader className="pb-3 border-b border-stone-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-base font-bold text-stone-900">
+                  Enrolled Children &amp; Fee Status
+                </CardTitle>
+                <p className="text-xs text-stone-500">
+                  Review balances and manage school fees individually for each child.
+                </p>
+              </div>
+              <Badge variant="brand" size="sm" className="bg-[#800020]/10 text-[#800020] border-[#800020]/20 font-bold">
+                {children.length} Enrolled Children
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {children.map((child) => {
+                const childInvs = invoices.filter((inv) => inv.studentId === child.studentId);
+                const childBal = childInvs.reduce(
+                  (acc, inv) => acc + safeBigInt(inv.outstandingBalanceKobo),
+                  BigInt(0)
+                );
+                const activeInv = childInvs.find((inv) => safeBigInt(inv.outstandingBalanceKobo) > BigInt(0)) || childInvs[0];
+
+                return (
+                  <div
+                    key={child.studentId}
+                    className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all ${
+                      childBal > BigInt(0)
+                        ? "border-amber-200/80 bg-white hover:border-[#800020]/40 shadow-2xs"
+                        : "border-emerald-200/80 bg-emerald-50/30"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-1">
+                        <span className="font-bold text-sm text-stone-900">{child.studentName}</span>
+                        {activeInv?.isScholarship && (
+                          <Badge variant="success" size="sm" className="shrink-0 bg-emerald-100 text-emerald-900 border-emerald-200">
+                            Scholarship
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-stone-500 mt-0.5">
+                        {child.className} • {child.programmeName}
+                      </div>
+                      <div className="mt-2.5">
+                        <span className="text-[11px] text-stone-500 font-semibold uppercase tracking-wider block">
+                          {childBal > BigInt(0) ? "Balance Due" : "Status"}
+                        </span>
+                        <span
+                          className={`text-base font-extrabold font-mono ${
+                            childBal > BigInt(0) ? "text-[#800020]" : "text-emerald-700"
+                          }`}
+                        >
+                          {childBal > BigInt(0) ? formatNaira(childBal) : "Fully Paid ✓"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedChildId(child.studentId)}
+                        className="text-xs font-semibold text-stone-600 hover:text-stone-900 hover:underline"
+                      >
+                        View Statement &rarr;
+                      </button>
+                      {childBal > BigInt(0) && activeInv && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="bg-[#800020] hover:bg-[#5B0612] text-white min-h-[38px] text-xs font-bold"
+                          onClick={() => openPaymentModal(activeInv)}
+                        >
+                          Pay School Fees
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs */}
       <Tabs
         tabs={[
@@ -683,9 +808,14 @@ export default function ParentFinancePage() {
                           <TableCell className="w-32 text-xs text-stone-600">
                             <div className="font-semibold text-stone-800">{inv.billingPeriodName || inv.termName}</div>
                             <div className="text-[10px] text-stone-400">({inv.sessionName})</div>
-                            {inv.isSpecialRate && (
+                            {inv.isScholarship && (
+                              <Badge variant="success" size="sm" className="mt-1 bg-emerald-100 text-emerald-900 border-emerald-200 font-bold">
+                                Scholarship
+                              </Badge>
+                            )}
+                            {inv.isSpecialRate && !inv.isScholarship && (
                               <Badge variant="brand" size="sm" className="mt-1 bg-amber-100 text-amber-900 border-amber-200">
-                                Approved Special Rate
+                                Continuing Student Rate
                               </Badge>
                             )}
                           </TableCell>
@@ -722,7 +852,7 @@ export default function ParentFinancePage() {
                                 variant="primary"
                                 size="sm"
                                 className="bg-[#800020] hover:bg-[#5B0612] text-white"
-                                onClick={() => setPaymentInvoice(inv)}
+                                onClick={() => openPaymentModal(inv)}
                               >
                                 Pay Now
                               </Button>
@@ -784,7 +914,11 @@ export default function ParentFinancePage() {
                       {
                         label: "Period & Session",
                         value: `${inv.billingPeriodName || inv.termName} (${inv.sessionName})${
-                          inv.isSpecialRate ? " • Approved Special Rate" : ""
+                          inv.isScholarship
+                            ? " • Scholarship (Tuition Waived)"
+                            : inv.isSpecialRate
+                            ? " • Continuing Student Rate"
+                            : ""
                         }`,
                       },
                       {
@@ -803,7 +937,7 @@ export default function ParentFinancePage() {
                           variant="primary"
                           size="sm"
                           className="w-full bg-[#800020] hover:bg-[#5B0612] text-white min-h-[44px]"
-                          onClick={() => setPaymentInvoice(inv)}
+                          onClick={() => openPaymentModal(inv)}
                         >
                           Pay School Fees ({formatNaira(bal)})
                         </Button>
@@ -1024,12 +1158,103 @@ export default function ParentFinancePage() {
                   {paymentInvoice.termName} ({paymentInvoice.sessionName})
                 </span>
               </div>
+              {paymentInvoice.isScholarship && (
+                <div className="flex justify-between text-xs text-stone-600">
+                  <span>Billing Category:</span>
+                  <Badge variant="success" size="sm" className="bg-emerald-100 text-emerald-900 border-emerald-200 font-bold">
+                    Scholarship (Tuition 100% Waived)
+                  </Badge>
+                </div>
+              )}
               <div className="border-t border-stone-200 pt-2 flex justify-between items-center">
-                <span className="text-sm font-bold text-stone-900">Outstanding Balance:</span>
+                <span className="text-sm font-bold text-stone-900">Total Outstanding:</span>
                 <span className="text-lg font-extrabold text-[#5B0612] font-mono">
                   {formatNaira(safeBigInt(paymentInvoice.outstandingBalanceKobo))}
                 </span>
               </div>
+            </div>
+
+            {/* Payment Mode Selector */}
+            <div className="space-y-3 pt-1">
+              <label className="text-xs font-bold text-stone-700 block">Choose Payment Option:</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMode("full")}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    paymentMode === "full"
+                      ? "border-[#800020] bg-rose-50/50 ring-2 ring-[#800020]/20"
+                      : "border-stone-200 hover:border-stone-300 bg-white"
+                  }`}
+                >
+                  <div className="text-xs font-bold text-stone-900">Pay Full Balance</div>
+                  <div className="text-sm font-extrabold text-[#800020] mt-0.5 font-mono">
+                    {formatNaira(safeBigInt(paymentInvoice.outstandingBalanceKobo))}
+                  </div>
+                  <div className="text-[11px] text-stone-500 mt-0.5">Settle entire fee bill</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentMode("deposit");
+                    if (!customPaymentAmount && paymentInvoice.minimumDepositNaira) {
+                      setCustomPaymentAmount(String(paymentInvoice.minimumDepositNaira));
+                    }
+                  }}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    paymentMode === "deposit"
+                      ? "border-[#800020] bg-rose-50/50 ring-2 ring-[#800020]/20"
+                      : "border-stone-200 hover:border-stone-300 bg-white"
+                  }`}
+                >
+                  <div className="text-xs font-bold text-stone-900">
+                    {paymentInvoice.minimumDepositKobo ? "Pay Deposit / Installment" : "Pay Custom Deposit"}
+                  </div>
+                  <div className="text-sm font-extrabold text-stone-700 mt-0.5">
+                    {paymentInvoice.minimumDepositKobo
+                      ? `Min. ${formatNaira(safeBigInt(paymentInvoice.minimumDepositKobo))}`
+                      : "Flexible"}
+                  </div>
+                  <div className="text-[11px] text-stone-500 mt-0.5">Pay in installments</div>
+                </button>
+              </div>
+
+              {paymentMode === "deposit" && (
+                <div className="mt-2 p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-xl space-y-2">
+                  <label className="text-xs font-bold text-amber-950 block">
+                    Enter Deposit Amount (₦):
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-stone-500">
+                      ₦
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="any"
+                      value={customPaymentAmount}
+                      onChange={(e) => setCustomPaymentAmount(e.target.value)}
+                      placeholder={paymentInvoice.minimumDepositNaira ? String(paymentInvoice.minimumDepositNaira) : "e.g. 20000"}
+                      className="w-full pl-8 pr-3 py-2 text-sm font-bold text-stone-900 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#800020] focus:border-transparent min-h-[44px]"
+                    />
+                  </div>
+                  {paymentInvoice.minimumDepositKobo && safeBigInt(paymentInvoice.amountPaidKobo) === BigInt(0) && (
+                    <p className="text-[11px] font-semibold text-amber-900">
+                      * A minimum initial deposit of {formatNaira(safeBigInt(paymentInvoice.minimumDepositKobo))} is required for this invoice.
+                    </p>
+                  )}
+                  {customPaymentAmount && Number(customPaymentAmount) > 0 && (
+                    <p className="text-[11px] text-stone-600">
+                      Remaining balance after payment: {formatNaira(
+                        safeBigInt(paymentInvoice.outstandingBalanceKobo) - safeBigInt(Math.round(Number(customPaymentAmount || 0) * 100)) > BigInt(0)
+                          ? safeBigInt(paymentInvoice.outstandingBalanceKobo) - safeBigInt(Math.round(Number(customPaymentAmount || 0) * 100))
+                          : BigInt(0)
+                      )}.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <p className="text-xs text-stone-500 leading-relaxed">
